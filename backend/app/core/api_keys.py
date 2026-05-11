@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Optional
@@ -69,6 +68,14 @@ def _ensure_config(data_dir: Path) -> dict:
         return json.loads(path.read_text(encoding="utf-8"))
     path.write_text(json.dumps(_DEFAULT_CONFIG, indent=2), encoding="utf-8")
     return dict(_DEFAULT_CONFIG)  # shallow copy so callers can mutate safely
+
+
+def ensure_config_skeleton() -> None:
+    """Public entry point: write the default config template if missing.
+
+    Idempotent — safe to call at startup and in lifespan hooks.
+    """
+    _ensure_config(settings.THE_WORLD_DATA_DIR)
 
 
 # ---------------------------------------------------------------------------

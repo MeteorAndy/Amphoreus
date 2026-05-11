@@ -26,12 +26,13 @@ def get_settings() -> Settings:
 
 
 # ---------------------------------------------------------------------------
-# KeyManager — not cached (reads mutable file each call)
+# KeyManager — cached once per process (file I/O happens once at startup)
 # ---------------------------------------------------------------------------
 
 
+@lru_cache(maxsize=1)
 def get_key_manager() -> KeyManager:
-    """Return a fresh KeyManager bound to the configured data directory."""
+    """Return a cached KeyManager bound to the configured data directory."""
     return KeyManager(data_dir=get_settings().THE_WORLD_DATA_DIR)
 
 
@@ -58,6 +59,5 @@ async def get_llm_client(
     try:
         yield client
     finally:
-        # Allow provider-specific teardown (e.g. closing http sessions).
-        if hasattr(client, "_client") and hasattr(client._client, "close"):
-            await getattr(client._client, "close")()
+        if hasattr(client, "_client") and hasattr(client._client, "aclose"):
+            await client._client.aclose()

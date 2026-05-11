@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import tempfile
 from pathlib import Path
 
@@ -12,6 +11,7 @@ from app.core.config import Settings
 from app.core.llm_client import (
     DeepSeekClient,
     LLMClient,
+    _unregister_provider,
     create_llm_client,
     register_provider,
 )
@@ -47,6 +47,10 @@ class TestSettings:
         s = Settings()
         assert s.DEEPSEEK_BASE_URL == "https://api.deepseek.com/v1"
         assert s.DEEPSEEK_MODEL == "deepseek-chat"
+
+    def test_deepseek_embed_defaults(self) -> None:
+        s = Settings()
+        assert s.DEEPSEEK_EMBED_MODEL == "deepseek-embed"
 
     def test_volcengine_defaults(self) -> None:
         s = Settings()
@@ -148,9 +152,10 @@ class TestLLMClient:
         """DeepSeekClient should satisfy the LLMClient ABC."""
         client = DeepSeekClient(api_key="sk-test")
         assert isinstance(client, LLMClient)
+        assert client.default_embed_model == "deepseek-embed"
 
-    def test_factory_returns_deepseek_client(self) -> None:
-        """create_llm_client should build a DeepSeekClient by default."""
+    def test_factory_raises_error_without_key(self) -> None:
+        """create_llm_client should raise ValueError when no key is available."""
         with pytest.raises(ValueError, match="No API key"):
             create_llm_client()
 
@@ -172,16 +177,29 @@ class TestLLMClient:
         )
         assert client.base_url == "https://custom.example.com/v1"
 
+    def test_factory_custom_embed_model(self) -> None:
+        """default_embed_model should be forwarded to DeepSeekClient."""
+        client = create_llm_client(
+            provider="deepseek",
+            api_key="sk-key",
+            default_embed_model="deepseek-embed-test",
+        )
+        assert isinstance(client, DeepSeekClient)
+        assert client.default_embed_model == "deepseek-embed-test"
+
     def test_register_provider(self) -> None:
         class FakeClient(LLMClient):
-            def chat(self, messages, **kwargs):
+            async def chat(self, messages, **kwargs):
                 return "fake"
-            def embed(self, texts, **kwargs):
+            async def embed(self, texts, **kwargs):
                 return [[0.0]]
 
         register_provider("fake", FakeClient)
-        client = create_llm_client(provider="fake", api_key="sk-fake")
-        assert isinstance(client, FakeClient)
+        try:
+            client = create_llm_client(provider="fake", api_key="sk-fake")
+            assert isinstance(client, FakeClient)
+        finally:
+            _unregister_provider("fake")
 
     def test_register_provider_validates_type(self) -> None:
         class NotAClient:

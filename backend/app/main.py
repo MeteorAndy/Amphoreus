@@ -7,14 +7,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router as api_router
-from app.core.api_keys import _ensure_config
+from app.core.api_keys import ensure_config_skeleton
 from app.core.config import settings
 
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Ensure config skeleton exists before the first request arrives."""
-    _ensure_config(settings.THE_WORLD_DATA_DIR)
+    ensure_config_skeleton()
     yield
 
 
@@ -36,7 +36,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentials=True,
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )

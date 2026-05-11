@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -50,6 +48,11 @@ class Settings(BaseSettings):
         description="DeepSeek model identifier for story generation",
     )
 
+    DEEPSEEK_EMBED_MODEL: str = Field(
+        default="deepseek-embed",
+        description="DeepSeek model identifier for embeddings",
+    )
+
     VOLCENGINE_BASE_URL: str = Field(
         default="https://ark.cn-beijing.volces.com/api/v3",
         description="Volcengine/Doubao API base URL (OpenAI-compatible)",
@@ -79,6 +82,3 @@ class Settings(BaseSettings):
 
 # Module-level singleton — importers get a pre-loaded, validated config.
 settings = Settings()
-
-# Ensure the data directory actually exists at import time.
-settings.THE_WORLD_DATA_DIR.mkdir(parents=True, exist_ok=True)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from app.core.api_keys import KeyManager
 
@@ -26,7 +26,7 @@ class LLMClient(ABC):
         self.api_key = api_key
 
     @abstractmethod
-    def chat(
+    async def chat(
         self,
         messages: List[Dict[str, str]],
         *,
@@ -39,7 +39,7 @@ class LLMClient(ABC):
         ...
 
     @abstractmethod
-    def embed(
+    async def embed(
         self,
         texts: List[str],
         *,
@@ -63,13 +63,15 @@ class DeepSeekClient(LLMClient):
         api_key: str,
         base_url: str = "https://api.deepseek.com/v1",
         default_model: str = "deepseek-chat",
+        default_embed_model: str = "deepseek-embed",
     ) -> None:
         super().__init__(api_key)
         self.base_url = base_url
         self.default_model = default_model
-        self._client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+        self.default_embed_model = default_embed_model
+        self._client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 
-    def chat(
+    async def chat(
         self,
         messages: List[Dict[str, str]],
         *,
@@ -78,7 +80,7 @@ class DeepSeekClient(LLMClient):
         max_tokens: int = 2048,
         **kwargs: Any,
     ) -> str:
-        response = self._client.chat.completions.create(
+        response = await self._client.chat.completions.create(
             model=model or self.default_model,
             messages=messages,
             temperature=temperature,
@@ -87,15 +89,15 @@ class DeepSeekClient(LLMClient):
         )
         return response.choices[0].message.content or ""
 
-    def embed(
+    async def embed(
         self,
         texts: List[str],
         *,
         model: Optional[str] = None,
         **kwargs: Any,
     ) -> List[List[float]]:
-        response = self._client.embeddings.create(
-            model=model or self.default_model,
+        response = await self._client.embeddings.create(
+            model=model or self.default_embed_model,
             input=texts,
             **kwargs,
         )
@@ -156,3 +158,8 @@ def register_provider(name: str, client_class: type[LLMClient]) -> None:
     if not issubclass(client_class, LLMClient):
         raise TypeError(f"{client_class.__name__} must subclass LLMClient")
     _PROVIDER_CLIENTS[name] = client_class
+
+
+def _unregister_provider(name: str) -> None:
+    """Remove a previously registered provider (test helper)."""
+    _PROVIDER_CLIENTS.pop(name, None)
