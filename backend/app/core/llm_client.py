@@ -57,19 +57,53 @@ class LLMClient:
                     await asyncio.sleep(2.0 * (attempt + 1))
         raise last_exc  # type: ignore[misc]
 
+    @staticmethod
+    def _extract_json(raw: str) -> dict[str, Any]:
+        """Extract JSON from LLM response, handling markdown code blocks and extra text."""
+        text = raw.strip()
+
+        # Strip markdown code blocks (```json ... ``` or ``` ... ```)
+        if text.startswith("```"):
+            lines = text.split("\n")
+            # Remove opening fence (may be ```json or just ```)
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            # Remove closing fence
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines).strip()
+
+        # Try direct parse
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        # Find first { and last } for partial extraction
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            try:
+                return json.loads(text[start:end + 1])
+            except json.JSONDecodeError:
+                pass
+
+        raise ValueError(f"Could not extract JSON from response: {raw[:300]}...")
+
     async def chat_json(
         self,
         messages: list[dict[str, str]],
         *,
-        temperature: float = 0.7,
+        temperature: float = 0.3,
     ) -> dict[str, Any]:
-        """Send a chat completion and parse the response as JSON."""
-        raw = await self.chat(
-            messages,
-            temperature=temperature,
-            response_format={"type": "json_object"},
-        )
-        return json.loads(raw)
+        """Send a chat completion and parse the response as JSON.
+
+        Does NOT use json_object response_format — DeepSeek supports it
+        inconsistently in long conversations. Instead, relies on system
+        prompts that instruct JSON-only output and robust extraction.
+        """
+        raw = await self.chat(messages, temperature=temperature)
+        return self._extract_json(raw)
 
     async def chat_stream(
         self,

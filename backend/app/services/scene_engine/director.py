@@ -70,14 +70,14 @@ Consider the character goals set up at the start:
 {goals_summary}
 
 Respond ONLY with valid JSON in this format:
-{
+{{
   "should_continue": true or false,
   "reason": "brief justification of the ruling",
   "next_speaker": "character_id or null",
   "inject_event": "description of external event or null",
   "pacing_note": "observation about current pacing",
   "ooc_warnings": ["description of any OOC behavior"]
-}"""
+}}"""
 
 
 class Director:

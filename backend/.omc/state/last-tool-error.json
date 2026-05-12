@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd Z:/TheWorld/.claude/worktrees/the-world-story-engine/backend && uv run python test_pipeline.py\",\"timeout\":600000,\"description\":\"Run automated pipeline smoke test\"}",
+  "error": "Exit code 1\n============================================================\r\nSTEP 1: World Building\r\n============================================================\r\n  Stage: rules\r\n  Question: ����������У���ʯ�ı�����ʲô��������β�����ʹ�õģ�\r\n  Round 1... [15%] rules\r\n  Round 2... [20%] rules\r\n  Round 3... [15%] rules\r\n  Round 4... [25%] rules\r\n  Round 5... Traceback (most recent call last):\r\n  File \"Z:\\TheWorld\\.claude\\worktrees\\the-world-story-engine\\backend\\test_pipeline.py\", line 142, in pipeline\r\n   ...",
+  "timestamp": "2026-05-12T17:25:34.417Z",
+  "retry_count": 1
+}
