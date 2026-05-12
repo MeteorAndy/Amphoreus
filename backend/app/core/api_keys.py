@@ -25,7 +25,7 @@ class KeyManager:
     """Encrypts and persists API keys in the local user config directory.
 
     Uses Fernet symmetric encryption. The encryption key is stored
-    alongside the config file (~/.the-world/config.json.key).
+    alongside the config file (~/.amphoreus/config.json.key).
 
     This is NOT defense against a determined attacker with filesystem
     access. It protects against casual snooping and accidental exposure.

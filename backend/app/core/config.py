@@ -10,7 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def _default_data_dir() -> Path:
-    return Path.home() / ".the-world"
+    return Path.home() / ".amphoreus"
 
 
 def _default_config_path() -> Path:
@@ -97,7 +97,7 @@ class Settings(BaseSettings):
         return Path(v).expanduser().resolve()
 
     def load_from_user_config(self) -> None:
-        """Merge values from ~/.the-world/config.json (user-facing keys)."""
+        """Merge values from ~/.amphoreus/config.json (user-facing keys)."""
         data = _load_user_config()
         if not data:
             return
@@ -106,7 +106,7 @@ class Settings(BaseSettings):
                 object.__setattr__(self, key, data[key])
 
     def save_user_config(self) -> None:
-        """Persist API keys to ~/.the-world/config.json."""
+        """Persist API keys to ~/.amphoreus/config.json."""
         existing = _load_user_config()
         existing["deepseek_api_key"] = self.deepseek_api_key or existing.get("deepseek_api_key", "")
         existing["volcengine_api_key"] = self.volcengine_api_key or existing.get("volcengine_api_key", "")

@@ -29,7 +29,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
 
     app = FastAPI(
-        title="TheWorld Story Engine",
+        title="Amphoreus Story Engine",
         version="0.1.0",
         lifespan=lifespan,
     )
