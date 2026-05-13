@@ -99,11 +99,26 @@ class LLMClient:
         """Send a chat completion and parse the response as JSON.
 
         Does NOT use json_object response_format — DeepSeek supports it
-        inconsistently in long conversations. Instead, relies on system
-        prompts that instruct JSON-only output and robust extraction.
+        inconsistently in long conversations. On parse failure, retries
+        with a forceful JSON instruction appended to the conversation.
         """
         raw = await self.chat(messages, temperature=temperature)
-        return self._extract_json(raw)
+        try:
+            return self._extract_json(raw)
+        except ValueError:
+            pass
+
+        # Retry: append a forceful instruction to the conversation
+        retry_messages = list(messages) + [
+            {"role": "assistant", "content": raw[:500]},
+            {"role": "user", "content": (
+                "You MUST respond with ONLY a JSON object. No markdown, no "
+                "explanations, no other text whatsoever. Start with { and end with }. "
+                "Follow the JSON format specified in the system prompt EXACTLY."
+            )},
+        ]
+        raw2 = await self.chat(retry_messages, temperature=0.1)
+        return self._extract_json(raw2)
 
     async def chat_stream(
         self,
