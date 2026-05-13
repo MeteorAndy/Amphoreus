@@ -4,12 +4,13 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.core.i18n import get_lang, Lang
 from app.core.llm_client import LLMClient
 from app.models.character import CharacterProfile
 from app.services.memory import MemoryManager
 from app.services.world_builder import WorldState
 
-_RELATIONSHIP_SYSTEM_PROMPT = """\
+_RELATIONSHIP_SYSTEM_PROMPT_EN = """\
 You are analyzing character relationships for a story world. Given the following \
 world context and character profiles, infer the most likely relationships between \
 these characters.
@@ -25,6 +26,30 @@ For each relationship, determine:
 You MUST respond ONLY with valid JSON in this exact format:
 {"relationships": [{"from_id": "...", "to_id": "...", "rel_type": "ALLY", \
 "strength": 0.0, "description": "...", "established_event": "..."}]}"""
+
+_RELATIONSHIP_SYSTEM_PROMPT_ZH = """\
+你正在分析一个故事世界中的人物关系。根据给定的世界背景和角色档案，推断这些角色之间最可能存在的关系。
+
+每个关系需要确定：
+- from_id: 源角色 ID
+- to_id: 目标角色 ID
+- rel_type: 关系类型，可选 ALLY（盟友）、RIVAL（竞争对手）、ENEMY（敌人）、FAMILY（家族）、MENTOR（师徒）、ROMANTIC（恋情）、UNKNOWN（未知）
+- strength: 0.0 到 1.0，表示关系强度
+- description: 关系描述（使用简体中文）
+- established_event: 建立此关系的事件或情境（使用简体中文）
+
+重要提示：
+- description 和 established_event 必须使用简体中文
+- from_id、to_id、rel_type、strength 保持英文/数值
+- 关系描述要具体而生动，反映角色之间真实的情感纽带
+
+你必须严格按照以下 JSON 格式回复，且只回复 JSON：
+{"relationships": [{"from_id": "...", "to_id": "...", "rel_type": "ALLY", \
+"strength": 0.0, "description": "...", "established_event": "..."}]}"""
+
+
+def _get_relationship_prompt() -> str:
+    return _RELATIONSHIP_SYSTEM_PROMPT_ZH if get_lang() == Lang.ZH else _RELATIONSHIP_SYSTEM_PROMPT_EN
 
 _RELATES_TO = "RELATES_TO"
 
@@ -218,7 +243,7 @@ class RelationshipBuilder:
         ]
 
         return [
-            {"role": "system", "content": _RELATIONSHIP_SYSTEM_PROMPT},
+            {"role": "system", "content": _get_relationship_prompt()},
             {
                 "role": "user",
                 "content": (

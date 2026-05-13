@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from app.core.i18n import get_lang, Lang
 from app.core.llm_client import LLMClient
 from app.models.character import CharacterProfile
 from app.services.memory import MemoryManager
@@ -54,14 +55,23 @@ class WrittenOutput:
 # System prompts
 # ---------------------------------------------------------------------------
 
-_NOVEL_SYSTEM_PROMPT_TEMPLATE = """\
+_NOVEL_SYSTEM_PROMPT_TEMPLATE_EN = """\
 You are a literary novelist. Transform the following scene log into vivid narrative prose.
 Narrative voice: {voice}.
 Include sensory details, internal monologue, and descriptive passages.
 Preserve all dialogue and key actions exactly as recorded.
 Write in paragraphs with proper literary pacing. Do NOT add any meta-commentary."""
 
-_NOVEL_ENHANCE_PROMPT = """\
+_NOVEL_SYSTEM_PROMPT_TEMPLATE_ZH = """\
+你是一位文学小说家。将以下场景日志转换为生动的叙事散文。
+叙事视角：{voice}。
+包含感官细节、内心独白和描写段落。
+保留所有对话和关键动作，精确记录。
+以段落形式书写，保持适当的文学节奏。不要添加任何元评论。
+
+重要提示：所有输出必须使用简体中文。对话要听起来像真实的中文口语。描述要富有中国文学韵味。"""
+
+_NOVEL_ENHANCE_PROMPT_EN = """\
 Review the narrative above and enhance it for:
 1. Pacing — vary sentence length and structure for rhythm
 2. Sensory richness — deepen the sensory experience (sights, sounds, smells, textures)
@@ -69,7 +79,17 @@ Review the narrative above and enhance it for:
 
 Rewrite the passage below with these improvements. Return ONLY the rewritten prose, no explanations."""
 
-_SCREENPLAY_SYSTEM_PROMPT = """\
+_NOVEL_ENHANCE_PROMPT_ZH = """\
+审查以上叙事并进行以下增强：
+1. 节奏——变化句子长度和结构以形成韵律
+2. 感官丰富度——加深感官体验（视觉、声音、气味、质感）
+3. 对话润色——确保对话自然且每个角色各有特色
+
+用以上改进重写下面的段落。只返回改写后的散文，不要解释。
+
+重要提示：所有输出必须使用简体中文。"""
+
+_SCREENPLAY_SYSTEM_PROMPT_EN = """\
 Convert this scene log to standard screenplay format.
 Formatting rules:
 - [INT./EXT.] LOCATION - TIME for each scene heading
@@ -80,7 +100,25 @@ Formatting rules:
 
 Preserve all dialogue and key actions exactly as recorded. Do NOT add meta-commentary."""
 
-_SCREENPLAY_ENHANCE_PROMPT = """\
+_SCREENPLAY_SYSTEM_PROMPT_ZH = """\
+将以下场景日志转换为标准剧本格式。
+格式规则：
+- [内景/外景] 地点 - 时间 作为每个场景的标题
+- 动作描述使用现在时，以段落形式呈现
+- 角色名全大写，居中显示在对话上方
+- （括号内）用于在对话中标注语气/动作
+- 场景标题、动作块和对话块之间空两行
+
+保留所有对话和关键动作，精确记录。不要添加元评论。
+
+重要提示：
+- 场景标题中的地点名称使用中文
+- 对话和动作描述使用简体中文
+- 角色名保持全大写格式
+- 格式标记（内景/外景等）可以使用中文
+"""
+
+_SCREENPLAY_ENHANCE_PROMPT_EN = """\
 Review the screenplay above for formatting consistency and quality:
 
 1. Verify all scene headings use correct INT./EXT. notation
@@ -90,6 +128,55 @@ Review the screenplay above for formatting consistency and quality:
 5. Ensure proper spacing between elements
 
 Return ONLY the corrected screenplay, no explanations."""
+
+_SCREENPLAY_ENHANCE_PROMPT_ZH = """\
+审查以上剧本的格式一致性和质量：
+
+1. 验证所有场景标题使用正确的内景/外景标记
+2. 确保角色名正确使用全大写格式
+3. 检查动作描述是否使用现在时
+4. 修复任何格式不一致之处
+5. 确保元素之间的间距正确
+
+只返回修正后的剧本，不要解释。
+
+重要提示：所有对话和动作描述使用简体中文。"""
+
+
+_NARRATIVE_PROMPTS = {
+    "novel_system": {
+        Lang.ZH: _NOVEL_SYSTEM_PROMPT_TEMPLATE_ZH,
+        Lang.EN: _NOVEL_SYSTEM_PROMPT_TEMPLATE_EN,
+    },
+    "novel_enhance": {
+        Lang.ZH: _NOVEL_ENHANCE_PROMPT_ZH,
+        Lang.EN: _NOVEL_ENHANCE_PROMPT_EN,
+    },
+    "screenplay_system": {
+        Lang.ZH: _SCREENPLAY_SYSTEM_PROMPT_ZH,
+        Lang.EN: _SCREENPLAY_SYSTEM_PROMPT_EN,
+    },
+    "screenplay_enhance": {
+        Lang.ZH: _SCREENPLAY_ENHANCE_PROMPT_ZH,
+        Lang.EN: _SCREENPLAY_ENHANCE_PROMPT_EN,
+    },
+}
+
+
+def _get_novel_system_prompt() -> str:
+    return _NARRATIVE_PROMPTS["novel_system"][get_lang()]
+
+
+def _get_novel_enhance_prompt() -> str:
+    return _NARRATIVE_PROMPTS["novel_enhance"][get_lang()]
+
+
+def _get_screenplay_system_prompt() -> str:
+    return _NARRATIVE_PROMPTS["screenplay_system"][get_lang()]
+
+
+def _get_screenplay_enhance_prompt() -> str:
+    return _NARRATIVE_PROMPTS["screenplay_enhance"][get_lang()]
 
 # ---------------------------------------------------------------------------
 # Archive parsing helpers
@@ -194,7 +281,7 @@ class NovelWriter:
     ) -> str:
         """Send a scene log to the LLM and return narrative prose."""
         voice_label = options.narrative_voice.replace("_", " ")
-        system_prompt = _NOVEL_SYSTEM_PROMPT_TEMPLATE.format(voice=voice_label)
+        system_prompt = _get_novel_system_prompt().format(voice=voice_label)
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
@@ -205,7 +292,7 @@ class NovelWriter:
     async def _enhance_prose(self, prose: str) -> str:
         """Second-pass LLM call for pacing, sensory depth, and dialogue polish."""
         messages: list[dict[str, str]] = [
-            {"role": "system", "content": _NOVEL_ENHANCE_PROMPT},
+            {"role": "system", "content": _get_novel_enhance_prompt()},
             {"role": "user", "content": prose},
         ]
         return await self._llm.chat(messages)
@@ -322,7 +409,7 @@ class ScreenplayWriter:
     async def _generate_screenplay(self, scene_log: str) -> str:
         """Send a scene log to the LLM and return screenplay-format text."""
         messages: list[dict[str, str]] = [
-            {"role": "system", "content": _SCREENPLAY_SYSTEM_PROMPT},
+            {"role": "system", "content": _get_screenplay_system_prompt()},
             {"role": "user", "content": scene_log},
         ]
         return await self._llm.chat(messages)
@@ -330,7 +417,7 @@ class ScreenplayWriter:
     async def _enhance_screenplay(self, text: str) -> str:
         """Second-pass LLM call for formatting consistency."""
         messages: list[dict[str, str]] = [
-            {"role": "system", "content": _SCREENPLAY_ENHANCE_PROMPT},
+            {"role": "system", "content": _get_screenplay_enhance_prompt()},
             {"role": "user", "content": text},
         ]
         return await self._llm.chat(messages)

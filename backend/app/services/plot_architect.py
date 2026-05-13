@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from app.core.i18n import get_lang, Lang
 from app.core.llm_client import LLMClient
 from app.models.character import CharacterProfile
 from app.services.memory import MemoryManager
@@ -75,7 +76,7 @@ _STRUCTURE_TEMPLATES: dict[NarrativeStructure, str] = {
     ),
 }
 
-_PLOT_SYSTEM_PROMPT = """\
+_PLOT_SYSTEM_PROMPT_EN = """\
 You are a master plot architect for a story engine. Given a world state, character \
 profiles, and a narrative structure template, generate a complete plot outline.
 
@@ -117,7 +118,52 @@ You MUST respond ONLY with valid JSON in this format:
   }
 }"""
 
-_REFINE_SYSTEM_PROMPT = """\
+_PLOT_SYSTEM_PROMPT_ZH = """\
+你是一个故事引擎的首席剧情架构师。根据给定的世界状态、角色档案和叙事结构模板，生成一份完整的剧情大纲。
+
+规则：
+1. 用基于角色冲突和世界元素的具体场景来填充模板。
+2. 每个场景必须有清晰的戏剧目的——不要填充场景。
+3. 每个场景必须包含具体的冲突、目标和预期结果。
+4. 角色弧光必须贯穿所有场景——每个角色都应该在剧情弧线中发生变化或受到挑战。
+5. 场景之间应有因果链——每个场景都建立在前序场景之上或对其做出反应。
+6. 尽可能使用世界状态中的地点。
+7. 只安排对场景有重要意义的角色出场。
+
+故事应感觉有机自然，由角色的欲望和世界约束驱动，而非机械地填充剧情节拍。
+
+重要提示：
+- 所有文本内容（场景标题、描述、冲突、目标、预期结果、角色弧光里程碑）必须使用简体中文
+- JSON 字段名保持英文，字段值使用中文
+- 场景标题应富有文采，体现中国文学风格
+- 地点名称使用中文
+
+你必须严格按照以下 JSON 格式回复，且只回复 JSON：
+{
+  "acts": [
+    {
+      "name": "第X幕：...",
+      "description": "本幕目的概述（使用中文）",
+      "scenes": [
+        {
+          "id": "scene_1",
+          "title": "场景标题（使用中文）",
+          "location": "地点（使用中文）",
+          "cast": ["character_id_1", "character_id_2"],
+          "conflict": "戏剧冲突（使用中文）",
+          "goal": "场景目标（使用中文）",
+          "expected_outcome": "场景预期结果（使用中文）",
+          "causal_chain": []
+        }
+      ]
+    }
+  ],
+  "character_arcs": {
+    "character_id": ["弧光里程碑1（使用中文）", "弧光里程碑2（使用中文）"]
+  }
+}"""
+
+_REFINE_SYSTEM_PROMPT_EN = """\
 You are a plot editor. Given an existing plot outline and user feedback, revise the \
 outline to address the feedback while preserving the core narrative. You may reorder \
 scenes, rewrite scene details, adjust character arcs, or change act descriptions.
@@ -130,7 +176,20 @@ You MUST respond ONLY with valid JSON in the same format as the original outline
   "character_arcs": {...}
 }"""
 
-_CHECK_SYSTEM_PROMPT = """\
+_REFINE_SYSTEM_PROMPT_ZH = """\
+你是一个剧情编辑器。根据已有的剧情大纲和用户反馈，修改大纲以响应用户意见，同时保留核心叙事。你可以重新排序场景、重写场景细节、调整角色弧光或修改幕的描述。
+
+保留所有 scene ID 以确保现有引用仍然有效。
+
+所有文本内容必须使用简体中文。JSON 字段名保持英文，字段值使用中文。
+
+你必须严格按照与原始大纲相同的 JSON 格式回复：
+{
+  "acts": [...],
+  "character_arcs": {...}
+}"""
+
+_CHECK_SYSTEM_PROMPT_EN = """\
 You are a plot consistency checker. Given a plot outline and a specific scene, analyze \
 whether the scene is consistent with all character arcs across the outline.
 
@@ -146,6 +205,36 @@ You MUST respond ONLY with valid JSON in this format:
   "issues": ["Description of issue 1", "Description of issue 2"],
   "suggested_fixes": ["Fix for issue 1", "Fix for issue 2"]
 }"""
+
+_CHECK_SYSTEM_PROMPT_ZH = """\
+你是一个剧情一致性检查器。根据给定的剧情大纲和特定场景，分析该场景是否与大纲中所有的角色弧光保持一致。
+
+考虑以下方面：
+1. 每个角色的弧光进展在逻辑上是否能自然地进入和离开该场景？
+2. 该场景是否与任何已建立的角色特质、欲望或恐惧相矛盾？
+3. 场景的因果链是否正确连接到前置场景？
+4. 情感/逻辑结果是否与角色的发展轨迹一致？
+
+所有文本内容必须使用简体中文。JSON 字段名保持英文，字段值使用中文。
+
+你必须严格按照以下 JSON 格式回复，且只回复 JSON：
+{
+  "consistent": true or false,
+  "issues": ["问题描述1（使用中文）", "问题描述2（使用中文）"],
+  "suggested_fixes": ["修复建议1（使用中文）", "修复建议2（使用中文）"]
+}"""
+
+
+def _get_plot_prompt() -> str:
+    return _PLOT_SYSTEM_PROMPT_ZH if get_lang() == Lang.ZH else _PLOT_SYSTEM_PROMPT_EN
+
+
+def _get_refine_prompt() -> str:
+    return _REFINE_SYSTEM_PROMPT_ZH if get_lang() == Lang.ZH else _REFINE_SYSTEM_PROMPT_EN
+
+
+def _get_check_prompt() -> str:
+    return _CHECK_SYSTEM_PROMPT_ZH if get_lang() == Lang.ZH else _CHECK_SYSTEM_PROMPT_EN
 
 
 class PlotArchitect:
@@ -282,7 +371,7 @@ class PlotArchitect:
         template_desc = _STRUCTURE_TEMPLATES.get(structure, "")
 
         return [
-            {"role": "system", "content": _PLOT_SYSTEM_PROMPT},
+            {"role": "system", "content": _get_plot_prompt()},
             {
                 "role": "user",
                 "content": (
@@ -302,7 +391,7 @@ class PlotArchitect:
             self._outline_to_dict(outline), indent=2, ensure_ascii=False
         )
         return [
-            {"role": "system", "content": _REFINE_SYSTEM_PROMPT},
+            {"role": "system", "content": _get_refine_prompt()},
             {
                 "role": "user",
                 "content": (
@@ -320,7 +409,7 @@ class PlotArchitect:
             self._outline_to_dict(outline), indent=2, ensure_ascii=False
         )
         return [
-            {"role": "system", "content": _CHECK_SYSTEM_PROMPT},
+            {"role": "system", "content": _get_check_prompt()},
             {
                 "role": "user",
                 "content": (

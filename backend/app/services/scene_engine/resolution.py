@@ -5,12 +5,13 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.core.i18n import get_lang, Lang
 from app.core.llm_client import LLMClient
 from app.models.character import CharacterProfile
 from app.services.memory import MemoryManager
 from app.services.scene_engine.types import EnvironmentUpdate, RoundEntry, SceneSetup
 
-_RESOLUTION_SYSTEM_PROMPT = """\
+_RESOLUTION_SYSTEM_PROMPT_EN = """\
 You are a story character reflecting on a scene that just ended. Based on your \
 personality, your goals, and what happened, produce an honest in-character \
 reflection.
@@ -31,6 +32,33 @@ Respond ONLY with valid JSON in this format:
   },
   "key_takeaway": "one insight or lesson from this scene"
 }"""
+
+_RESOLUTION_SYSTEM_PROMPT_ZH = """\
+你是一个故事角色，正在反思刚刚结束的一场戏。根据你的性格、目标和发生的事情，以角色身份诚实地进行反思。
+
+考虑以下问题：
+1. 你在这个场景中是否达成了自己想要的东西？
+2. 这些事件如何改变了你的情绪状态？
+3. 是否有其他角色改变了你对他们的看法？
+4. 你从这个场景中学到了什么或得到了什么领悟？
+
+重要提示：所有文本内容（goal_reflection, emotion_change, relationship_changes 的值, key_takeaway）必须使用简体中文。
+JSON 字段名保持英文。
+
+严格按照以下 JSON 格式回复：
+{
+  "goal_achieved": true 或 false,
+  "goal_reflection": "为什么在目标上成功或失败（使用中文）",
+  "emotion_change": "情绪状态在场景中如何变化（使用中文）",
+  "relationship_changes": {
+    "other_character_id": "对他们的看法如何改变（使用中文）"
+  },
+  "key_takeaway": "从这个场景中获得的领悟或教训（使用中文）"
+}"""
+
+
+def _get_resolution_prompt() -> str:
+    return _RESOLUTION_SYSTEM_PROMPT_ZH if get_lang() == Lang.ZH else _RESOLUTION_SYSTEM_PROMPT_EN
 
 
 @dataclass
@@ -165,7 +193,7 @@ class SceneResolution:
         )
 
         messages = [
-            {"role": "system", "content": _RESOLUTION_SYSTEM_PROMPT},
+            {"role": "system", "content": _get_resolution_prompt()},
             {"role": "user", "content": prompt_text},
         ]
 

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from app.core.i18n import get_lang, Lang
 from app.core.llm_client import LLMClient
 from app.models.character import CharacterProfile
 from app.services.memory import MemoryManager
@@ -75,7 +76,7 @@ class BaseValidator(ABC):
 # CharacterConsistencyValidator
 # ---------------------------------------------------------------------------
 
-_CHARACTER_CONSISTENCY_SYSTEM_PROMPT = """\
+_CHARACTER_CONSISTENCY_SYSTEM_PROMPT_EN = """\
 You are a character consistency checker for a story engine. Given a proposed plot change
 and a character's profile, determine whether the plot is consistent with that character.
 
@@ -103,6 +104,35 @@ Respond ONLY with valid JSON:
 
 Return an empty list if no issues are found."""
 
+_CHARACTER_CONSISTENCY_SYSTEM_PROMPT_ZH = """\
+你是一个故事引擎的角色一致性检查器。给定一个提议的情节变更和一个角色的档案，判断该情节是否与该角色一致。
+
+根据以下维度评估：
+1. core_desire（核心欲望）——提议的情节是否符合角色的渴望？
+2. deep_fear（深层恐惧）——提议的情节是否尊重角色的恐惧？
+3. personality（性格）——提议的情节是否匹配角色已建立的性格？
+
+对每个发现的不一致分配严重级别：
+- "critical"（严重）：破坏了核心角色定义
+- "warning"（警告）：与角色有所冲突但可以解释
+- "suggestion"（建议）：一个微小的对齐注意
+
+重要提示：所有文本内容（description, suggestion）必须使用简体中文。JSON 字段名保持英文。
+
+只回复有效的 JSON：
+{
+  "issues": [
+    {
+      "severity": "critical" | "warning" | "suggestion",
+      "dimension": "core_desire" | "deep_fear" | "personality",
+      "description": "问题描述（使用中文）",
+      "suggestion": "修复方法（使用中文）"
+    }
+  ]
+}
+
+如果未发现任何问题，返回空列表。"""
+
 
 class CharacterConsistencyValidator(BaseValidator):
     """Checks if proposed plot matches character core_desire, deep_fear, and personality."""
@@ -127,7 +157,7 @@ class CharacterConsistencyValidator(BaseValidator):
         prompt = [
             {
                 "role": "system",
-                "content": _CHARACTER_CONSISTENCY_SYSTEM_PROMPT,
+                "content": _get_char_consistency_prompt(),
             },
             {
                 "role": "user",
@@ -160,7 +190,7 @@ class CharacterConsistencyValidator(BaseValidator):
 # RelationshipLogicValidator
 # ---------------------------------------------------------------------------
 
-_RELATIONSHIP_LOGIC_SYSTEM_PROMPT = """\
+_RELATIONSHIP_LOGIC_SYSTEM_PROMPT_EN = """\
 You are a relationship consistency checker for a story engine. Given a proposed plot
 change and the established relationships between affected characters, determine whether
 the plot is consistent with their relationship history.
@@ -186,6 +216,32 @@ Respond ONLY with valid JSON:
 }
 
 Return an empty list if no issues are found."""
+
+_RELATIONSHIP_LOGIC_SYSTEM_PROMPT_ZH = """\
+你是一个故事引擎的关系一致性检查器。给定一个提议的情节变更和受影响角色之间的已建立关系，判断该情节是否与其关系历史一致。
+
+关系有类型（ALLY 盟友、RIVAL 竞争对手、ENEMY 敌人、FAMILY 家族、MENTOR 师徒、ROMANTIC 恋情、UNKNOWN 未知）、强度（0.0 到 1.0）以及关系如何建立的描述。
+
+对每个发现的不一致分配严重级别：
+- "critical"（严重）：提出从根本上与关系矛盾的行动
+- "warning"（警告）：对关系来说有些不符合角色
+- "suggestion"（建议）：需考虑的细微差别
+
+重要提示：所有文本内容（description, suggestion）必须使用简体中文。JSON 字段名保持英文。
+
+只回复有效的 JSON：
+{
+  "issues": [
+    {
+      "severity": "critical" | "warning" | "suggestion",
+      "dimension": "relationship_logic",
+      "description": "问题描述（使用中文）",
+      "suggestion": "修复方法（使用中文）"
+    }
+  ]
+}
+
+如果未发现任何问题，返回空列表。"""
 
 
 class RelationshipLogicValidator(BaseValidator):
@@ -249,7 +305,7 @@ class RelationshipLogicValidator(BaseValidator):
         prompt = [
             {
                 "role": "system",
-                "content": _RELATIONSHIP_LOGIC_SYSTEM_PROMPT,
+                "content": _get_rel_logic_prompt(),
             },
             {
                 "role": "user",
@@ -287,7 +343,7 @@ class RelationshipLogicValidator(BaseValidator):
 # WorldRulesValidator
 # ---------------------------------------------------------------------------
 
-_WORLD_RULES_SYSTEM_PROMPT = """\
+_WORLD_RULES_SYSTEM_PROMPT_EN = """\
 You are a world rules checker for a story engine. Given a proposed plot change and the
 established rules of the world, determine whether the plot violates any world rules.
 
@@ -313,6 +369,32 @@ Respond ONLY with valid JSON:
 
 Return an empty list if no issues are found."""
 
+_WORLD_RULES_SYSTEM_PROMPT_ZH = """\
+你是一个故事引擎的世界规则检查器。给定一个提议的情节变更和已建立的世界规则，判断该情节是否违反了任何世界规则。
+
+世界规则定义了故事世界的基本物理、魔法系统、约束或规范。违反规则会破坏世界的内部一致性。
+
+对每个发现的违规分配严重级别：
+- "critical"（严重）：直接违反已建立的规则
+- "warning"（警告）：拉伸或扭曲了规则
+- "suggestion"（建议）：一个微小的世界构建注释
+
+重要提示：所有文本内容（description, suggestion）必须使用简体中文。JSON 字段名保持英文。
+
+只回复有效的 JSON：
+{
+  "issues": [
+    {
+      "severity": "critical" | "warning" | "suggestion",
+      "dimension": "world_rules",
+      "description": "违规描述（使用中文）",
+      "suggestion": "如何协调（使用中文）"
+    }
+  ]
+}
+
+如果未发现任何问题，返回空列表。"""
+
 
 class WorldRulesValidator(BaseValidator):
     """Checks if proposed plot respects established world rules from OpenViking."""
@@ -324,7 +406,7 @@ class WorldRulesValidator(BaseValidator):
             return []
 
         prompt = [
-            {"role": "system", "content": _WORLD_RULES_SYSTEM_PROMPT},
+            {"role": "system", "content": _get_world_rules_prompt()},
             {
                 "role": "user",
                 "content": (
@@ -356,7 +438,7 @@ class WorldRulesValidator(BaseValidator):
 # PacingValidator
 # ---------------------------------------------------------------------------
 
-_PACING_SYSTEM_PROMPT = """\
+_PACING_SYSTEM_PROMPT_EN = """\
 You are a pacing checker for a story engine. Given a proposed plot change and the
 recent narrative history (last few scenes), determine whether the pacing is appropriate.
 
@@ -386,6 +468,37 @@ Respond ONLY with valid JSON:
 
 Return an empty list if no issues are found."""
 
+_PACING_SYSTEM_PROMPT_ZH = """\
+你是一个故事引擎的节奏检查器。给定一个提议的情节变更和最近的叙事历史（最后几场戏），判断节奏是否合适。
+
+考虑以下因素：
+1. 提议的情节是否因为前面的场景而显得过于仓促？
+2. 提议的情节是否太慢或重复？
+3. 提议的情节是否以合理的节奏引入新的冲突？
+4. 重大事件是否有足够的铺垫？
+5. 情节是否恰当地保持了戏剧张力？
+
+对每个发现的节奏问题分配严重级别：
+- "critical"（严重）：节奏会破坏叙事流畅性
+- "warning"（警告）：节奏有些偏差
+- "suggestion"（建议）：一个微小的节奏调整
+
+重要提示：所有文本内容（description, suggestion）必须使用简体中文。JSON 字段名保持英文。
+
+只回复有效的 JSON：
+{
+  "issues": [
+    {
+      "severity": "critical" | "warning" | "suggestion",
+      "dimension": "pacing",
+      "description": "节奏问题描述（使用中文）",
+      "suggestion": "如何调整节奏（使用中文）"
+    }
+  ]
+}
+
+如果未发现任何问题，返回空列表。"""
+
 
 class PacingValidator(BaseValidator):
     """Checks if proposed plot has reasonable pacing relative to recent story beats."""
@@ -402,7 +515,7 @@ class PacingValidator(BaseValidator):
         )
 
         prompt = [
-            {"role": "system", "content": _PACING_SYSTEM_PROMPT},
+            {"role": "system", "content": _get_pacing_prompt()},
             {
                 "role": "user",
                 "content": (
@@ -435,7 +548,7 @@ class PacingValidator(BaseValidator):
 # ArcIntegrityValidator
 # ---------------------------------------------------------------------------
 
-_ARC_INTEGRITY_SYSTEM_PROMPT = """\
+_ARC_INTEGRITY_SYSTEM_PROMPT_EN = """\
 You are an arc integrity checker for a story engine. Given a proposed plot change and
 the planned character arc trajectories, determine whether the plot damages character arcs.
 
@@ -464,6 +577,57 @@ Respond ONLY with valid JSON:
 }
 
 Return an empty list if no issues are found."""
+
+_ARC_INTEGRITY_SYSTEM_PROMPT_ZH = """\
+你是一个故事引擎的弧光完整性检查器。给定一个提议的情节变更和计划的角色弧光轨迹，判断该情节是否会损害角色弧光。
+
+考虑以下因素：
+1. 提议的情节是否削弱或破坏了角色的成长轨迹？
+2. 提议的情节是否在没有充分理由的情况下逆转了角色发展？
+3. 提议的情节是否过于快速地推进角色弧光（跳过必要步骤）？
+4. 提议的情节是否与角色当前的弧光阶段相冲突？
+5. 提议的情节是否创造了有意义的角色发展机会？
+
+对每个发现的问题分配严重级别：
+- "critical"（严重）：会严重损害或偏离角色弧光
+- "warning"（警告）：与弧光有些偏差
+- "suggestion"（建议）：改善弧光连贯性的微小改进
+
+重要提示：所有文本内容（description, suggestion）必须使用简体中文。JSON 字段名保持英文。
+
+只回复有效的 JSON：
+{
+  "issues": [
+    {
+      "severity": "critical" | "warning" | "suggestion",
+      "dimension": "arc_integrity",
+      "description": "弧光问题描述（使用中文）",
+      "suggestion": "修复方法（使用中文）"
+    }
+  ]
+}
+
+如果未发现任何问题，返回空列表。"""
+
+
+def _get_char_consistency_prompt() -> str:
+    return _CHARACTER_CONSISTENCY_SYSTEM_PROMPT_ZH if get_lang() == Lang.ZH else _CHARACTER_CONSISTENCY_SYSTEM_PROMPT_EN
+
+
+def _get_rel_logic_prompt() -> str:
+    return _RELATIONSHIP_LOGIC_SYSTEM_PROMPT_ZH if get_lang() == Lang.ZH else _RELATIONSHIP_LOGIC_SYSTEM_PROMPT_EN
+
+
+def _get_world_rules_prompt() -> str:
+    return _WORLD_RULES_SYSTEM_PROMPT_ZH if get_lang() == Lang.ZH else _WORLD_RULES_SYSTEM_PROMPT_EN
+
+
+def _get_pacing_prompt() -> str:
+    return _PACING_SYSTEM_PROMPT_ZH if get_lang() == Lang.ZH else _PACING_SYSTEM_PROMPT_EN
+
+
+def _get_arc_integrity_prompt() -> str:
+    return _ARC_INTEGRITY_SYSTEM_PROMPT_ZH if get_lang() == Lang.ZH else _ARC_INTEGRITY_SYSTEM_PROMPT_EN
 
 
 class ArcIntegrityValidator(BaseValidator):
@@ -499,7 +663,7 @@ class ArcIntegrityValidator(BaseValidator):
         prompt = [
             {
                 "role": "system",
-                "content": _ARC_INTEGRITY_SYSTEM_PROMPT,
+                "content": _get_arc_integrity_prompt(),
             },
             {
                 "role": "user",

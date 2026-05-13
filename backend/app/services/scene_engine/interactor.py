@@ -5,13 +5,14 @@ import textwrap
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.core.i18n import get_lang, Lang
 from app.core.llm_client import LLMClient
 from app.models.character import CharacterProfile
 from app.services.memory import MemoryManager
 from app.services.scene_engine.knowledge_matrix import KnowledgeMatrix
 from app.services.scene_engine.types import EnvironmentUpdate, Reaction, RoundEntry
 
-_ACTION_SYSTEM_PROMPT = """\
+_ACTION_SYSTEM_PROMPT_EN = """\
 You are inside the mind of a story character. Your job is to decide what this \
 character says, does, and feels next — in character, driven by their desires, \
 fears, and the current dramatic moment.
@@ -46,7 +47,36 @@ Respond ONLY with valid JSON in this format:
   "target_id": "character_id or null"
 }"""
 
-_REACTION_SYSTEM_PROMPT = """\
+_ACTION_SYSTEM_PROMPT_ZH = """\
+你身处一个故事角色的内心。你的任务是决定这个角色接下来说什么、做什么、感受什么——必须符合角色性格，由其欲望、恐惧和当下的戏剧时刻驱动。
+
+你会获得三层背景信息：
+- L0（核心层）：你现在是谁——当前身份、目标和情绪。
+- L1（深层）：完整人格、与在场其他人的关系以及相关的场景记忆。
+- 场景层：你在哪里、正在发生什么、以及你在本场景中试图达成的具体私密目标。
+
+产生一个推动场景前进且忠于角色本性的单一角色行动。对话要反映角色的语气。肢体行动要符合场景设置。内心想法要揭示角色的真实感受（对其他角色不可见）。
+
+规则：
+- 始终保持在角色中——角色的个性、语气和核心欲望应指导每一个字和行动。
+- 对话应听起来像这个角色，而不是通用的散文。
+- 行动描写应具体且感官化（观察者能看到什么）。
+- 行动应服务于角色的目标或对障碍做出反应。
+- 如果角色针对特定人物说话/行动，应设置 target_id；如果是对全场或无人说话则设为 null。
+
+重要提示：所有对话、行动、内心想法和情绪描述必须使用简体中文。角色对话要听起来像真实的中文口语。
+JSON 字段名保持英文，字段值使用中文。
+
+严格按照以下 JSON 格式回复：
+{
+  "dialogue": "角色说出来的话（使用中文）",
+  "action": "肢体行动描述（观察者所见，使用中文）",
+  "inner_thought": "他人不可见的内心想法（使用中文）",
+  "emotion": "角色当前的情绪状态（使用中文）",
+  "target_id": "角色ID 或 null"
+}"""
+
+_REACTION_SYSTEM_PROMPT_EN = """\
 You are inside the mind of a story character witnessing another character's \
 action. Your job is to produce a natural, in-character reaction to what just \
 happened.
@@ -70,7 +100,28 @@ Respond ONLY with valid JSON in this format:
   "inner_thought": "private thought"
 }"""
 
-_RESOLUTION_CHARACTER_PROMPT = """\
+_REACTION_SYSTEM_PROMPT_ZH = """\
+你身处一个故事角色的内心，目睹了另一个角色的行动。你的任务是产生一个自然的、符合角色的反应。
+
+你看到并听到了行动角色所说所做的一切。基于你角色的个性、你与行动者的关系以及你所知道的信息，产生：
+- visible_reaction — 其他角色可以观察到的东西（表情、话语、肢体语言）（使用中文）
+- inner_thought — 你对刚才发生的事情的私密真实感受（使用中文）
+
+规则：
+- 反应要符合角色——你的个性、欲望和恐惧决定了你的回应方式。
+- 外在反应可能与内心想法不同（角色可能隐藏真实感受）。
+- visible_reaction 保持在 1-3 句。
+- inner_thought 保持在 1-2 句。
+
+重要提示：所有内容（visible_reaction, inner_thought）必须使用简体中文。JSON 字段名保持英文。
+
+严格按照以下 JSON 格式回复：
+{
+  "visible_reaction": "他人观察到的反应（使用中文）",
+  "inner_thought": "私密想法（使用中文）"
+}"""
+
+_RESOLUTION_CHARACTER_PROMPT_EN = """\
 You are a story character reflecting on a scene that just ended.
 
 Scene location: {location}
@@ -94,6 +145,51 @@ Respond ONLY with valid JSON in this format:
   }},
   "key_takeaway": "one insight or lesson from this scene"
 }}"""
+
+_RESOLUTION_CHARACTER_PROMPT_ZH = """\
+你是一个故事角色，正在反思刚刚结束的一场戏。
+
+场景地点：{location}
+关键事件摘要：
+{scene_summary}
+
+你在这个场景中的目标是：{character_goal}
+
+以角色身份诚实反思：
+1. 你达成目标了吗？为什么成功或失败？
+2. 在这个场景中你的情绪如何变化？
+3. 你对其他角色的看法有改变吗？
+
+重要提示：所有文本内容（goal_reflection, emotion_change, relationship_changes 值, key_takeaway）必须使用简体中文。
+JSON 字段名保持英文。
+
+严格按照以下 JSON 格式回复：
+{{
+  "goal_achieved": true 或 false,
+  "goal_reflection": "为什么成功或失败（使用中文）",
+  "emotion_change": "情绪状态如何变化（使用中文）",
+  "relationship_changes": {{
+    "other_character_id": "对他们看法如何改变（使用中文）"
+  }},
+  "key_takeaway": "从这个场景中获得的一个领悟或教训（使用中文）"
+}}"""
+
+
+_ACTION_PROMPTS = {Lang.ZH: _ACTION_SYSTEM_PROMPT_ZH, Lang.EN: _ACTION_SYSTEM_PROMPT_EN}
+_REACTION_PROMPTS = {Lang.ZH: _REACTION_SYSTEM_PROMPT_ZH, Lang.EN: _REACTION_SYSTEM_PROMPT_EN}
+_RESOLUTION_CHAR_PROMPTS = {Lang.ZH: _RESOLUTION_CHARACTER_PROMPT_ZH, Lang.EN: _RESOLUTION_CHARACTER_PROMPT_EN}
+
+
+def _get_action_prompt() -> str:
+    return _ACTION_PROMPTS[get_lang()]
+
+
+def _get_reaction_prompt() -> str:
+    return _REACTION_PROMPTS[get_lang()]
+
+
+def _get_resolution_char_prompt() -> str:
+    return _RESOLUTION_CHAR_PROMPTS[get_lang()]
 
 
 @dataclass
@@ -152,7 +248,7 @@ class CharacterInteractor:
         )
 
         messages = [
-            {"role": "system", "content": _ACTION_SYSTEM_PROMPT},
+            {"role": "system", "content": _get_action_prompt()},
             {"role": "user", "content": prompt_text},
         ]
 
@@ -244,7 +340,7 @@ class CharacterInteractor:
         )
 
         messages = [
-            {"role": "system", "content": _REACTION_SYSTEM_PROMPT},
+            {"role": "system", "content": _get_reaction_prompt()},
             {"role": "user", "content": prompt_text},
         ]
 
