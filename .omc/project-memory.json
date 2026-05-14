@@ -9,7 +9,7 @@
     "runtime": null
   },
   "build": {
-    "buildCommand": null,
+    "buildCommand": "cd Z:/TheWorld && git add frontend/ && git commit -m \"$(cat <<'EOF'\nfeat: Vue 3 + Tailwind CSS frontend for Amphoreus Story Engine\n\n25 source files:\n- 5 views: WorldBuilder, Characters, Plot, Scene, Writer\n- 8 components: AppLayout, ChatPanel, CharacterCard, RelationshipGraph,\n  PlotTimeline, SceneFeed, DirectorPanel, WritingPreview\n- 5 composables: useWorldBuilder, useCharacters, usePlotArchitect,\n  useSceneEngine, useNarrativeWriter\n- API client with 27+ endpoints + WebSocket support\n- TypeScript types for all backend models\n- Dark theme, responsive, Tailwind CSS v4\n\nBuild: pnpm build passes (vue-tsc + vite)\nDev: pnpm dev on :5173, API proxy to :5001\n\nCo-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>\nEOF\n)\"",
     "testCommand": null,
     "lintCommand": null,
     "devCommand": null,

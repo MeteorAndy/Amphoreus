@@ -1,0 +1,107 @@
+import { ref } from 'vue'
+
+type Lang = 'zh' | 'en'
+const currentLang = ref<Lang>((localStorage.getItem('amphoreus-lang') as Lang) || 'zh')
+
+export function useI18n() {
+  function t(key: string): string {
+    return translations[key]?.[currentLang.value] ?? key
+  }
+  function setLang(lang: Lang) {
+    currentLang.value = lang
+    localStorage.setItem('amphoreus-lang', lang)
+  }
+  return { t, setLang, currentLang }
+}
+
+const translations: Record<string, Record<Lang, string>> = {
+  'app.title': { zh: 'Amphoreus 故事引擎', en: 'Amphoreus Story Engine' },
+  'nav.world': { zh: '世界构建', en: 'World' },
+  'nav.characters': { zh: '角色管理', en: 'Characters' },
+  'nav.plot': { zh: '剧情架构', en: 'Plot' },
+  'nav.scene': { zh: '场景执行', en: 'Scene' },
+  'nav.writer': { zh: '叙事写作', en: 'Writer' },
+  'world.title': { zh: '世界构建', en: 'World Building' },
+  'world.new': { zh: '从 Idea 开始', en: 'From Idea' },
+  'world.upload': { zh: '上传文档', en: 'Upload Document' },
+  'world.idea_placeholder': { zh: '输入你的故事 idea...', en: 'Enter your story idea...' },
+  'world.start_building': { zh: '开始构建', en: 'Start Building' },
+  'world.stage': { zh: '阶段', en: 'Stage' },
+  'world.completeness': { zh: '完成度', en: 'Completeness' },
+  'world.rules': { zh: '规则', en: 'Rules' },
+  'world.locations': { zh: '地点', en: 'Locations' },
+  'world.factions': { zh: '势力', en: 'Factions' },
+  'world.timeline': { zh: '时间线', en: 'Timeline' },
+  'world.finalize': { zh: '完成构建', en: 'Finalize' },
+  'world.reset': { zh: '重置世界', en: 'Reset World' },
+  'world.drop_hint': { zh: '拖拽文档到此处或点击上传', en: 'Drop documents here or click to upload' },
+  'world.supported_formats': { zh: '支持 .md, .txt, .pdf, .doc, .docx', en: 'Supports .md, .txt, .pdf, .doc, .docx' },
+  'world.unnamed': { zh: '未命名世界', en: 'Unnamed World' },
+  'world.start_hint': { zh: '开始聊天或上传文档来构建你的世界', en: 'Start chatting or upload a document to build your world' },
+  'world.sidebar_world': { zh: '世界', en: 'World' },
+  'chars.title': { zh: '角色管理', en: 'Characters' },
+  'chars.generate': { zh: '生成角色', en: 'Generate Characters' },
+  'chars.add': { zh: '+ 添加角色', en: '+ Add Character' },
+  'chars.edit': { zh: '编辑', en: 'Edit' },
+  'chars.save': { zh: '保存', en: 'Save' },
+  'chars.delete': { zh: '删除', en: 'Delete' },
+  'chars.relationships': { zh: '角色关系', en: 'Relationships' },
+  'chars.create_title': { zh: '创建角色', en: 'Create Character' },
+  'chars.edit_title': { zh: '编辑角色', en: 'Edit Character' },
+  'chars.name': { zh: '名称', en: 'Name' },
+  'chars.role': { zh: '角色', en: 'Role' },
+  'chars.age': { zh: '年龄', en: 'Age' },
+  'chars.background': { zh: '背景', en: 'Background' },
+  'chars.traits': { zh: '特质', en: 'Traits' },
+  'chars.goals': { zh: '目标', en: 'Goals' },
+  'chars.add_trait': { zh: '添加', en: 'Add' },
+  'chars.trait_placeholder': { zh: '添加特质...', en: 'Add trait...' },
+  'chars.goal_placeholder': { zh: '添加目标...', en: 'Add goal...' },
+  'chars.empty': { zh: '暂无角色。添加你的第一个角色开始创作。', en: 'No characters yet. Add your first character to get started.' },
+  'chars.loading': { zh: '加载角色中...', en: 'Loading characters...' },
+  'plot.title': { zh: '剧情架构', en: 'Plot Architecture' },
+  'plot.select_structure': { zh: '选择叙事结构', en: 'Select Structure' },
+  'plot.generate': { zh: '生成大纲', en: 'Generate Outline' },
+  'plot.scenes': { zh: '场次', en: 'Scenes' },
+  'plot.outlines': { zh: '大纲列表', en: 'Outlines' },
+  'plot.actions': { zh: '操作', en: 'Actions' },
+  'plot.new_outline': { zh: '+ 新大纲', en: '+ New Outline' },
+  'plot.delete_outline': { zh: '删除大纲', en: 'Delete Outline' },
+  'plot.empty': { zh: '暂无大纲', en: 'No outlines yet' },
+  'plot.new_outline_title': { zh: '新建剧情大纲', en: 'New Plot Outline' },
+  'plot.title_field': { zh: '标题', en: 'Title' },
+  'plot.description': { zh: '描述', en: 'Description' },
+  'plot.structure': { zh: '结构', en: 'Structure' },
+  'plot.add_scene': { zh: '添加场次', en: 'Add Scene' },
+  'plot.edit_scene': { zh: '编辑场次', en: 'Edit Scene' },
+  'plot.setting': { zh: '场景设定', en: 'Setting' },
+  'scene.title': { zh: '场景执行', en: 'Scene Execution' },
+  'scene.run': { zh: '执行场景', en: 'Run Scene' },
+  'scene.intervene': { zh: '导演干预', en: 'Director Intervention' },
+  'scene.round': { zh: '第 {n} 轮', en: 'Round {n}' },
+  'scene.config': { zh: '场景配置', en: 'Scene Configuration' },
+  'scene.max_rounds': { zh: '最大轮次', en: 'Max Rounds' },
+  'scene.select_plot': { zh: '选择剧情', en: 'Select Plot' },
+  'scene.select_scene': { zh: '选择场次', en: 'Select Scene' },
+  'writer.title': { zh: '叙事写作', en: 'Narrative Writer' },
+  'writer.format_novel': { zh: '小说', en: 'Novel' },
+  'writer.format_screenplay': { zh: '剧本', en: 'Screenplay' },
+  'writer.convert': { zh: '生成', en: 'Convert' },
+  'writer.export': { zh: '导出', en: 'Export' },
+  'writer.select_outline': { zh: '选择大纲', en: 'Select an outline' },
+  'writer.plot_outline': { zh: '剧情大纲', en: 'Plot Outline' },
+  'writer.title_candidates': { zh: '标题候选', en: 'Title Candidates' },
+  'writer.score': { zh: '评分', en: 'Score' },
+  'writer.generating': { zh: '生成中...', en: 'Generating...' },
+  'writer.preview_hint': { zh: '生成叙事文本以预览', en: 'Generate narrative output to see preview here' },
+  'general.loading': { zh: '加载中...', en: 'Loading...' },
+  'general.error': { zh: '出错了', en: 'Error' },
+  'general.save': { zh: '保存', en: 'Save' },
+  'general.cancel': { zh: '取消', en: 'Cancel' },
+  'general.confirm': { zh: '确认', en: 'Confirm' },
+  'general.create': { zh: '创建', en: 'Create' },
+  'general.delete': { zh: '删除', en: 'Delete' },
+  'lang.switch': { zh: 'English', en: '中文' },
+}
+
+export type { Lang }

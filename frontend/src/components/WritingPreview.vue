@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { WriterOutput, NarrativeFormat } from '../types/api'
+import { useI18n } from '../i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   output: WriterOutput | null
@@ -34,14 +37,14 @@ const displayContent = computed(() => {
           class="px-4 py-2 text-sm font-medium transition-colors"
           :class="format === 'novel' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'"
         >
-          Novel
+          {{ t('writer.format_novel') }}
         </button>
         <button
           @click="emit('toggleFormat', 'screenplay')"
           class="px-4 py-2 text-sm font-medium transition-colors"
           :class="format === 'screenplay' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'"
         >
-          Screenplay
+          {{ t('writer.format_screenplay') }}
         </button>
       </div>
       <button
@@ -49,7 +52,7 @@ const displayContent = computed(() => {
         :disabled="!output || loading"
         class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        Export
+        {{ t('writer.export') }}
       </button>
     </div>
     <div v-if="loading" class="flex items-center justify-center h-64">
@@ -71,7 +74,7 @@ const displayContent = computed(() => {
       </div>
     </div>
     <div v-else class="flex items-center justify-center h-64 text-gray-600 text-sm">
-      Generate narrative output to see preview here
+      {{ t('writer.preview_hint') }}
     </div>
   </div>
 </template>

@@ -2,7 +2,10 @@
 import { ref, onMounted } from 'vue'
 import PlotTimeline from '../components/PlotTimeline.vue'
 import { usePlotArchitect } from '../composables/usePlotArchitect'
+import { useI18n } from '../i18n'
 import type { CreateOutlineRequest, CreateSceneRequest, SceneSpec } from '../types/api'
+
+const { t } = useI18n()
 
 const {
   outlines,
@@ -111,12 +114,12 @@ function removeCharacter(idx: number): void {
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-gray-100">Plot Architect</h1>
+      <h1 class="text-xl font-bold text-gray-100">{{ t('plot.title') }}</h1>
       <button
         @click="openCreateOutline"
         class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 transition-colors"
       >
-        + New Outline
+        {{ t('plot.new_outline') }}
       </button>
     </div>
     <div v-if="error" class="bg-red-900/20 border border-red-800 rounded-lg p-3 text-sm text-red-400">
@@ -125,9 +128,9 @@ function removeCharacter(idx: number): void {
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
       <div class="lg:col-span-1 space-y-3">
         <div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
-          <h3 class="text-sm font-semibold text-gray-200 mb-3">Outlines</h3>
+          <h3 class="text-sm font-semibold text-gray-200 mb-3">{{ t('plot.outlines') }}</h3>
           <div v-if="outlines.length === 0 && !loading" class="text-center py-6 text-gray-600 text-sm">
-            No outlines yet
+            {{ t('plot.empty') }}
           </div>
           <div class="space-y-1">
             <button
@@ -143,24 +146,24 @@ function removeCharacter(idx: number): void {
           </div>
         </div>
         <div v-if="selectedOutline" class="bg-gray-900 rounded-lg border border-gray-800 p-4">
-          <h3 class="text-sm font-semibold text-gray-200 mb-3">Actions</h3>
+          <h3 class="text-sm font-semibold text-gray-200 mb-3">{{ t('plot.actions') }}</h3>
           <button
             @click="openCreateOutline"
             class="w-full mb-2 px-3 py-2 text-sm text-gray-400 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
           >
-            New Outline
+            {{ t('plot.new_outline') }}
           </button>
           <button
             @click="deleteOutline(selectedOutline.id)"
             class="w-full px-3 py-2 text-sm text-red-400 bg-gray-800 rounded-lg hover:bg-red-900/20 transition-colors"
           >
-            Delete Outline
+            {{ t('plot.delete_outline') }}
           </button>
         </div>
       </div>
       <div class="lg:col-span-3">
         <div v-if="loading && !selectedOutline" class="flex items-center justify-center h-64 text-gray-500 text-sm">
-          Loading...
+          {{ t('general.loading') }}
         </div>
         <PlotTimeline
           :outline="selectedOutline"
@@ -178,10 +181,10 @@ function removeCharacter(idx: number): void {
         @click.self="showCreateModal = false"
       >
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md mx-4">
-          <h2 class="text-lg font-semibold text-gray-100 mb-4">New Plot Outline</h2>
+          <h2 class="text-lg font-semibold text-gray-100 mb-4">{{ t('plot.new_outline_title') }}</h2>
           <div class="space-y-4">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Title</label>
+              <label class="block text-xs text-gray-500 mb-1">{{ t('plot.title_field') }}</label>
               <input
                 v-model="outlineForm.title"
                 type="text"
@@ -189,7 +192,7 @@ function removeCharacter(idx: number): void {
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Description</label>
+              <label class="block text-xs text-gray-500 mb-1">{{ t('plot.description') }}</label>
               <textarea
                 v-model="outlineForm.description"
                 rows="3"
@@ -197,7 +200,7 @@ function removeCharacter(idx: number): void {
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Structure</label>
+              <label class="block text-xs text-gray-500 mb-1">{{ t('plot.structure') }}</label>
               <select
                 v-model="outlineForm.structure"
                 class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
@@ -207,13 +210,13 @@ function removeCharacter(idx: number): void {
             </div>
           </div>
           <div class="flex justify-end gap-2 mt-6">
-            <button @click="showCreateModal = false" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">Cancel</button>
+            <button @click="showCreateModal = false" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">{{ t('general.cancel') }}</button>
             <button
               @click="saveOutline"
               :disabled="!outlineForm.title"
               class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
             >
-              Create
+              {{ t('general.create') }}
             </button>
           </div>
         </div>
@@ -225,11 +228,11 @@ function removeCharacter(idx: number): void {
       >
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md mx-4">
           <h2 class="text-lg font-semibold text-gray-100 mb-4">
-            {{ editingScene ? 'Edit Scene' : 'Add Scene' }}
+            {{ editingScene ? t('plot.edit_scene') : t('plot.add_scene') }}
           </h2>
           <div class="space-y-4">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Title</label>
+              <label class="block text-xs text-gray-500 mb-1">{{ t('plot.title_field') }}</label>
               <input
                 v-model="sceneForm.title"
                 type="text"
@@ -237,7 +240,7 @@ function removeCharacter(idx: number): void {
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Description</label>
+              <label class="block text-xs text-gray-500 mb-1">{{ t('plot.description') }}</label>
               <textarea
                 v-model="sceneForm.description"
                 rows="2"
@@ -245,7 +248,7 @@ function removeCharacter(idx: number): void {
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Setting</label>
+              <label class="block text-xs text-gray-500 mb-1">{{ t('plot.setting') }}</label>
               <input
                 v-model="sceneForm.setting"
                 type="text"
@@ -253,7 +256,7 @@ function removeCharacter(idx: number): void {
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Characters</label>
+              <label class="block text-xs text-gray-500 mb-1">{{ t('chars.name') }}</label>
               <div class="flex flex-wrap gap-1 mb-2">
                 <span
                   v-for="(char, idx) in sceneForm.characters"
@@ -277,13 +280,13 @@ function removeCharacter(idx: number): void {
             </div>
           </div>
           <div class="flex justify-end gap-2 mt-6">
-            <button @click="showSceneModal = false" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">Cancel</button>
+            <button @click="showSceneModal = false" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">{{ t('general.cancel') }}</button>
             <button
               @click="saveScene"
               :disabled="!sceneForm.title"
               class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
             >
-              {{ editingScene ? 'Save' : 'Create' }}
+              {{ editingScene ? t('general.save') : t('general.create') }}
             </button>
           </div>
         </div>

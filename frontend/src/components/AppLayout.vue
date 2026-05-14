@@ -1,22 +1,24 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from '../i18n'
 
+const { t, setLang, currentLang } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
 interface NavItem {
-  label: string
+  labelKey: string
   path: string
   icon: string
 }
 
 const navItems: NavItem[] = [
-  { label: 'World', path: '/world', icon: '🌍' },
-  { label: 'Characters', path: '/characters', icon: '👥' },
-  { label: 'Plot', path: '/plot', icon: '📋' },
-  { label: 'Scene', path: '/scene', icon: '🎭' },
-  { label: 'Writer', path: '/writer', icon: '✍️' },
+  { labelKey: 'nav.world', path: '/world', icon: '🌍' },
+  { labelKey: 'nav.characters', path: '/characters', icon: '👥' },
+  { labelKey: 'nav.plot', path: '/plot', icon: '📋' },
+  { labelKey: 'nav.scene', path: '/scene', icon: '🎭' },
+  { labelKey: 'nav.writer', path: '/writer', icon: '✍️' },
 ]
 
 const activeIndex = computed(() => {
@@ -25,6 +27,10 @@ const activeIndex = computed(() => {
 
 function navigate(path: string): void {
   router.push(path)
+}
+
+function toggleLang(): void {
+  setLang(currentLang.value === 'zh' ? 'en' : 'zh')
 }
 </script>
 
@@ -47,18 +53,17 @@ function navigate(path: string): void {
             :class="idx === activeIndex ? 'bg-indigo-400' : 'bg-transparent'"
           />
           <span class="text-lg">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
+          <span>{{ t(item.labelKey) }}</span>
         </button>
       </nav>
-      <div class="flex flex-col items-center py-3 border-t border-gray-800">
-        <div class="flex gap-1">
-          <span
-            v-for="i in 5"
-            :key="i"
-            class="w-2 h-2 rounded-full transition-colors"
-            :class="i <= activeIndex + 1 ? 'bg-indigo-500' : 'bg-gray-700'"
-          />
-        </div>
+      <div class="flex flex-col items-center gap-2 py-3 border-t border-gray-800">
+        <button
+          @click="toggleLang"
+          class="text-xs text-gray-500 hover:text-gray-300 transition-colors px-2 py-1 rounded hover:bg-gray-800"
+          :title="t('lang.switch')"
+        >
+          {{ t('lang.switch') }}
+        </button>
       </div>
     </aside>
     <main class="flex-1 overflow-y-auto">

@@ -113,7 +113,7 @@ export function usePlotArchitect() {
   async function removeScene(id: string): Promise<void> {
     error.value = null
     try {
-      await apiDeleteScene(id)
+      await apiDeleteScene(selectedOutline.value?.id || '', id)
       if (selectedOutline.value) {
         for (const act of selectedOutline.value.acts) {
           act.scenes = act.scenes.filter((s) => s.id !== id)

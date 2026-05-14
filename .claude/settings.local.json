@@ -69,7 +69,18 @@
       "Bash(python)",
       "Bash(python fix_narrative.py)",
       "Bash(python -c \"s = chr\\(92\\) + chr\\(49\\); print\\(repr\\(s\\)\\); print\\([ord\\(c\\) for c in s]\\)\")",
-      "Bash(python -c \"import py_compile; py_compile.compile\\('app/services/narrative_writer.py', doraise=True\\)\")"
+      "Bash(python -c \"import py_compile; py_compile.compile\\('app/services/narrative_writer.py', doraise=True\\)\")",
+      "Bash(pnpm create *)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm add *)",
+      "Bash(npx vue-tsc *)",
+      "Bash(pnpm build *)",
+      "Bash(pnpm dev *)",
+      "Bash(curl -s -o NUL -w \"%{http_code}\" http://localhost:5001/health)",
+      "Bash(curl -s -o NUL -w \"%{http_code}\" http://localhost:5173)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_console_messages"
     ]
   }
 }

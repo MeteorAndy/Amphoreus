@@ -108,7 +108,7 @@ export function useSceneEngine() {
   async function intervene(intervention: string): Promise<void> {
     error.value = null
     try {
-      await apiIntervene({ intervention } as InterventionRequest)
+      await apiIntervene({ scene_id: sceneId.value || undefined, intervention } as InterventionRequest)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to send intervention'
     }

@@ -44,8 +44,9 @@ export function useWorldBuilder() {
   }
 
   async function loadWorldState(): Promise<void> {
+    if (!worldState.value?.world_id) return
     try {
-      worldState.value = await getWorldState()
+      worldState.value = await getWorldState(worldState.value.world_id)
     } catch {
       worldState.value = null
     }
@@ -53,7 +54,9 @@ export function useWorldBuilder() {
 
   async function resetWorldState(): Promise<void> {
     try {
-      await apiResetWorld()
+      if (worldState.value?.world_id) {
+        await apiResetWorld(worldState.value.world_id)
+      }
       worldState.value = null
       messages.value = []
     } catch (e) {

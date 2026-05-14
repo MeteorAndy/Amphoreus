@@ -2,7 +2,9 @@
 import { ref, onMounted } from 'vue'
 import ChatPanel from '../components/ChatPanel.vue'
 import { useWorldBuilder } from '../composables/useWorldBuilder'
+import { useI18n } from '../i18n'
 
+const { t } = useI18n()
 const { messages, worldState, loading, error, sendMessage, uploadDocument, loadWorldState, resetWorldState } = useWorldBuilder()
 
 const dragOver = ref(false)
@@ -28,12 +30,12 @@ function handleFileSelect(event: Event): void {
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-gray-100">World Builder</h1>
+      <h1 class="text-xl font-bold text-gray-100">{{ t('world.title') }}</h1>
       <button
         @click="resetWorldState"
         class="px-3 py-1.5 text-xs text-red-400 border border-red-800 rounded-lg hover:bg-red-900/20 transition-colors"
       >
-        Reset World
+        {{ t('world.reset') }}
       </button>
     </div>
     <div
@@ -52,9 +54,9 @@ function handleFileSelect(event: Event): void {
         @change="handleFileSelect"
       />
       <p class="text-sm text-gray-400">
-        Drop documents here or click to upload
+        {{ t('world.drop_hint') }}
       </p>
-      <p class="text-xs text-gray-600 mt-1">Supports .md, .txt, .pdf, .doc, .docx</p>
+      <p class="text-xs text-gray-600 mt-1">{{ t('world.supported_formats') }}</p>
     </div>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2">
@@ -62,7 +64,7 @@ function handleFileSelect(event: Event): void {
           <ChatPanel
             :messages="messages"
             :loading="loading"
-            placeholder="Describe your world..."
+            :placeholder="t('world.idea_placeholder')"
             @send="sendMessage"
           />
         </div>
@@ -73,12 +75,12 @@ function handleFileSelect(event: Event): void {
         </div>
         <div v-if="worldState" class="space-y-4">
           <div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
-            <h3 class="text-sm font-semibold text-gray-200 mb-2">World</h3>
-            <p class="text-sm text-gray-300">{{ worldState.name || 'Unnamed World' }}</p>
+            <h3 class="text-sm font-semibold text-gray-200 mb-2">{{ t('world.sidebar_world') }}</h3>
+            <p class="text-sm text-gray-300">{{ worldState.name || t('world.unnamed') }}</p>
             <p v-if="worldState.description" class="text-xs text-gray-500 mt-1">{{ worldState.description }}</p>
           </div>
           <div v-if="worldState.rules && worldState.rules.length > 0" class="bg-gray-900 rounded-lg border border-gray-800 p-4">
-            <h3 class="text-sm font-semibold text-gray-200 mb-2">Rules</h3>
+            <h3 class="text-sm font-semibold text-gray-200 mb-2">{{ t('world.rules') }}</h3>
             <ul class="space-y-1">
               <li v-for="(rule, idx) in worldState.rules" :key="idx" class="text-xs text-gray-400 flex gap-2">
                 <span class="text-indigo-500">-</span>
@@ -87,7 +89,7 @@ function handleFileSelect(event: Event): void {
             </ul>
           </div>
           <div v-if="worldState.locations && worldState.locations.length > 0" class="bg-gray-900 rounded-lg border border-gray-800 p-4">
-            <h3 class="text-sm font-semibold text-gray-200 mb-2">Locations</h3>
+            <h3 class="text-sm font-semibold text-gray-200 mb-2">{{ t('world.locations') }}</h3>
             <div class="space-y-2">
               <div v-for="(loc, idx) in worldState.locations" :key="idx">
                 <p class="text-sm text-gray-300">{{ loc.name }}</p>
@@ -96,7 +98,7 @@ function handleFileSelect(event: Event): void {
             </div>
           </div>
           <div v-if="worldState.factions && worldState.factions.length > 0" class="bg-gray-900 rounded-lg border border-gray-800 p-4">
-            <h3 class="text-sm font-semibold text-gray-200 mb-2">Factions</h3>
+            <h3 class="text-sm font-semibold text-gray-200 mb-2">{{ t('world.factions') }}</h3>
             <div class="space-y-2">
               <div v-for="(faction, idx) in worldState.factions" :key="idx">
                 <p class="text-sm text-gray-300">{{ faction.name }}</p>
@@ -105,7 +107,7 @@ function handleFileSelect(event: Event): void {
             </div>
           </div>
           <div v-if="worldState.timeline && worldState.timeline.length > 0" class="bg-gray-900 rounded-lg border border-gray-800 p-4">
-            <h3 class="text-sm font-semibold text-gray-200 mb-2">Timeline</h3>
+            <h3 class="text-sm font-semibold text-gray-200 mb-2">{{ t('world.timeline') }}</h3>
             <div class="space-y-2">
               <div v-for="(entry, idx) in worldState.timeline" :key="idx" class="flex gap-2">
                 <span class="text-xs text-indigo-400 flex-shrink-0">{{ entry.date }}</span>
@@ -118,7 +120,7 @@ function handleFileSelect(event: Event): void {
           </div>
         </div>
         <div v-else class="bg-gray-900 rounded-lg border border-gray-800 p-6 text-center text-gray-600 text-sm">
-          Start chatting or upload a document to build your world
+          {{ t('world.start_hint') }}
         </div>
       </div>
     </div>

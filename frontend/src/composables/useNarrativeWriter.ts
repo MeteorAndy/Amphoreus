@@ -47,14 +47,15 @@ export function useNarrativeWriter() {
     }
   }
 
-  async function exportOutput(outputId: string, fmt: NarrativeFormat): Promise<void> {
+  async function exportOutput(_outputId: string, fmt: NarrativeFormat): Promise<void> {
     error.value = null
+    if (!output.value) return
     try {
-      const blob = await apiExport(outputId, fmt)
+      const blob = await apiExport(output.value.content, fmt)
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${outputId}.${fmt === 'novel' ? 'md' : 'fountain'}`
+      a.download = `${output.value.id}.${fmt === 'novel' ? 'md' : 'fountain'}`
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {

@@ -174,6 +174,7 @@ export interface SceneRunRequest {
 }
 
 export interface InterventionRequest {
+  scene_id?: string
   intervention: string
 }
 

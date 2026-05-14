@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd Z:\\\\TheWorld\\\\backend && uv run python -c \\\"from app.services.narrative_writer import ScreenplayWriter, PostProcessor; print('OK')\\\"\",\"timeout\":60000,\"description\":\"Verify narrative_wri...",
-  "error": "Exit code 1\n/usr/bin/bash: line 1: cd: Z:TheWorldbackend: No such file or directory",
-  "timestamp": "2026-05-14T08:11:36.745Z",
-  "retry_count": 1
-}

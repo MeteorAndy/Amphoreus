@@ -1,0 +1,32 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]: AS
+    - navigation [ref=e7]:
+      - button "🌍 World" [ref=e8]:
+        - generic [ref=e10]: 🌍
+        - generic [ref=e11]: World
+      - button "👥 Characters" [ref=e12]:
+        - generic [ref=e14]: 👥
+        - generic [ref=e15]: Characters
+      - button "📋 Plot" [ref=e16]:
+        - generic [ref=e18]: 📋
+        - generic [ref=e19]: Plot
+      - button "🎭 Scene" [ref=e20]:
+        - generic [ref=e22]: 🎭
+        - generic [ref=e23]: Scene
+      - button "✍️ Writer" [ref=e24]:
+        - generic [ref=e26]: ✍️
+        - generic [ref=e27]: Writer
+  - main [ref=e35]:
+    - generic [ref=e37]:
+      - generic [ref=e38]:
+        - heading "World Builder" [level=1] [ref=e39]
+        - button "Reset World" [ref=e40]
+      - generic [ref=e41] [cursor=pointer]:
+        - paragraph [ref=e42]: Drop documents here or click to upload
+        - paragraph [ref=e43]: Supports .md, .txt, .pdf, .doc, .docx
+      - generic [ref=e44]:
+        - generic [ref=e50]:
+          - textbox "Describe your world..." [ref=e51]
+          - button "Send" [disabled] [ref=e52]
+        - generic [ref=e54]: Start chatting or upload a document to build your world
