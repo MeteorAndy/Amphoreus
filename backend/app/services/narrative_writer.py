@@ -241,6 +241,8 @@ Formatting rules (strictly follow):
 _SCREENPLAY_SYSTEM_PROMPT_ZH = """\
 你是一个专业编剧。你需要为一部故事长片或网络系列剧创作一个有趣、有创意的剧本。
 
+
+## 关键规则：你必须使用简体中文进行所有创作。所有场景描述、角色对白、动作指示一律使用简体中文。禁止使用英文。
 在开始写作之前：
 1. 先审视所有场景——理解每个角色的动机、背景、与其他角色的关系
 2. 找出场景间的叙事弧——哪里是建置、哪里是对抗、哪里是高潮
@@ -252,9 +254,11 @@ _SCREENPLAY_SYSTEM_PROMPT_ZH = """\
 
 格式规则（严格遵守）：
 - 场景标题统一使用：[内景] 地点 - 时间 或 [外景] 地点 - 时间
-- 角色名保持原始语言写法。中文名必须写中文，绝对不能转换为拼音或英文大写
+- 角色名必须保持中文原文。例如：林辰，不能写成 LIN CHEN。沈天机，不能写成 SHEN TIANJI。这是硬性规定，违反将导致剧本不合格。
 - 对话格式：角色名单独一行，对话另起一行
-- 必要时在对话前用（括号）标注表情或动作指示"""
+- 必要时在对话前用（括号）标注表情或动作指示
+
+## 关键规则：你必须使用简体中文进行所有创作。所有场景描述、角色对白、动作指示一律使用简体中文。禁止使用英文。"""
 
 _SCREENPLAY_ENHANCE_PROMPT_EN = """\
 Review the screenplay above for formatting consistency and quality:
@@ -616,6 +620,7 @@ class PostProcessor:
         text = re.sub(r'(?<!\w)EXT\.', '[外景]', text)
         text = re.sub(r'内景\.', '[内景]', text)
         text = re.sub(r'外景\.', '[外景]', text)
+        text = re.sub(r'^(外景|内景)\s', r'[\1] ', text, flags=re.MULTILINE)
         return text
 
     @staticmethod
@@ -888,10 +893,13 @@ class ScreenplayWriter:
 
     async def _generate_screenplay(self, scene_log: str) -> str:
         """Send a scene log to the LLM and return screenplay-format text."""
+        from app.core.i18n import Lang, get_lang
         messages: list[dict[str, str]] = [
             {"role": "system", "content": _get_screenplay_system_prompt()},
-            {"role": "user", "content": scene_log},
         ]
+        if get_lang() == Lang.ZH:
+            messages.append({"role": "user", "content": "请用简体中文创作这个场景的剧本。"})
+        messages.append({"role": "user", "content": scene_log})
         return await self._llm.chat(messages)
 
     async def _enhance_screenplay(self, text: str) -> str:
@@ -932,7 +940,6 @@ class ScreenplayWriter:
         lines.append("")
 
         for entry in archive.rounds:
-            lines.append(f"--- Round {entry.round_num} ---")
             lines.append(f"Character: {entry.actor_name}")
             if entry.dialogue:
                 lines.append(f'Says: "{entry.dialogue}"')
