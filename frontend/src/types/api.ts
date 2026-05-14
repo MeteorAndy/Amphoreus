@@ -224,3 +224,23 @@ export interface GuardianIssue {
 export interface ApiErrorResponse {
   detail: string
 }
+
+// World Builder conversational API types
+export type WorldBuildStage = 'rules' | 'locations' | 'factions' | 'timeline' | 'done'
+
+export interface WorldExtractedData {
+  name?: string
+  description?: string
+  rules?: string[]
+  locations?: Location[]
+  factions?: Faction[]
+  timeline?: TimelineEntry[]
+}
+
+export interface WorldBuildResponse {
+  session_id: string
+  stage: WorldBuildStage
+  next_question: string
+  extracted_data?: WorldExtractedData
+  completeness: number
+}

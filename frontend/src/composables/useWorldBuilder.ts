@@ -1,82 +1,156 @@
-import { ref } from 'vue'
-import type { ChatMessage, WorldState } from '../types/api'
-import { worldChat, uploadDocument as apiUploadDocument, getWorldState, resetWorld as apiResetWorld } from '../api/client'
+import { ref, computed } from 'vue'
+import type { ChatMessage, WorldBuildStage, WorldExtractedData, WorldState } from '../types/api'
+import { startWorldBuild, continueWorldBuild, finalizeWorldBuild } from '../api/client'
 
 export function useWorldBuilder() {
   const messages = ref<ChatMessage[]>([])
-  const worldState = ref<WorldState | null>(null)
+  const sessionId = ref<string | null>(null)
+  const stage = ref<WorldBuildStage>('rules')
+  const extractedData = ref<WorldExtractedData>({})
+  const completeness = ref(0)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const worldState = ref<WorldState | null>(null)
+  const finalized = ref(false)
 
-  async function sendMessage(text: string): Promise<void> {
+  const isBuilding = computed(() => !!sessionId.value && !finalized.value)
+  const isDone = computed(() => stage.value === 'done')
+
+  async function startBuilding(seedIdea: string): Promise<void> {
     loading.value = true
     error.value = null
-    messages.value.push({ role: 'user', content: text })
     try {
-      const res = await worldChat({ message: text, world_id: worldState.value?.world_id })
-      messages.value.push({ role: 'assistant', content: res.reply })
-      if (res.world_state) {
-        worldState.value = res.world_state
-      }
+      const res = await withRetry(() => startWorldBuild(seedIdea))
+      sessionId.value = res.session_id
+      stage.value = res.stage
+      completeness.value = res.completeness
+      mergeExtractedData(res.extracted_data)
+      messages.value.push({ role: 'user', content: seedIdea })
+      messages.value.push({ role: 'assistant', content: res.next_question })
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to send message'
-      messages.value.push({ role: 'assistant', content: `Error: ${error.value}` })
+      error.value = e instanceof Error ? e.message : 'Failed to start world building'
     } finally {
       loading.value = false
     }
   }
 
-  async function uploadDocument(file: File): Promise<void> {
+  async function continueBuilding(userInput: string): Promise<void> {
+    if (!sessionId.value) return
     loading.value = true
     error.value = null
     try {
-      const state = await apiUploadDocument(file)
+      const res = await withRetry(() => continueWorldBuild(sessionId.value!, userInput))
+      stage.value = res.stage
+      completeness.value = res.completeness
+      mergeExtractedData(res.extracted_data)
+      messages.value.push({ role: 'user', content: userInput })
+      messages.value.push({ role: 'assistant', content: res.next_question })
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to continue world building'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function finalizeWorld(): Promise<void> {
+    if (!sessionId.value) return
+    loading.value = true
+    error.value = null
+    try {
+      const state = await withRetry(() => finalizeWorldBuild(sessionId.value!))
       worldState.value = state
-      messages.value.push({
-        role: 'assistant',
-        content: `Document "${file.name}" processed successfully. World state updated.`,
-      })
+      finalized.value = true
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to upload document'
+      error.value = e instanceof Error ? e.message : 'Failed to finalize world'
     } finally {
       loading.value = false
     }
   }
 
-  async function loadWorldState(): Promise<void> {
-    if (!worldState.value?.world_id) return
-    try {
-      worldState.value = await getWorldState(worldState.value.world_id)
-    } catch {
-      worldState.value = null
-    }
-  }
-
-  async function resetWorldState(): Promise<void> {
-    try {
-      if (worldState.value?.world_id) {
-        await apiResetWorld(worldState.value.world_id)
+  function mergeExtractedData(data?: WorldExtractedData): void {
+    if (!data) return
+    if (data.name) extractedData.value.name = data.name
+    if (data.description) extractedData.value.description = data.description
+    if (data.rules) {
+      const existing = new Set(extractedData.value.rules || [])
+      for (const rule of data.rules) {
+        if (!existing.has(rule)) {
+          extractedData.value.rules = [...(extractedData.value.rules || []), rule]
+          existing.add(rule)
+        }
       }
-      worldState.value = null
-      messages.value = []
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to reset world'
+    }
+    if (data.locations) {
+      const existing = new Map((extractedData.value.locations || []).map((l) => [l.name, l]))
+      for (const loc of data.locations) {
+        if (!existing.has(loc.name)) {
+          extractedData.value.locations = [...(extractedData.value.locations || []), loc]
+          existing.set(loc.name, loc)
+        }
+      }
+    }
+    if (data.factions) {
+      const existing = new Map((extractedData.value.factions || []).map((f) => [f.name, f]))
+      for (const fac of data.factions) {
+        if (!existing.has(fac.name)) {
+          extractedData.value.factions = [...(extractedData.value.factions || []), fac]
+          existing.set(fac.name, fac)
+        }
+      }
+    }
+    if (data.timeline) {
+      const existing = new Set((extractedData.value.timeline || []).map((t) => `${t.date}|${t.event}`))
+      for (const entry of data.timeline) {
+        const key = `${entry.date}|${entry.event}`
+        if (!existing.has(key)) {
+          extractedData.value.timeline = [...(extractedData.value.timeline || []), entry]
+          existing.add(key)
+        }
+      }
     }
   }
 
-  function clearMessages(): void {
+  async function withRetry<T>(fn: () => Promise<T>, maxRetries = 1): Promise<T> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn()
+      } catch (e) {
+        if (attempt < maxRetries) {
+          await new Promise((r) => setTimeout(r, 1000))
+        } else {
+          throw e
+        }
+      }
+    }
+    throw new Error('Unreachable')
+  }
+
+  function resetWorld(): void {
+    sessionId.value = null
+    stage.value = 'rules'
+    extractedData.value = {}
+    completeness.value = 0
     messages.value = []
+    error.value = null
+    worldState.value = null
+    finalized.value = false
   }
 
   return {
     messages,
-    worldState,
+    sessionId,
+    stage,
+    extractedData,
+    completeness,
     loading,
     error,
-    sendMessage,
-    uploadDocument,
-    loadWorldState,
-    resetWorldState,
-    clearMessages,
+    worldState,
+    finalized,
+    isBuilding,
+    isDone,
+    startBuilding,
+    continueBuilding,
+    finalizeWorld,
+    resetWorld,
   }
 }

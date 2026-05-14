@@ -19,6 +19,7 @@ import type {
   TitleCandidate,
   UpdateCharacterRequest,
   WorldState,
+  WorldBuildResponse,
   WriterOutput,
 } from '../types/api'
 
@@ -80,6 +81,27 @@ export async function getWorldState(sessionId?: string): Promise<WorldState> {
 
 export async function resetWorld(sessionId: string): Promise<void> {
   return request<void>('/api/world/build/finalize', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId }),
+  })
+}
+
+export async function startWorldBuild(seedIdea: string): Promise<WorldBuildResponse> {
+  return request<WorldBuildResponse>('/api/world/build/start', {
+    method: 'POST',
+    body: JSON.stringify({ seed_idea: seedIdea }),
+  })
+}
+
+export async function continueWorldBuild(sessionId: string, userInput: string): Promise<WorldBuildResponse> {
+  return request<WorldBuildResponse>('/api/world/build/continue', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId, user_input: userInput }),
+  })
+}
+
+export async function finalizeWorldBuild(sessionId: string): Promise<WorldState> {
+  return request<WorldState>('/api/world/build/finalize', {
     method: 'POST',
     body: JSON.stringify({ session_id: sessionId }),
   })

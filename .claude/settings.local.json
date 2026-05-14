@@ -80,7 +80,8 @@
       "Bash(curl -s -o NUL -w \"%{http_code}\" http://localhost:5173)",
       "mcp__plugin_playwright_playwright__browser_navigate",
       "mcp__plugin_playwright_playwright__browser_take_screenshot",
-      "mcp__plugin_playwright_playwright__browser_console_messages"
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "mcp__zai-mcp-server__analyze_image"
     ]
   }
 }
