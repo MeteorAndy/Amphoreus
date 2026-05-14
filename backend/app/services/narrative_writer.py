@@ -236,7 +236,14 @@ Formatting rules (strictly follow):
 - Scene headings: [INT.] Location - Time or [EXT.] Location - Time
 - Keep character names in their original language. Chinese names must be written in Chinese, never converted to pinyin or English uppercase
 - Dialogue format: character name on its own line, dialogue on a new line
-- Use (parenthetical) before dialogue for tone/action when necessary"""
+- Use (parenthetical) before dialogue for tone/action when necessary
+
+## Strictly forbidden formatting (already handled by the system)
+- Do NOT add any headings (#, ##, ###) — the system automatically adds act titles and scene numbers
+- Do NOT add separators (---) — do not use horizontal lines within scene content
+- Do NOT add scene-end markers such as "(End of Act 1, Scene 1)" — the system does not recognize this format
+- Do NOT bold character names with ** marks — just write names in plain text
+- Only output the body content of the scene: descriptions, dialogue, and action lines"""
 
 _SCREENPLAY_SYSTEM_PROMPT_ZH = """\
 你是一个专业编剧。你需要为一部故事长片或网络系列剧创作一个有趣、有创意的剧本。
@@ -257,6 +264,18 @@ _SCREENPLAY_SYSTEM_PROMPT_ZH = """\
 - 角色名必须保持中文原文。例如：林辰，不能写成 LIN CHEN。沈天机，不能写成 SHEN TIANJI。这是硬性规定，违反将导致剧本不合格。
 - 对话格式：角色名单独一行，对话另起一行
 - 必要时在对话前用（括号）标注表情或动作指示
+
+内心独白处理：
+- [内心] 标记表示角色此时的心理活动
+- 将其转化为剧本格式：（旁白）、（OS）、画外音、或括弧内的动作/表情指示
+- 例如：[内心] 林辰心想：不能暴露修为 → （林辰强压灵力，面无表情）或 林辰（OS）：不能暴露修为...
+
+## 严格禁止的格式（代码已自动处理）
+- 不要添加任何标题（#、##、###）——代码会自动添加幕标题和场次编号
+- 不要添加分隔线（---）——不要在场景内容中使用水平分隔线
+- 不要添加场景结束标记（如"第一幕·场景一完"）——代码不识别此格式
+- 中文模式下角色名使用纯文本（如"林辰"），不要加粗（不要用**林辰**）
+- 你只需要输出场景的正文内容：场景描述、角色对话、动作指示
 
 ## 关键规则：你必须使用简体中文进行所有创作。所有场景描述、角色对白、动作指示一律使用简体中文。禁止使用英文。"""
 
@@ -598,8 +617,52 @@ class PostProcessor:
     # ------------------------------------------------------------------
 
     @staticmethod
+    def _sanitize_screenplay_content(text: str) -> str:
+        """Remove leaked formatting markers that the LLM should not have produced.
+
+        Strips:
+        - Lines starting with # (leaked markdown headings)
+        - Standalone --- lines
+        - Scene-end markers like （第一幕·场景一完）or "(End of Act 1, Scene 1)"
+        - **bold** markers around character names (ZH mode only)
+        """
+        lines = text.split("\n")
+        cleaned: list[str] = []
+
+        for line in lines:
+            stripped = line.strip()
+
+            # Remove standalone markdown headings (lines starting with #)
+            if stripped.startswith("#"):
+                continue
+
+            # Remove standalone separator lines
+            if re.match(r"^---+\s*$", stripped):
+                continue
+
+            # Remove scene-end markers like （第X幕·场景X完）or similar
+            if re.search(
+                r"[（(]\s*(第\d+幕|第\d+章|Act\s+\d+|Scene\s+\d+)[^）)]*[完终止][）)]\s*$",
+                stripped,
+            ):
+                continue
+            if re.search(
+                r"[（(]\s*(End|结束|完)\s+of\s+", stripped, re.IGNORECASE
+            ):
+                continue
+
+            # Remove **bold** markers around character names (ZH mode)
+            if get_lang() == Lang.ZH:
+                stripped = re.sub(r"\*\*(.+?)\*\*", r"\1", stripped)
+
+            cleaned.append(stripped)
+
+        return "\n".join(cleaned)
+
+    @staticmethod
     def normalize_screenplay(text: str, characters: list[CharacterProfile]) -> str:
         """Apply screenplay-specific normalisations (headings, character names)."""
+        text = PostProcessor._sanitize_screenplay_content(text)
         if get_lang() == Lang.ZH:
             text = PostProcessor._normalize_scene_headings_zh(text)
             text = PostProcessor._normalize_character_names(text, characters)
@@ -953,7 +1016,7 @@ class ScreenplayWriter:
             if entry.action:
                 lines.append(f"Does: {entry.action}")
             if entry.inner_thought:
-                lines.append(f"Thinks: {entry.inner_thought}")
+                lines.append(f"[内心] {entry.actor_name}心想：{entry.inner_thought}")
             if entry.emotion:
                 lines.append(f"Emotion: {entry.emotion}")
             for reaction in entry.reactions:
@@ -981,13 +1044,18 @@ class ScreenplayWriter:
         global_scene_num = 1
 
         for act_spec in act_plan.chapters:
+            # Skip acts where none of their scene_ids have content
+            act_scenes = [sid for sid in act_spec.scene_ids if sid in scene_pages]
+            if not act_scenes:
+                continue
+
             if lang == Lang.ZH:
                 parts.append(f"## 第{act_spec.number}幕 {act_spec.title}")
             else:
                 parts.append(f"## Act {act_spec.number}: {act_spec.title}")
             parts.append("")
 
-            for scene_id in act_spec.scene_ids:
+            for scene_id in act_scenes:
                 scene_text = scene_pages.get(scene_id)
                 if scene_text is None:
                     continue
