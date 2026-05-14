@@ -1,165 +1,140 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+import asyncio
+import json
+from typing import Any, Optional, TypeVar
 
 from openai import AsyncOpenAI
 
-from app.core.api_keys import KeyManager
+from app.core.config import get_settings
+
+T = TypeVar("T")
 
 
-# ---------------------------------------------------------------------------
-# Abstract interface
-# ---------------------------------------------------------------------------
+class LLMClient:
+    """Async wrapper around OpenAI-compatible SDK for DeepSeek-V4-Flash.
 
-
-class LLMClient(ABC):
-    """Abstract LLM provider client.
-
-    Every provider implementation must subclass this ABC so that callers
-    remain decoupled from the concrete SDK.  The constructor contract is
-    ``client = SomeClient(api_key=..., **extra_kwargs)`` — the factory
-    function relies on this signature.
+    Single responsibility: call the LLM and return the parsed result.
+    Does NOT know about story logic, character profiles, or any domain concern.
     """
 
-    def __init__(self, api_key: str, **kwargs: Any) -> None:
-        self.api_key = api_key
-
-    @abstractmethod
-    async def chat(
-        self,
-        messages: List[Dict[str, str]],
-        *,
-        model: Optional[str] = None,
-        temperature: float = 0.7,
-        max_tokens: int = 2048,
-        **kwargs: Any,
-    ) -> str:
-        """Send a chat completion request and return the response text."""
-        ...
-
-    @abstractmethod
-    async def embed(
-        self,
-        texts: List[str],
-        *,
-        model: Optional[str] = None,
-        **kwargs: Any,
-    ) -> List[List[float]]:
-        """Return embedding vectors for a list of input strings."""
-        ...
-
-
-# ---------------------------------------------------------------------------
-# Concrete: DeepSeek (OpenAI-compatible)
-# ---------------------------------------------------------------------------
-
-
-class DeepSeekClient(LLMClient):
-    """LLM client backed by the DeepSeek API (OpenAI-compatible SDK)."""
-
-    def __init__(
-        self,
-        api_key: str,
-        base_url: str = "https://api.deepseek.com/v1",
-        default_model: str = "deepseek-chat",
-        default_embed_model: str = "deepseek-embed",
-    ) -> None:
-        super().__init__(api_key)
-        self.base_url = base_url
-        self.default_model = default_model
-        self.default_embed_model = default_embed_model
-        self._client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+    def __init__(self) -> None:
+        settings = get_settings()
+        self._client = AsyncOpenAI(
+            api_key=settings.deepseek_api_key_effective,
+            base_url=settings.deepseek_base_url,
+        )
+        self._model = settings.deepseek_model
+        self._max_retries = 3
+        self._timeout = 120.0
 
     async def chat(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         *,
-        model: Optional[str] = None,
         temperature: float = 0.7,
-        max_tokens: int = 2048,
-        **kwargs: Any,
+        response_format: Optional[dict[str, str]] = None,
     ) -> str:
-        response = await self._client.chat.completions.create(
-            model=model or self.default_model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs,
-        )
-        return response.choices[0].message.content or ""
+        """Send a chat completion request and return the raw text content."""
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "messages": messages,
+            "temperature": temperature,
+            "timeout": self._timeout,
+        }
+        if response_format is not None:
+            kwargs["response_format"] = response_format
 
-    async def embed(
+        last_exc: Optional[Exception] = None
+        for attempt in range(self._max_retries):
+            try:
+                response = await self._client.chat.completions.create(**kwargs)
+                content = response.choices[0].message.content or ""
+                return content
+            except Exception as exc:
+                last_exc = exc
+                if attempt < self._max_retries - 1:
+                    await asyncio.sleep(2.0 * (attempt + 1))
+        raise last_exc  # type: ignore[misc]
+
+    @staticmethod
+    def _extract_json(raw: str) -> dict[str, Any]:
+        """Extract JSON from LLM response, handling markdown code blocks and extra text."""
+        text = raw.strip()
+
+        # Strip markdown code blocks (```json ... ``` or ``` ... ```)
+        if text.startswith("```"):
+            lines = text.split("\n")
+            # Remove opening fence (may be ```json or just ```)
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            # Remove closing fence
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines).strip()
+
+        # Try direct parse
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        # Find first { and last } for partial extraction
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            try:
+                return json.loads(text[start:end + 1])
+            except json.JSONDecodeError:
+                pass
+
+        raise ValueError(f"Could not extract JSON from response: {raw[:300]}...")
+
+    async def chat_json(
         self,
-        texts: List[str],
+        messages: list[dict[str, str]],
         *,
-        model: Optional[str] = None,
-        **kwargs: Any,
-    ) -> List[List[float]]:
-        response = await self._client.embeddings.create(
-            model=model or self.default_embed_model,
-            input=texts,
-            **kwargs,
-        )
-        return [item.embedding for item in response.data]
+        temperature: float = 0.3,
+    ) -> dict[str, Any]:
+        """Send a chat completion and parse the response as JSON.
 
+        Does NOT use json_object response_format — DeepSeek supports it
+        inconsistently in long conversations. On parse failure, retries
+        with a forceful JSON instruction appended to the conversation.
+        """
+        raw = await self.chat(messages, temperature=temperature)
+        try:
+            return self._extract_json(raw)
+        except ValueError:
+            pass
 
-# ---------------------------------------------------------------------------
-# Factory
-# ---------------------------------------------------------------------------
+        # Retry: append a forceful instruction to the conversation
+        retry_messages = list(messages) + [
+            {"role": "assistant", "content": raw[:500]},
+            {"role": "user", "content": (
+                "You MUST respond with ONLY a JSON object. No markdown, no "
+                "explanations, no other text whatsoever. Start with { and end with }. "
+                "Follow the JSON format specified in the system prompt EXACTLY."
+            )},
+        ]
+        raw2 = await self.chat(retry_messages, temperature=0.1)
+        return self._extract_json(raw2)
 
-_PROVIDER_CLIENTS: Dict[str, type[LLMClient]] = {
-    "deepseek": DeepSeekClient,
-}
-
-
-def create_llm_client(
-    provider: str = "deepseek",
-    api_key: Optional[str] = None,
-    km: Optional[KeyManager] = None,
-    **overrides: Any,
-) -> LLMClient:
-    """Build and return an :class:`LLMClient` for the named provider.
-
-    Resolution order for the API key:
-    1. Explicit *api_key* argument
-    2. :class:`KeyManager` lookup
-    3. :exc:`ValueError`
-
-    Extra keyword arguments are forwarded to the client constructor (e.g.
-    *base_url*, *default_model*).
-    """
-    client_cls = _PROVIDER_CLIENTS.get(provider)
-    if client_cls is None:
-        supported = ", ".join(sorted(_PROVIDER_CLIENTS))
-        raise ValueError(
-            f"Unsupported provider {provider!r}. Supported: {supported}"
-        )
-
-    resolved_key = api_key
-    if resolved_key is None:
-        key_mgr = km or KeyManager()
-        resolved_key = key_mgr.get_key(provider)
-    if not resolved_key:
-        raise ValueError(
-            f"No API key available for provider {provider!r}. "
-            "Use KeyManager to store a key first."
-        )
-
-    return client_cls(api_key=resolved_key, **overrides)
-
-
-def register_provider(name: str, client_class: type[LLMClient]) -> None:
-    """Register a custom LLM client class for *name*.
-
-    Framework-level extensibility: third-party modules can call this to
-    add new provider backends.
-    """
-    if not issubclass(client_class, LLMClient):
-        raise TypeError(f"{client_class.__name__} must subclass LLMClient")
-    _PROVIDER_CLIENTS[name] = client_class
-
-
-def _unregister_provider(name: str) -> None:
-    """Remove a previously registered provider (test helper)."""
-    _PROVIDER_CLIENTS.pop(name, None)
+    async def chat_stream(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        temperature: float = 0.7,
+    ):
+        """Stream chat completion chunks as an async generator."""
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "messages": messages,
+            "temperature": temperature,
+            "timeout": self._timeout,
+            "stream": True,
+        }
+        stream = await self._client.chat.completions.create(**kwargs)
+        async for chunk in stream:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
