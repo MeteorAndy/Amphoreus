@@ -15,7 +15,6 @@ const {
   rounds,
   connected,
   error,
-  sceneId,
   connect,
   intervene,
   endSceneSession,
@@ -26,6 +25,7 @@ const {
 const { fetchOutlines, outlines, selectOutline, selectedOutline } = usePlotArchitect()
 const { fetchCharacters, characters } = useCharacters()
 
+const selectedPlotId = ref('')
 const selectedSceneId = ref('')
 const maxRounds = ref(10)
 
@@ -35,15 +35,19 @@ onMounted(() => {
   fetchCharacters()
 })
 
-function handleStartScene(): void {
-  if (!selectedOutline.value) {
-    fetchOutlines()
-    return
+async function handleSelectPlot(plotId: string): Promise<void> {
+  selectedPlotId.value = plotId
+  if (plotId) {
+    await selectOutline(plotId)
   }
+}
+
+function handleStartScene(): void {
+  if (!selectedPlotId.value || !selectedSceneId.value) return
 
   const req: SceneRunRequest = {
     scene_spec_id: selectedSceneId.value,
-    plot_id: selectedOutline.value.id,
+    plot_id: selectedPlotId.value,
     character_ids: characters.value.map((c) => c.id),
     max_rounds: maxRounds.value,
   }
@@ -52,7 +56,7 @@ function handleStartScene(): void {
 
 function canStart(): boolean {
   return (
-    !!selectedOutline.value &&
+    !!selectedPlotId.value &&
     !!selectedSceneId.value &&
     characters.value.length > 0 &&
     status.value.status === 'idle'
@@ -65,20 +69,24 @@ function canStart(): boolean {
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-bold text-gray-100">{{ t('scene.title') }}</h1>
     </div>
+
+    <!-- Error banner -->
     <div v-if="error" class="bg-red-900/20 border border-red-800 rounded-lg p-3 text-sm text-red-400">
       {{ error }}
     </div>
+
+    <!-- Configuration (idle state) -->
     <div v-if="status.status === 'idle'" class="bg-gray-900 rounded-lg border border-gray-800 p-6 space-y-4">
       <h2 class="text-sm font-semibold text-gray-200">{{ t('scene.config') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs text-gray-500 mb-1">{{ t('scene.select_plot') }}</label>
           <select
-            v-model="selectedOutline"
-            @change="(e: Event) => selectOutline((e.target as HTMLSelectElement).value)"
+            v-model="selectedPlotId"
+            @change="handleSelectPlot(selectedPlotId)"
             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
           >
-            <option :value="null" disabled>{{ t('writer.select_outline') }}</option>
+            <option value="" disabled>{{ t('writer.select_outline') }}</option>
             <option
               v-for="outline in outlines"
               :key="outline.id"
@@ -98,7 +106,7 @@ function canStart(): boolean {
             <template v-if="selectedOutline">
               <template v-for="act in selectedOutline.acts" :key="act.id">
                 <option
-                  :value="act.id"
+                  :value="'act-' + act.id"
                   disabled
                   class="text-gray-500 italic"
                 >
@@ -151,6 +159,8 @@ function canStart(): boolean {
         {{ t('scene.run') }}
       </button>
     </div>
+
+    <!-- Running / completed scene -->
     <div v-if="status.status !== 'idle'" class="grid grid-cols-1 lg:grid-cols-3 gap-6" style="height: calc(100vh - 12rem)">
       <div class="lg:col-span-2 h-full">
         <SceneFeed
@@ -163,7 +173,7 @@ function canStart(): boolean {
         <DirectorPanel
           :status="status"
           :connected="connected"
-          :scene-id="sceneId"
+          :scene-id="selectedSceneId"
           @intervene="intervene"
           @end-scene="endSceneSession"
           @start-scene="handleStartScene"

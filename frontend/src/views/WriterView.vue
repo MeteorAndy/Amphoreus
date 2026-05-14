@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import WritingPreview from '../components/WritingPreview.vue'
 import { useNarrativeWriter } from '../composables/useNarrativeWriter'
 import { usePlotArchitect } from '../composables/usePlotArchitect'
+import { useCharacters } from '../composables/useCharacters'
 import { useI18n } from '../i18n'
 import type { NarrativeFormat } from '../types/api'
 
@@ -19,36 +20,56 @@ const {
   setFormat,
 } = useNarrativeWriter()
 
-const { fetchOutlines, outlines } = usePlotArchitect()
+const { fetchOutlines, outlines, selectOutline, selectedOutline } = usePlotArchitect()
+const { fetchCharacters, characters } = useCharacters()
 
 const selectedPlotId = ref('')
 
 onMounted(() => {
   fetchOutlines()
+  fetchCharacters()
 })
 
-watch(selectedPlotId, (newId) => {
+watch(selectedPlotId, async (newId) => {
   if (newId) {
     fetchTitles(newId)
+    await selectOutline(newId)
   }
 })
 
+function getSceneIds(): string[] {
+  if (!selectedOutline.value) return []
+  const ids: string[] = []
+  for (const act of selectedOutline.value.acts) {
+    for (const scene of act.scenes) {
+      ids.push(scene.id)
+    }
+  }
+  return ids
+}
+
+function getCharacterIds(): string[] {
+  return characters.value.map((c) => c.id)
+}
+
 function handleGenerate(): void {
   if (!selectedPlotId.value) return
-  generate(selectedPlotId.value, format.value)
+  const sceneIds = getSceneIds()
+  const characterIds = getCharacterIds()
+  generate(sceneIds, characterIds, format.value)
 }
 
 function handleToggleFormat(fmt: NarrativeFormat): void {
   setFormat(fmt)
   if (output.value) {
-    generate(selectedPlotId.value, fmt)
+    const sceneIds = getSceneIds()
+    const characterIds = getCharacterIds()
+    generate(sceneIds, characterIds, fmt)
   }
 }
 
 function handleExport(): void {
-  if (output.value) {
-    exportOutput(output.value.id, format.value)
-  }
+  exportOutput(format.value)
 }
 
 function handleSelectTitle(title: string): void {
@@ -63,9 +84,13 @@ function handleSelectTitle(title: string): void {
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-bold text-gray-100">{{ t('writer.title') }}</h1>
     </div>
+
+    <!-- Error banner -->
     <div v-if="error" class="bg-red-900/20 border border-red-800 rounded-lg p-3 text-sm text-red-400">
       {{ error }}
     </div>
+
+    <!-- Selection + Generate bar -->
     <div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
       <div class="flex items-end gap-4">
         <div class="flex-1">
@@ -93,6 +118,8 @@ function handleSelectTitle(title: string): void {
         </button>
       </div>
     </div>
+
+    <!-- Title candidates -->
     <div v-if="titleCandidates.length > 0" class="bg-gray-900 rounded-lg border border-gray-800 p-4">
       <h3 class="text-sm font-semibold text-gray-200 mb-3">{{ t('writer.title_candidates') }}</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -111,6 +138,8 @@ function handleSelectTitle(title: string): void {
         </button>
       </div>
     </div>
+
+    <!-- Preview -->
     <WritingPreview
       :output="output"
       :format="format"

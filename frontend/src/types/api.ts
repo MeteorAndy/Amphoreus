@@ -40,43 +40,55 @@ export interface ChatResponse {
   world_state?: WorldState
 }
 
-export interface Relationship {
-  character_id: string
-  character_name: string
-  relationship_type: string
-  strength: number
+// ---------------------------------------------------------------------------
+// Character types (matches backend app.models.character)
+// ---------------------------------------------------------------------------
+
+export interface Big5 {
+  openness: number
+  conscientiousness: number
+  extraversion: number
+  agreeableness: number
+  neuroticism: number
+}
+
+export interface Personality {
+  big5: Big5
+  mbti: string
+  core_traits: string[]
+  emotional_pattern: string
 }
 
 export interface CharacterProfile {
   id: string
   name: string
-  age?: number
   role: string
-  traits: string[]
-  background: string
-  goals: string[]
-  appearance?: string
-  relationships: Relationship[]
+  appearance: string
+  personality: Personality
+  core_desire: string
+  deep_fear: string
+  voice_sample: string
+  secrets: string[]
+  knowledge_scope: string[]
+  arc_stage: string
+  created_at: string
+  updated_at: string
 }
 
-export interface CreateCharacterRequest {
-  name: string
-  age?: number
-  role: string
-  traits: string[]
-  background: string
-  goals: string[]
-  appearance?: string
+export interface Relationship {
+  from_id: string
+  to_id: string
+  rel_type: string
+  strength: number
+  description: string
+  established_event: string
 }
 
-export interface UpdateCharacterRequest {
-  name?: string
-  age?: number
-  role?: string
-  traits?: string[]
-  background?: string
-  goals?: string[]
-  appearance?: string
+export interface PathStep {
+  from_id: string
+  to_id: string
+  rel_type: string
+  description: string
 }
 
 export interface RelationshipRequest {
@@ -86,14 +98,40 @@ export interface RelationshipRequest {
   strength: number
 }
 
-export interface Act {
-  id: string
-  number: number
-  title: string
-  summary: string
-  scenes: SceneSpec[]
+export interface NetworkData {
+  nodes: Record<string, unknown>[]
+  edges: Record<string, unknown>[]
 }
 
+// ---------------------------------------------------------------------------
+// Plot types (matches backend PlotOutlineResponse / PlotOutline)
+// ---------------------------------------------------------------------------
+
+export interface PlotOutlineResponse {
+  plot_id: string
+  structure: string
+  acts: ActResponse[]
+  character_arcs: Record<string, string[]>
+}
+
+export interface ActResponse {
+  name: string
+  description: string
+  scenes: SceneSpecResponse[]
+}
+
+export interface SceneSpecResponse {
+  id: string
+  title: string
+  location: string
+  cast: string[]
+  conflict: string
+  goal: string
+  expected_outcome: string
+  causal_chain: string[]
+}
+
+// Display types (view-layer, mapped from API responses)
 export interface PlotOutline {
   id: string
   title: string
@@ -102,10 +140,12 @@ export interface PlotOutline {
   acts: Act[]
 }
 
-export interface CreateOutlineRequest {
+export interface Act {
+  id: string
+  number: number
   title: string
-  description: string
-  structure: string
+  summary: string
+  scenes: SceneSpec[]
 }
 
 export interface SceneSpec {
@@ -118,6 +158,12 @@ export interface SceneSpec {
   order: number
 }
 
+export interface CreateOutlineRequest {
+  title: string
+  description: string
+  structure: string
+}
+
 export interface CreateSceneRequest {
   title: string
   description: string
@@ -126,6 +172,10 @@ export interface CreateSceneRequest {
   act_id: string
   order: number
 }
+
+// ---------------------------------------------------------------------------
+// Scene / Round types (matches backend scene_engine.types)
+// ---------------------------------------------------------------------------
 
 export interface SceneRound {
   round_number: number
@@ -178,6 +228,10 @@ export interface InterventionRequest {
   intervention: string
 }
 
+// ---------------------------------------------------------------------------
+// Writer types (matches backend narrative_writer)
+// ---------------------------------------------------------------------------
+
 export type NarrativeFormat = 'novel' | 'screenplay'
 
 export interface Chapter {
@@ -205,6 +259,27 @@ export interface GenerateRequest {
   format: NarrativeFormat
 }
 
+export interface ConvertRequest {
+  scene_ids: string[]
+  character_ids: string[]
+  format: string
+  narrative_voice: string
+  enhance: boolean
+  chapter_title: string | null
+}
+
+export interface ConvertResponse {
+  content: string
+  format: string
+  word_count: number
+  scene_count: number
+  export_formats: string[]
+}
+
+// ---------------------------------------------------------------------------
+// Guardian types
+// ---------------------------------------------------------------------------
+
 export interface GuardianValidationRequest {
   content: string
   context: string
@@ -225,7 +300,10 @@ export interface ApiErrorResponse {
   detail: string
 }
 
+// ---------------------------------------------------------------------------
 // World Builder conversational API types
+// ---------------------------------------------------------------------------
+
 export type WorldBuildStage = 'rules' | 'locations' | 'factions' | 'timeline' | 'done'
 
 export interface WorldExtractedData {
@@ -243,4 +321,8 @@ export interface WorldBuildResponse {
   next_question: string
   extracted_data?: WorldExtractedData
   completeness: number
+}
+
+export interface TemplatesResponse {
+  templates: Record<string, string>
 }

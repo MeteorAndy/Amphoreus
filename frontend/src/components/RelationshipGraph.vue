@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
-import type { CharacterProfile, Relationship } from '../types/api'
+import type { CharacterProfile, NetworkData } from '../types/api'
 
 const props = defineProps<{
   characters: CharacterProfile[]
-  relationships: Relationship[]
+  networkData: NetworkData | null
 }>()
 
 const emit = defineEmits<{
@@ -48,20 +48,31 @@ const nodes = computed<Node[]>(() => {
 })
 
 const edges = computed<Edge[]>(() => {
-  const nodeIds = new Set(props.characters.map((c) => c.id))
-  return props.relationships
-    .filter((r) => nodeIds.has(r.character_id))
-    .map((r) => ({
-      source: r.character_id,
-      target: r.character_name,
-      strength: r.strength,
-      type: r.relationship_type,
-    }))
+  if (!props.networkData?.edges) return []
+  return props.networkData.edges.map((e: Record<string, unknown>) => ({
+    source: String(e.source || e.from_id || ''),
+    target: String(e.target || e.to_id || ''),
+    strength: Number(e.strength || e.weight || 0.5),
+    type: String(e.type || e.rel_type || ''),
+  }))
 })
 
 function getNodeCenter(nodeId: string): { x: number; y: number } | null {
   const node = nodes.value.find((n) => n.id === nodeId)
   return node ? { x: node.x, y: node.y } : null
+}
+
+function getEdgeTargetEndPos(edge: Edge): { x: number; y: number } {
+  // Default fallback
+  const target = nodes.value.find((n) => n.id === edge.target)
+  if (target) return { x: target.x, y: target.y }
+  // Try partial match
+  for (const node of nodes.value) {
+    if (edge.target.includes(node.id) || node.id.includes(edge.target)) {
+      return { x: node.x, y: node.y }
+    }
+  }
+  return { x: 0, y: 0 }
 }
 
 onMounted(() => {
@@ -92,8 +103,8 @@ onMounted(() => {
         :key="`edge-${idx}`"
         :x1="getNodeCenter(edge.source)?.x ?? 0"
         :y1="getNodeCenter(edge.source)?.y ?? 0"
-        :x2="0"
-        :y2="0"
+        :x2="getEdgeTargetEndPos(edge).x"
+        :y2="getEdgeTargetEndPos(edge).y"
         stroke="#4f46e5"
         :stroke-width="Math.max(1, edge.strength * 3)"
         stroke-opacity="0.5"

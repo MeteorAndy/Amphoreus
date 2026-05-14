@@ -1,17 +1,18 @@
 import { ref } from 'vue'
-import type { CharacterProfile, Relationship, CreateCharacterRequest, UpdateCharacterRequest, RelationshipRequest } from '../types/api'
+import type { CharacterProfile, NetworkData } from '../types/api'
 import {
+  generateCharacters as apiGenerateCharacters,
   listCharacters,
-  createCharacter as apiCreateCharacter,
   updateCharacter as apiUpdateCharacter,
   deleteCharacter as apiDeleteCharacter,
-  listRelationships,
+  refineCharacter as apiRefineCharacter,
+  getCharacterNetwork,
   createRelationship as apiCreateRelationship,
 } from '../api/client'
 
 export function useCharacters() {
   const characters = ref<CharacterProfile[]>([])
-  const relationships = ref<Relationship[]>([])
+  const networkData = ref<NetworkData | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const selectedCharacter = ref<CharacterProfile | null>(null)
@@ -28,20 +29,27 @@ export function useCharacters() {
     }
   }
 
-  async function createCharacter(data: CreateCharacterRequest): Promise<void> {
+  async function generateCharacters(worldId: string, count: number = 5): Promise<void> {
     loading.value = true
     error.value = null
     try {
-      const created = await apiCreateCharacter(data)
-      characters.value.push(created)
+      const generated = await apiGenerateCharacters(worldId, count)
+      // Merge generated characters into existing list, dedup by id
+      const existingIds = new Set(characters.value.map((c) => c.id))
+      for (const char of generated) {
+        if (!existingIds.has(char.id)) {
+          characters.value.push(char)
+          existingIds.add(char.id)
+        }
+      }
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to create character'
+      error.value = e instanceof Error ? e.message : 'Failed to generate characters'
     } finally {
       loading.value = false
     }
   }
 
-  async function updateCharacter(id: string, data: UpdateCharacterRequest): Promise<void> {
+  async function updateCharacter(id: string, data: Partial<CharacterProfile>): Promise<void> {
     error.value = null
     try {
       const updated = await apiUpdateCharacter(id, data)
@@ -64,25 +72,37 @@ export function useCharacters() {
     }
   }
 
-  async function fetchRelationships(): Promise<void> {
+  async function refineCharacter(charId: string, feedback: string): Promise<void> {
+    error.value = null
     try {
-      relationships.value = await listRelationships()
-    } catch {
-      relationships.value = []
+      const updated = await apiRefineCharacter(charId, feedback)
+      const idx = characters.value.findIndex((c) => c.id === charId)
+      if (idx !== -1) characters.value[idx] = updated
+      if (selectedCharacter.value?.id === charId) selectedCharacter.value = updated
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to refine character'
     }
   }
 
-  async function setRelationship(data: RelationshipRequest): Promise<void> {
+  async function fetchCharacterNetwork(charId: string): Promise<void> {
+    try {
+      networkData.value = await getCharacterNetwork(charId)
+    } catch {
+      networkData.value = null
+    }
+  }
+
+  async function buildRelationships(characterIds: string[]): Promise<void> {
     error.value = null
     try {
-      const rel = await apiCreateRelationship(data)
-      const idx = relationships.value.findIndex(
-        (r) => r.character_id === data.target_id,
-      )
-      if (idx !== -1) relationships.value[idx] = rel
-      else relationships.value.push(rel)
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to set relationship'
+      await apiCreateRelationship({
+        source_id: characterIds[0],
+        target_id: characterIds[1],
+        relationship_type: 'built',
+        strength: 0.5,
+      })
+    } catch {
+      // Relationship building may fail if there aren't enough characters; that's OK
     }
   }
 
@@ -92,16 +112,17 @@ export function useCharacters() {
 
   return {
     characters,
-    relationships,
+    networkData,
     loading,
     error,
     selectedCharacter,
     fetchCharacters,
-    createCharacter,
+    generateCharacters,
     updateCharacter,
     removeCharacter,
-    fetchRelationships,
-    setRelationship,
+    refineCharacter,
+    fetchCharacterNetwork,
+    buildRelationships,
     selectCharacter,
   }
 }

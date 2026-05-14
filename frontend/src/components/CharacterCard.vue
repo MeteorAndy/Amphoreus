@@ -39,25 +39,47 @@ function getInitials(name: string): string {
         <p class="text-xs text-gray-400 truncate">{{ character.role }}</p>
       </div>
     </div>
-    <div class="mt-3 flex flex-wrap gap-1">
+
+    <!-- Core traits -->
+    <div v-if="character.personality?.core_traits?.length" class="mt-3 flex flex-wrap gap-1">
       <span
-        v-for="trait in character.traits?.slice(0, 4)"
+        v-for="trait in character.personality.core_traits.slice(0, 4)"
         :key="trait"
         class="px-2 py-0.5 bg-gray-800 text-gray-300 text-xs rounded-full"
       >
         {{ trait }}
       </span>
       <span
-        v-if="character.traits && character.traits.length > 4"
+        v-if="character.personality.core_traits.length > 4"
         class="px-2 py-0.5 bg-gray-800 text-gray-500 text-xs rounded-full"
       >
-        +{{ character.traits.length - 4 }}
+        +{{ character.personality.core_traits.length - 4 }}
       </span>
     </div>
-    <div class="mt-2 flex items-center gap-3 text-xs text-gray-500">
-      <span>{{ character.relationships?.length || 0 }} relationships</span>
-      <span v-if="character.age">Age: {{ character.age }}</span>
+
+    <!-- Expanded details when selected -->
+    <div v-if="selected" class="mt-3 space-y-2 text-xs text-gray-400 border-t border-gray-800 pt-3">
+      <div v-if="character.core_desire">
+        <span class="text-gray-500">Desire: </span>{{ character.core_desire }}
+      </div>
+      <div v-if="character.deep_fear">
+        <span class="text-gray-500">Fear: </span>{{ character.deep_fear }}
+      </div>
+      <div v-if="character.voice_sample" class="italic text-gray-500">
+        "{{ character.voice_sample.slice(0, 100) }}{{ character.voice_sample.length > 100 ? '...' : '' }}"
+      </div>
+      <div v-if="character.personality?.mbti">
+        <span class="text-gray-500">MBTI: </span>{{ character.personality.mbti }}
+      </div>
+      <div v-if="character.arc_stage">
+        <span class="text-gray-500">Arc: </span>{{ character.arc_stage }}
+      </div>
     </div>
+
+    <div v-if="!selected && character.voice_sample" class="mt-2 text-xs text-gray-500 italic truncate">
+      "{{ character.voice_sample.slice(0, 60) }}{{ character.voice_sample.length > 60 ? '...' : '' }}"
+    </div>
+
     <div class="mt-2 flex gap-2">
       <button
         @click.stop="emit('edit', character)"

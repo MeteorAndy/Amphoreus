@@ -60,6 +60,9 @@ export function useWorldBuilder() {
       const state = await withRetry(() => finalizeWorldBuild(sessionId.value!))
       worldState.value = state
       finalized.value = true
+      if (state.world_id) {
+        localStorage.setItem('amphoreus-world-id', state.world_id)
+      }
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to finalize world'
     } finally {
@@ -134,6 +137,7 @@ export function useWorldBuilder() {
     error.value = null
     worldState.value = null
     finalized.value = false
+    localStorage.removeItem('amphoreus-world-id')
   }
 
   return {
