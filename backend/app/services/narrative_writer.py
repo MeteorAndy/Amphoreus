@@ -632,8 +632,9 @@ class PostProcessor:
         for line in lines:
             stripped = line.strip()
 
-            # Remove standalone markdown headings (lines starting with #)
-            if stripped.startswith("#"):
+            # Remove standalone markdown headings (lines starting with #),
+            # but KEEP the very first line if it starts with "# " — that's the title added by code
+            if stripped.startswith("#") and len(cleaned) > 0:
                 continue
 
             # Remove standalone separator lines

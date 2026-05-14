@@ -59,15 +59,15 @@
   },
   "hotPaths": [
     {
-      "path": ".claude\\worktrees\\the-world-story-engine\\backend\\app\\services\\narrative_writer.py",
-      "accessCount": 18,
-      "lastAccessed": 1778739081241,
+      "path": "backend\\app\\services\\narrative_writer.py",
+      "accessCount": 26,
+      "lastAccessed": 1778746305083,
       "type": "file"
     },
     {
-      "path": "backend\\app\\services\\narrative_writer.py",
-      "accessCount": 16,
-      "lastAccessed": 1778744455323,
+      "path": ".claude\\worktrees\\the-world-story-engine\\backend\\app\\services\\narrative_writer.py",
+      "accessCount": 18,
+      "lastAccessed": 1778739081241,
       "type": "file"
     },
     {
@@ -188,6 +188,36 @@
       "path": "C:\\Users\\AndyL\\.amphoreus\\output\\screenplay_zh.txt",
       "accessCount": 1,
       "lastAccessed": 1778741015134,
+      "type": "file"
+    },
+    {
+      "path": "C:\\Users\\AndyL\\.amphoreus\\output\\screenplay_v3.md",
+      "accessCount": 1,
+      "lastAccessed": 1778745969660,
+      "type": "file"
+    },
+    {
+      "path": "openspec\\changes\\fix-screenplay-format-and-depth\\proposal.md",
+      "accessCount": 1,
+      "lastAccessed": 1778746030684,
+      "type": "file"
+    },
+    {
+      "path": "openspec\\changes\\fix-screenplay-format-and-depth\\design.md",
+      "accessCount": 1,
+      "lastAccessed": 1778746055300,
+      "type": "file"
+    },
+    {
+      "path": "openspec\\changes\\fix-screenplay-format-and-depth\\specs\\narrative-writer\\spec.md",
+      "accessCount": 1,
+      "lastAccessed": 1778746080129,
+      "type": "file"
+    },
+    {
+      "path": "openspec\\changes\\fix-screenplay-format-and-depth\\tasks.md",
+      "accessCount": 1,
+      "lastAccessed": 1778746098833,
       "type": "file"
     }
   ],
