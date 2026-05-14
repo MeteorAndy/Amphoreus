@@ -2,8 +2,12 @@
 
 Public types:
   - WritingOptions, WrittenOutput
-  - NovelWriter (scene logs → literary prose)
-  - ScreenplayWriter (scene logs → screenplay format)
+  - ChapterSpec, ChapterPlan
+  - TitleGenerator (LLM title candidate generation)
+  - ChapterPlanner (scene-to-chapter mapping)
+  - PostProcessor (text normalisation per language)
+  - NovelWriter (scene logs -> literary prose, chapter by chapter)
+  - ScreenplayWriter (scene logs -> screenplay format)
   - NarrativeWriter (facade dispatching to the correct writer)
 
 DI: LLMClient + MemoryManager injected at construction.
@@ -18,10 +22,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from app.core.i18n import get_lang, Lang
+from app.core.i18n import get_lang, Lang, t
 from app.core.llm_client import LLMClient
 from app.models.character import CharacterProfile
 from app.services.memory import MemoryManager
+from app.services.plot_architect import PlotOutline, SceneSpec
 from app.services.scene_engine.resolution import SceneArchive
 from app.services.scene_engine.types import EnvironmentUpdate, Reaction, RoundEntry
 
@@ -48,28 +53,154 @@ class WrittenOutput:
     format: str
     word_count: int
     scene_count: int
+    title: str = ""
+    title_candidates: list[str] = field(default_factory=list)
     export_formats: list[str] = field(default_factory=list)
 
 
+@dataclass
+class ChapterSpec:
+    """One chapter in a chapter plan."""
+
+    number: int
+    title: str
+    scene_ids: list[str]
+    summary: str
+
+
+@dataclass
+class ChapterPlan:
+    """Complete chapter plan — groups scenes into chapters."""
+
+    chapters: list[ChapterSpec] = field(default_factory=list)
+
+    @property
+    def is_short_story(self) -> bool:
+        total = sum(len(c.scene_ids) for c in self.chapters)
+        return total < 3
+
+
 # ---------------------------------------------------------------------------
-# System prompts
+# Prompts
 # ---------------------------------------------------------------------------
 
-_NOVEL_SYSTEM_PROMPT_TEMPLATE_EN = """\
-You are a literary novelist. Transform the following scene log into vivid narrative prose.
-Narrative voice: {voice}.
-Include sensory details, internal monologue, and descriptive passages.
-Preserve all dialogue and key actions exactly as recorded.
-Write in paragraphs with proper literary pacing. Do NOT add any meta-commentary."""
+# --- Title generation ---
 
-_NOVEL_SYSTEM_PROMPT_TEMPLATE_ZH = """\
-你是一位文学小说家。将以下场景日志转换为生动的叙事散文。
-叙事视角：{voice}。
-包含感官细节、内心独白和描写段落。
-保留所有对话和关键动作，精确记录。
-以段落形式书写，保持适当的文学节奏。不要添加任何元评论。
+_TITLE_SYSTEM_PROMPT_ZH = """\
+你是一位小说标题生成专家。根据以下世界观总结、角色档案和剧情大纲，\
+生成3到5个小说标题候选。
 
-重要提示：所有输出必须使用简体中文。对话要听起来像真实的中文口语。描述要富有中国文学韵味。"""
+风格要求：金庸/古龙/网络文学风格，富有中国文学韵味。
+每个标题应体现故事的核心冲突或主题。
+标题应简洁有力，富有吸引力和市场价值。
+
+你必须严格按照以下 JSON 格式回复，且只回复 JSON：
+["标题1", "标题2", "标题3"]"""
+
+_TITLE_SYSTEM_PROMPT_EN = """\
+You are a novel title generation expert. Based on the following world summary, \
+character profiles, and plot outline, generate 3 to 5 title candidates.
+
+Style: literary, suspense, or direct — genre-appropriate.
+Each title should reflect the core conflict or theme.
+Titles should be compelling, memorable, and marketable.
+
+You MUST respond ONLY with valid JSON in this format:
+["Title 1", "Title 2", "Title 3"]"""
+
+# --- Chapter planning ---
+
+_CHAPTER_PLAN_SYSTEM_PROMPT_ZH = """\
+你是一位故事引擎的章节规划师。根据以下场景列表和角色档案，\
+将场景合理地分组到章节中。
+
+要求：
+1. 每个章节应有清晰的戏剧主题和叙事弧线
+2. 每章包含2到4个场景（根据字数目标自动调整）
+3. 章节标题格式：第X章 篇名
+4. 目标字数：正常2500-4000字/章（短篇故事800-1500字）
+   - 每场景预估输出约1000字
+   - 根据总场景数计算所需章节数
+5. 如果总场景数少于3个，视为短篇故事，只设一章
+
+你必须严格按照以下 JSON 格式回复，且只回复 JSON：
+{
+  "chapters": [
+    {
+      "number": 1,
+      "title": "篇名",
+      "scene_ids": ["scene_1", "scene_2"],
+      "summary": "本章内容概述（使用中文）"
+    }
+  ]
+}"""
+
+_CHAPTER_PLAN_SYSTEM_PROMPT_EN = """\
+You are a chapter planner for a story engine. Based on the following scene list \
+and character profiles, group scenes into well-structured chapters.
+
+Requirements:
+1. Each chapter should have a clear dramatic theme and narrative arc
+2. Each chapter should contain 2 to 4 scenes (adjust based on word count target)
+3. Chapter title format: Chapter X: Title
+4. Target word count: 2000-3500 words/chapter (short story 800-1500 words)
+   - Estimated output per scene: ~600 words
+   - Calculate needed chapters based on total scene count
+5. If fewer than 3 total scenes, treat as a short story — single chapter only
+
+You MUST respond ONLY with valid JSON in this format:
+{
+  "chapters": [
+    {
+      "number": 1,
+      "title": "Chapter Title",
+      "scene_ids": ["scene_1", "scene_2"],
+      "summary": "Summary of this chapter's content"
+    }
+  ]
+}"""
+
+# --- Chapter writing (system) ---
+
+_CHAPTER_WRITE_SYSTEM_PROMPT_ZH = """\
+你是一位文学小说家。根据给定的章节规划、场景日志和角色档案，\
+写出完整的文学章节。
+
+写作流程：
+1. 首先像读者一样审阅章节计划——找出逻辑漏洞、节奏问题、改进方向
+2. 在<思考>标签中写出你的分析
+3. 在<story>标签中写出完整的章节正文
+
+写作要求：
+- 生动的语言，富有中国文学韵味
+- 人物深度——通过行动与对话展现角色内心世界
+- 出人意料的 climax——让高潮有冲击力和感染力
+- 节奏控制——张弛有度，长短句交替
+- 场景间的自然过渡——必须用过渡段落连接各场景，不能简单拼接
+- 保留所有关键对话和动作，不得遗漏重要情节
+- 叙事视角：{voice}"""
+
+_CHAPTER_WRITE_SYSTEM_PROMPT_EN = """\
+You are a literary novelist. Based on the given chapter plan, scene logs, \
+and character profiles, write a complete literary chapter.
+
+Writing process:
+1. First, review the chapter plan as a reader — identify logical gaps, pacing \
+issues, improvement areas
+2. Write analysis in <thinking> tag
+3. Write full chapter prose in <story> tag
+
+Requirements:
+- Vivid language with literary quality
+- Character depth — reveal inner worlds through action and dialogue
+- Unexpected climax — make the peak impactful and resonant
+- Pacing control — vary rhythm with sentence length and structure
+- Natural scene transitions — connect scenes with transitional paragraphs, \
+do not simply concatenate
+- Preserve all key dialogue and actions — do not omit important plot points
+- Narrative voice: {voice}"""
+
+# --- Enhance prompts (kept from original) ---
 
 _NOVEL_ENHANCE_PROMPT_EN = """\
 Review the narrative above and enhance it for:
@@ -115,8 +246,7 @@ _SCREENPLAY_SYSTEM_PROMPT_ZH = """\
 - 场景标题中的地点名称使用中文
 - 对话和动作描述使用简体中文
 - 角色名保持全大写格式
-- 格式标记（内景/外景等）可以使用中文
-"""
+- 格式标记（内景/外景等）可以使用中文"""
 
 _SCREENPLAY_ENHANCE_PROMPT_EN = """\
 Review the screenplay above for formatting consistency and quality:
@@ -142,11 +272,20 @@ _SCREENPLAY_ENHANCE_PROMPT_ZH = """\
 
 重要提示：所有对话和动作描述使用简体中文。"""
 
+# --- Prompt lookup ---
 
 _NARRATIVE_PROMPTS = {
-    "novel_system": {
-        Lang.ZH: _NOVEL_SYSTEM_PROMPT_TEMPLATE_ZH,
-        Lang.EN: _NOVEL_SYSTEM_PROMPT_TEMPLATE_EN,
+    "title_system": {
+        Lang.ZH: _TITLE_SYSTEM_PROMPT_ZH,
+        Lang.EN: _TITLE_SYSTEM_PROMPT_EN,
+    },
+    "chapter_plan_system": {
+        Lang.ZH: _CHAPTER_PLAN_SYSTEM_PROMPT_ZH,
+        Lang.EN: _CHAPTER_PLAN_SYSTEM_PROMPT_EN,
+    },
+    "chapter_write_system": {
+        Lang.ZH: _CHAPTER_WRITE_SYSTEM_PROMPT_ZH,
+        Lang.EN: _CHAPTER_WRITE_SYSTEM_PROMPT_EN,
     },
     "novel_enhance": {
         Lang.ZH: _NOVEL_ENHANCE_PROMPT_ZH,
@@ -163,8 +302,16 @@ _NARRATIVE_PROMPTS = {
 }
 
 
-def _get_novel_system_prompt() -> str:
-    return _NARRATIVE_PROMPTS["novel_system"][get_lang()]
+def _get_title_prompt() -> str:
+    return _NARRATIVE_PROMPTS["title_system"][get_lang()]
+
+
+def _get_chapter_plan_prompt() -> str:
+    return _NARRATIVE_PROMPTS["chapter_plan_system"][get_lang()]
+
+
+def _get_chapter_write_system_prompt() -> str:
+    return _NARRATIVE_PROMPTS["chapter_write_system"][get_lang()]
 
 
 def _get_novel_enhance_prompt() -> str:
@@ -177,6 +324,21 @@ def _get_screenplay_system_prompt() -> str:
 
 def _get_screenplay_enhance_prompt() -> str:
     return _NARRATIVE_PROMPTS["screenplay_enhance"][get_lang()]
+
+
+def _get_chapter_write_target() -> str:
+    lang = get_lang()
+    if lang == Lang.ZH:
+        return "2500-4000字"
+    return "2000-3500 words"
+
+
+def _get_chapter_write_short_target() -> str:
+    lang = get_lang()
+    if lang == Lang.ZH:
+        return "800-1500字"
+    return "800-1500 words"
+
 
 # ---------------------------------------------------------------------------
 # Archive parsing helpers
@@ -230,64 +392,306 @@ def _load_scene_archive(memory: MemoryManager, scene_id: str) -> SceneArchive:
     return _parse_archive_json(entry.l2)
 
 
+def _flatten_scenes(outline: PlotOutline) -> dict[str, SceneSpec]:
+    """Flatten all SceneSpecs from a PlotOutline into a scene_id -> SceneSpec map."""
+    result: dict[str, SceneSpec] = {}
+    for act in outline.acts:
+        for scene in act.scenes:
+            result[scene.id] = scene
+    return result
+
+
+def _extract_chapter_story(raw: str) -> str:
+    """Extract content between <story>...</story> tags from an LLM chapter response.
+
+    Falls back to the full response with any <thinking>/<思考> blocks removed.
+    """
+    story_match = re.search(r"<story>(.*?)</story>", raw, re.DOTALL)
+    if story_match:
+        return story_match.group(1).strip()
+    cleaned = re.sub(r"<thinking>.*?</thinking>", "", raw, flags=re.DOTALL)
+    cleaned = re.sub(r"<思考>.*?</思考>", "", cleaned, flags=re.DOTALL)
+    return cleaned.strip()
+
+
+# ---------------------------------------------------------------------------
+# TitleGenerator
+# ---------------------------------------------------------------------------
+
+
+class TitleGenerator:
+    """Generates 3-5 novel/screenplay title candidates via LLM.
+
+    ZH mode: Chinese titles (金庸/古龙/网络文学风格).
+    EN mode: English titles (literary/suspense/direct).
+    """
+
+    def __init__(self, llm: LLMClient) -> None:
+        self._llm = llm
+
+    async def generate_titles(
+        self,
+        world_summary: str,
+        characters: list[CharacterProfile],
+        plot_outline: PlotOutline | None = None,
+    ) -> list[str]:
+        """Call LLM and return 3-5 title candidates.
+
+        If plot_outline is None, title generation uses only world and character info.
+        """
+        char_json = json.dumps(
+            [
+                {"name": c.name, "role": c.role, "core_desire": c.core_desire, "deep_fear": c.deep_fear}
+                for c in characters
+            ],
+            indent=2,
+            ensure_ascii=False,
+        )
+
+        outline_text = ""
+        if plot_outline:
+            parts: list[str] = []
+            for act in plot_outline.acts:
+                parts.append(f"{act.name}: {act.description}")
+                for scene in act.scenes:
+                    parts.append(f"  - {scene.title}: {scene.conflict}")
+            outline_text = "\n".join(parts)
+
+        user_content = (
+            f"World summary:\n{world_summary}\n\n"
+            f"Characters:\n{char_json}\n\n"
+            f"Plot outline:\n{outline_text if outline_text else '(not provided)'}\n\n"
+            "Generate 3-5 title candidates."
+        )
+
+        messages: list[dict[str, str]] = [
+            {"role": "system", "content": _get_title_prompt()},
+            {"role": "user", "content": user_content},
+        ]
+
+        result = await self._llm.chat_json(messages, temperature=0.8)
+        if isinstance(result, list):
+            return [str(item) for item in result]
+        for val in result.values():
+            if isinstance(val, list):
+                return [str(item) for item in val]
+        return [str(result)]
+
+
+# ---------------------------------------------------------------------------
+# ChapterPlanner
+# ---------------------------------------------------------------------------
+
+
+class ChapterPlanner:
+    """Plans scene-to-chapter mapping using LLM.
+
+    Output: ChapterPlan with ChapterSpec entries describing grouping, titles,
+    and summaries. Word count targeting per the spec.
+    """
+
+    def __init__(self, llm: LLMClient) -> None:
+        self._llm = llm
+
+    async def plan_chapters(
+        self,
+        plot_outline: PlotOutline,
+        characters: list[CharacterProfile],
+    ) -> ChapterPlan:
+        """Build a chapter plan from the plot outline and character profiles."""
+        scenes_json = json.dumps(
+            [
+                {
+                    "id": s.id,
+                    "title": s.title,
+                    "location": s.location,
+                    "conflict": s.conflict,
+                    "goal": s.goal,
+                    "cast": s.cast,
+                }
+                for act in plot_outline.acts
+                for s in act.scenes
+            ],
+            indent=2,
+            ensure_ascii=False,
+        )
+
+        char_json = json.dumps(
+            [{"name": c.name, "role": c.role, "core_desire": c.core_desire} for c in characters],
+            indent=2,
+            ensure_ascii=False,
+        )
+
+        user_content = (
+            f"Scene list:\n{scenes_json}\n\n"
+            f"Characters:\n{char_json}\n\n"
+            "Plan the chapter structure."
+        )
+
+        messages: list[dict[str, str]] = [
+            {"role": "system", "content": _get_chapter_plan_prompt()},
+            {"role": "user", "content": user_content},
+        ]
+
+        result = await self._llm.chat_json(messages, temperature=0.5)
+        raw_chapters: list[dict[str, Any]] = result.get("chapters", [])
+        chapters = [
+            ChapterSpec(
+                number=ch.get("number", i + 1),
+                title=ch.get("title", ""),
+                scene_ids=list(ch.get("scene_ids", [])),
+                summary=ch.get("summary", ""),
+            )
+            for i, ch in enumerate(raw_chapters)
+        ]
+        return ChapterPlan(chapters=chapters)
+
+
+# ---------------------------------------------------------------------------
+# PostProcessor
+# ---------------------------------------------------------------------------
+
+
+class PostProcessor:
+    """Normalises prose text per language conventions.
+
+    ZH: Chinese quotes, ellipsis, em-dash, paragraph spacing.
+    EN: Standard English punctuation and spacing.
+    """
+
+    @staticmethod
+    def process(text: str) -> str:
+        """Apply language-appropriate normalisation to the given text."""
+        if get_lang() == Lang.ZH:
+            return PostProcessor._process_zh(text)
+        return PostProcessor._process_en(text)
+
+    @staticmethod
+    def _process_zh(text: str) -> str:
+        text = re.sub(r"\.{3,}", "……", text)
+        text = re.sub(r"。{3,}", "……", text)
+        text = re.sub(r"-{3,}", "——", text)
+        text = re.sub(r"—{1,2}", "——", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()
+
+    @staticmethod
+    def _process_en(text: str) -> str:
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = re.sub(r" {2,}", " ", text)
+        return text.strip()
+
+
 # ---------------------------------------------------------------------------
 # Novel writer
 # ---------------------------------------------------------------------------
 
 
 class NovelWriter:
-    """Converts scene logs to novel-style literary prose.
+    """Writes novel-format prose chapter by chapter via LLM.
 
-    One responsibility: take scene archives + character profiles + options
-    and produce novel-format narrative text via LLM calls.
+    Each chapter call receives its scene logs, chapter plan metadata, and
+    adjacent chapter summaries for transition context.
     """
 
     def __init__(self, llm: LLMClient) -> None:
         self._llm = llm
 
-    async def convert(
+    async def write_chapters(
         self,
+        chapter_plan: ChapterPlan,
         scene_archives: list[SceneArchive],
         characters: list[CharacterProfile],
         options: WritingOptions,
-    ) -> WrittenOutput:
-        """Convert scene archives to novel-format prose."""
+        scene_specs: dict[str, SceneSpec] | None = None,
+    ) -> list[str]:
+        """Write each chapter as prose.  Returns one string per chapter."""
         char_by_id = {c.id: c for c in characters}
+        archive_by_id = {a.scene_id: a for a in scene_archives}
         chapters: list[str] = []
 
-        for archive in scene_archives:
-            scene_log = self._format_scene_log(archive, char_by_id)
-            scene_prose = await self._generate_novel_prose(scene_log, options)
+        for i, spec in enumerate(chapter_plan.chapters):
+            scene_logs = self._build_chapter_scene_logs(
+                spec, archive_by_id, char_by_id, scene_specs
+            )
+
+            prev_summary = chapter_plan.chapters[i - 1].summary if i > 0 else ""
+            next_summary = (
+                chapter_plan.chapters[i + 1].summary
+                if i < len(chapter_plan.chapters) - 1
+                else ""
+            )
+
+            word_count_target = (
+                _get_chapter_write_short_target()
+                if chapter_plan.is_short_story
+                else _get_chapter_write_target()
+            )
+
+            chapter_prose = await self._generate_chapter(
+                spec=spec,
+                scene_logs=scene_logs,
+                prev_summary=prev_summary,
+                next_summary=next_summary,
+                word_count_target=word_count_target,
+                options=options,
+            )
+
             if options.enhance:
-                scene_prose = await self._enhance_prose(scene_prose)
-            chapters.append(scene_prose)
+                chapter_prose = await self._enhance_prose(chapter_prose)
 
-        content = self._assemble_novel(chapters, options.chapter_title)
+            chapters.append(chapter_prose)
 
-        return WrittenOutput(
-            content=content,
-            format="novel",
-            word_count=len(content.split()),
-            scene_count=len(scene_archives),
-            export_formats=["md", "txt"],
-        )
+        return chapters
 
     # ------------------------------------------------------------------
-    # Internal: LLM calls
+    # Internal: chapter LLM call
     # ------------------------------------------------------------------
 
-    async def _generate_novel_prose(
-        self, scene_log: str, options: WritingOptions
+    async def _generate_chapter(
+        self,
+        spec: ChapterSpec,
+        scene_logs: str,
+        prev_summary: str,
+        next_summary: str,
+        word_count_target: str,
+        options: WritingOptions,
     ) -> str:
-        """Send a scene log to the LLM and return narrative prose."""
+        """Send a chapter prompt to the LLM and return the prose."""
         voice_label = options.narrative_voice.replace("_", " ")
-        system_prompt = _get_novel_system_prompt().format(voice=voice_label)
+        system_prompt = _get_chapter_write_system_prompt().format(voice=voice_label)
+
+        lang = get_lang()
+        if lang == Lang.ZH:
+            user_prompt = (
+                f"## 章节信息\n\n"
+                f"标题：第{spec.number}章 {spec.title}\n"
+                f"概述：{spec.summary}\n"
+                f"目标字数：{word_count_target}\n\n"
+                f"上一章概述：{prev_summary if prev_summary else '（无）'}\n"
+                f"下一章概述：{next_summary if next_summary else '（无）'}\n\n"
+                f"## 场景日志\n\n{scene_logs}\n\n"
+                f"请写出完整的章节正文。"
+            )
+        else:
+            user_prompt = (
+                f"## Chapter Info\n\n"
+                f"Title: Chapter {spec.number}: {spec.title}\n"
+                f"Summary: {spec.summary}\n"
+                f"Target word count: {word_count_target}\n\n"
+                f"Previous chapter summary: {prev_summary if prev_summary else '(none)'}\n"
+                f"Next chapter summary: {next_summary if next_summary else '(none)'}\n\n"
+                f"## Scene Logs\n\n{scene_logs}\n\n"
+                f"Write the complete chapter."
+            )
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": scene_log},
+            {"role": "user", "content": user_prompt},
         ]
-        return await self._llm.chat(messages)
+
+        raw = await self._llm.chat(messages)
+        return _extract_chapter_story(raw)
 
     async def _enhance_prose(self, prose: str) -> str:
         """Second-pass LLM call for pacing, sensory depth, and dialogue polish."""
@@ -298,64 +702,61 @@ class NovelWriter:
         return await self._llm.chat(messages)
 
     # ------------------------------------------------------------------
-    # Internal: formatting
+    # Internal: scene log formatting
     # ------------------------------------------------------------------
 
-    def _format_scene_log(
-        self,
-        archive: SceneArchive,
-        char_by_id: dict[str, CharacterProfile],
-    ) -> str:
-        """Format scene rounds + atmosphere into a readable log for the LLM."""
-        lines: list[str] = []
-        lines.append(f"Scene: {archive.scene_id}")
-        lines.append(f"Atmosphere: {archive.final_environment.atmosphere}")
-        if archive.final_environment.background_activity:
-            lines.append(
-                f"Background: {archive.final_environment.background_activity}"
-            )
-        lines.append("")
-
-        for entry in archive.rounds:
-            lines.append(f"--- Round {entry.round_num} ---")
-            lines.append(f"Actor: {entry.actor_name}")
-
-            if entry.dialogue:
-                lines.append(f'Dialogue: "{entry.dialogue}"')
-            if entry.action:
-                lines.append(f"Action: {entry.action}")
-            if entry.inner_thought:
-                lines.append(f"Inner thought: {entry.inner_thought}")
-            if entry.emotion:
-                lines.append(f"Emotion: {entry.emotion}")
-
-            for reaction in entry.reactions:
-                lines.append(
-                    f"  {reaction.reactor_name} reacts: "
-                    f"{reaction.visible_reaction}"
-                )
-                if reaction.inner_thought:
-                    lines.append(
-                        f"    ({reaction.reactor_name} thinks: "
-                        f"{reaction.inner_thought})"
-                    )
-            lines.append("")
-
-        return "\n".join(lines)
-
     @staticmethod
-    def _assemble_novel(
-        chapters: list[str], title: str | None
+    def _build_chapter_scene_logs(
+        spec: ChapterSpec,
+        archive_by_id: dict[str, SceneArchive],
+        char_by_id: dict[str, CharacterProfile],
+        scene_specs: dict[str, SceneSpec] | None,
     ) -> str:
-        """Combine chapter prose into a single markdown document."""
-        title_text = title or "Generated Narrative"
-        parts: list[str] = [f"# {title_text}\n"]
+        """Build combined scene logs for a chapter."""
+        all_lines: list[str] = []
 
-        for i, chapter_prose in enumerate(chapters, 1):
-            label = f"Chapter {i}" if len(chapters) > 1 else "Part I"
-            parts.append(f"\n## {label}\n\n{chapter_prose}")
+        for scene_id in spec.scene_ids:
+            archive = archive_by_id.get(scene_id)
+            if archive is None:
+                all_lines.append(f"## Scene: {scene_id} [no archive data]")
+                all_lines.append("")
+                continue
 
-        return "".join(parts)
+            sspec = scene_specs.get(scene_id) if scene_specs else None
+            if sspec:
+                all_lines.append(f"## Scene: {scene_id} - {sspec.title}")
+                all_lines.append(f"Location: {sspec.location}")
+            else:
+                all_lines.append(f"## Scene: {scene_id}")
+            all_lines.append(f"Atmosphere: {archive.final_environment.atmosphere}")
+            if archive.final_environment.background_activity:
+                all_lines.append(
+                    f"Background: {archive.final_environment.background_activity}"
+                )
+            all_lines.append("")
+
+            for entry in archive.rounds:
+                all_lines.append(f"--- Round {entry.round_num} ---")
+                all_lines.append(f"Actor: {entry.actor_name}")
+                if entry.dialogue:
+                    all_lines.append(f'Dialogue: "{entry.dialogue}"')
+                if entry.action:
+                    all_lines.append(f"Action: {entry.action}")
+                if entry.inner_thought:
+                    all_lines.append(f"Inner thought: {entry.inner_thought}")
+                if entry.emotion:
+                    all_lines.append(f"Emotion: {entry.emotion}")
+                for reaction in entry.reactions:
+                    all_lines.append(
+                        f"  {reaction.reactor_name} reacts: {reaction.visible_reaction}"
+                    )
+                    if reaction.inner_thought:
+                        all_lines.append(
+                            f"    ({reaction.reactor_name} thinks: {reaction.inner_thought})"
+                        )
+                all_lines.append("")
+
+        return "\n".join(all_lines)
 
 
 # ---------------------------------------------------------------------------
@@ -366,8 +767,7 @@ class NovelWriter:
 class ScreenplayWriter:
     """Converts scene logs to standard screenplay format.
 
-    One responsibility: take scene archives + character profiles + options
-    and produce screenplay-format text via LLM calls.
+    ZH scene headings use [内景]/[外景]; EN uses [INT.]/[EXT.].
     """
 
     def __init__(self, llm: LLMClient) -> None:
@@ -378,21 +778,29 @@ class ScreenplayWriter:
         scene_archives: list[SceneArchive],
         characters: list[CharacterProfile],
         options: WritingOptions,
+        scene_specs: dict[str, SceneSpec] | None = None,
     ) -> WrittenOutput:
         """Convert scene archives to screenplay-format text."""
         char_by_id = {c.id: c for c in characters}
         pages: list[str] = []
 
         for archive in scene_archives:
-            scene_log = self._format_scene_log(archive, char_by_id)
+            location = ""
+            if scene_specs and archive.scene_id in scene_specs:
+                location = scene_specs[archive.scene_id].location
+            scene_log = self._format_scene_log(archive, char_by_id, location)
             formatted_scene = await self._generate_screenplay(scene_log)
             if options.enhance:
-                formatted_scene = await self._enhance_screenplay(
-                    formatted_scene
-                )
+                formatted_scene = await self._enhance_screenplay(formatted_scene)
             pages.append(formatted_scene)
 
-        content = self._assemble_screenplay(pages)
+        lang = get_lang()
+        if lang == Lang.ZH:
+            title = "剧本"
+        else:
+            title = "SCREENPLAY"
+
+        content = self._assemble_screenplay(title, pages)
 
         return WrittenOutput(
             content=content,
@@ -426,14 +834,17 @@ class ScreenplayWriter:
     # Internal: formatting
     # ------------------------------------------------------------------
 
+    @staticmethod
     def _format_scene_log(
-        self,
         archive: SceneArchive,
         char_by_id: dict[str, CharacterProfile],
+        location: str = "",
     ) -> str:
         """Format scene rounds into a readable log for screenplay conversion."""
         lines: list[str] = []
         lines.append(f"Scene: {archive.scene_id}")
+        if location:
+            lines.append(f"Location: {location}")
         lines.append(f"Atmosphere: {archive.final_environment.atmosphere}")
         if archive.final_environment.background_activity:
             lines.append(
@@ -444,7 +855,6 @@ class ScreenplayWriter:
         for entry in archive.rounds:
             lines.append(f"--- Round {entry.round_num} ---")
             lines.append(f"Character: {entry.actor_name}")
-
             if entry.dialogue:
                 lines.append(f'Says: "{entry.dialogue}"')
             if entry.action:
@@ -453,20 +863,17 @@ class ScreenplayWriter:
                 lines.append(f"Thinks: {entry.inner_thought}")
             if entry.emotion:
                 lines.append(f"Emotion: {entry.emotion}")
-
             for reaction in entry.reactions:
                 lines.append(
-                    f"  {reaction.reactor_name} reacts: "
-                    f"{reaction.visible_reaction}"
+                    f"  {reaction.reactor_name} reacts: {reaction.visible_reaction}"
                 )
             lines.append("")
 
         return "\n".join(lines)
 
     @staticmethod
-    def _assemble_screenplay(pages: list[str]) -> str:
+    def _assemble_screenplay(title: str, pages: list[str]) -> str:
         """Combine formatted scenes into a full screenplay document."""
-        title = "SCREENPLAY"
         parts: list[str] = [
             title,
             "=" * len(title),
@@ -484,7 +891,13 @@ class ScreenplayWriter:
 
 
 class NarrativeWriter:
-    """Facade that dispatches to NovelWriter or ScreenplayWriter by format.
+    """Facade that orchestrates the full narrative pipeline.
+
+    For novels:
+      TitleGenerator -> ChapterPlanner -> NovelWriter (chapter-by-chapter)
+      -> PostProcessor -> assembly with i18n
+    For screenplays:
+      ScreenplayWriter (per-scene) -> assembly with i18n
 
     Also handles export to file and format metadata queries.
     """
@@ -492,16 +905,27 @@ class NarrativeWriter:
     def __init__(self, llm: LLMClient, memory: MemoryManager) -> None:
         self._llm = llm
         self._memory = memory
+        self._title_gen = TitleGenerator(llm)
+        self._planner = ChapterPlanner(llm)
         self._novel_writer = NovelWriter(llm)
         self._screenplay_writer = ScreenplayWriter(llm)
+        self._post_processor = PostProcessor()
 
     async def convert(
         self,
         scene_archives: list[SceneArchive],
         characters: list[CharacterProfile],
         options: WritingOptions,
+        plot_outline: PlotOutline | None = None,
+        world_summary: str = "",
+        selected_title_index: int = 0,
     ) -> WrittenOutput:
-        """Convert scene archives to the requested format."""
+        """Convert scene archives to the requested format.
+
+        plot_outline: required for novel chapter planning; optional otherwise.
+        world_summary: used for title generation; can be empty string.
+        selected_title_index: which title candidate to use (default: first).
+        """
         if not scene_archives:
             raise ValueError("At least one scene archive is required")
         if not characters:
@@ -512,12 +936,184 @@ class NarrativeWriter:
                 "Use 'novel' or 'screenplay'."
             )
 
-        writer = (
-            self._novel_writer
-            if options.format == "novel"
-            else self._screenplay_writer
+        # --- Step 1: Generate title candidates ---
+        title_candidates = await self._title_gen.generate_titles(
+            world_summary, characters, plot_outline
         )
-        return await writer.convert(scene_archives, characters, options)
+        selected_title = (
+            title_candidates[selected_title_index]
+            if title_candidates and selected_title_index < len(title_candidates)
+            else t("writer.default_title")
+        )
+
+        if options.format == "novel":
+            result = await self._convert_novel(
+                scene_archives=scene_archives,
+                characters=characters,
+                options=options,
+                plot_outline=plot_outline,
+                selected_title=selected_title,
+                title_candidates=title_candidates,
+            )
+        else:
+            result = await self._convert_screenplay(
+                scene_archives=scene_archives,
+                characters=characters,
+                options=options,
+                plot_outline=plot_outline,
+                selected_title=selected_title,
+                title_candidates=title_candidates,
+            )
+
+        return result
+
+    async def _convert_novel(
+        self,
+        scene_archives: list[SceneArchive],
+        characters: list[CharacterProfile],
+        options: WritingOptions,
+        plot_outline: PlotOutline | None,
+        selected_title: str,
+        title_candidates: list[str],
+    ) -> WrittenOutput:
+        """Full novel pipeline: plan chapters, write chapter by chapter, assemble."""
+        scene_specs: dict[str, SceneSpec] = {}
+        if plot_outline is not None:
+            scene_specs = _flatten_scenes(plot_outline)
+
+        # --- Step 2: Plan chapters ---
+        if plot_outline is not None:
+            chapter_plan = await self._planner.plan_chapters(plot_outline, characters)
+        else:
+            chapter_plan = self._fallback_chapter_plan(scene_archives)
+
+        # --- Step 3: Write chapters ---
+        chapters = await self._novel_writer.write_chapters(
+            chapter_plan=chapter_plan,
+            scene_archives=scene_archives,
+            characters=characters,
+            options=options,
+            scene_specs=scene_specs if scene_specs else None,
+        )
+
+        # --- Step 4: Post-process each chapter ---
+        chapters = [self._post_processor.process(ch) for ch in chapters]
+
+        # --- Step 5: Assemble ---
+        content = self._assemble_novel(selected_title, chapter_plan, chapters)
+
+        return WrittenOutput(
+            content=content,
+            format="novel",
+            word_count=len(content.split()),
+            scene_count=len(scene_archives),
+            title=selected_title,
+            title_candidates=title_candidates,
+            export_formats=["md", "txt"],
+        )
+
+    async def _convert_screenplay(
+        self,
+        scene_archives: list[SceneArchive],
+        characters: list[CharacterProfile],
+        options: WritingOptions,
+        plot_outline: PlotOutline | None,
+        selected_title: str,
+        title_candidates: list[str],
+    ) -> WrittenOutput:
+        """Screenplay pipeline: per-scene conversion, post-processing, assembly."""
+        scene_specs: dict[str, SceneSpec] = {}
+        if plot_outline is not None:
+            scene_specs = _flatten_scenes(plot_outline)
+
+        output = await self._screenplay_writer.convert(
+            scene_archives=scene_archives,
+            characters=characters,
+            options=options,
+            scene_specs=scene_specs if scene_specs else None,
+        )
+
+        output.title = selected_title
+        output.title_candidates = title_candidates
+        return output
+
+    # ------------------------------------------------------------------
+    # Fallback: no plot outline
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _fallback_chapter_plan(
+        scene_archives: list[SceneArchive],
+    ) -> ChapterPlan:
+        """Build a minimal chapter plan from archives when no plot outline exists.
+
+        Groups every 3 scenes into one numbered chapter.
+        """
+        specs: list[ChapterSpec] = []
+        chunk_size = 3
+        lang = get_lang()
+
+        for i in range(0, len(scene_archives), chunk_size):
+            batch = scene_archives[i : i + chunk_size]
+            chapter_num = i // chunk_size + 1
+            scene_ids = [a.scene_id for a in batch]
+
+            if lang == Lang.ZH:
+                title = f"第{chapter_num}章"
+            else:
+                title = f"Chapter {chapter_num}"
+
+            specs.append(
+                ChapterSpec(
+                    number=chapter_num,
+                    title=title,
+                    scene_ids=scene_ids,
+                    summary="",
+                )
+            )
+
+        if not specs:
+            specs.append(
+                ChapterSpec(
+                    number=1,
+                    title=t("writer.default_title"),
+                    scene_ids=[],
+                    summary="",
+                )
+            )
+
+        return ChapterPlan(chapters=specs)
+
+    # ------------------------------------------------------------------
+    # Assembly
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _assemble_novel(
+        title: str,
+        chapter_plan: ChapterPlan,
+        chapter_prose: list[str],
+    ) -> str:
+        """Combine chapter prose into a single markdown document.
+
+        Title and chapter headings come from TitleGenerator and ChapterPlanner.
+        All static text uses i18n t().
+        """
+        lang = get_lang()
+        parts: list[str] = [f"# {title}\n"]
+
+        for spec, prose in zip(chapter_plan.chapters, chapter_prose):
+            if lang == Lang.ZH:
+                heading = f"## 第{spec.number}章 {spec.title}"
+            else:
+                heading = f"## Chapter {spec.number}: {spec.title}"
+            parts.append(f"\n{heading}\n\n{prose}")
+
+        return "".join(parts)
+
+    # ------------------------------------------------------------------
+    # Export
+    # ------------------------------------------------------------------
 
     def export(
         self, output: WrittenOutput, fmt: str, filepath: str | Path
@@ -525,10 +1121,10 @@ class NarrativeWriter:
         """Write a WrittenOutput to disk in the requested export format.
 
         Supported format conversions:
-          novel      → md (Markdown, as-is)
-          novel      → txt (Plain text, stripped Markdown)
-          screenplay → txt (Plain text)
-          screenplay → fountain (Fountain format)
+          novel      -> md (Markdown, as-is)
+          novel      -> txt (Plain text, stripped Markdown)
+          screenplay -> txt (Plain text)
+          screenplay -> fountain (Fountain format)
         """
         content = output.content
         ext = fmt.lower()
@@ -547,7 +1143,6 @@ class NarrativeWriter:
                 raise ValueError(
                     "Markdown export is only supported for novel format"
                 )
-            # content is already markdown; pass through
         else:
             raise ValueError(
                 f"Unsupported export format '{fmt}'. "
@@ -578,7 +1173,7 @@ class NarrativeWriter:
 
     @staticmethod
     def supported_export_formats() -> dict[str, list[str]]:
-        """Return mapping of writing format → available export formats."""
+        """Return mapping of writing format -> available export formats."""
         return {
             "novel": ["md", "txt"],
             "screenplay": ["txt", "fountain"],
@@ -591,13 +1186,9 @@ class NarrativeWriter:
     @staticmethod
     def _strip_markdown(text: str) -> str:
         """Remove Markdown formatting for plain-text export."""
-        # Remove ATX headings
         text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
-        # Remove bold/italic markers
         text = re.sub(r"\*{1,3}(.+?)\*{1,3}", r"\1", text)
-        # Remove link formatting but keep link text
         text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
-        # Remove horizontal rules
         text = re.sub(r"^[-*_]{3,}\s*$", "", text, flags=re.MULTILINE)
         return text.strip()
 
@@ -615,28 +1206,22 @@ class NarrativeWriter:
         for line in lines:
             stripped = line.strip()
 
-            # Scene headings should start with INT. or EXT.
             if stripped.upper().startswith(("INT.", "EXT.", "INT/EXT.")):
                 fountain_lines.append(stripped.upper())
                 continue
 
-            # Character names in ALL CAPS followed by dialogue
             if stripped.isupper() and len(stripped) > 1 and stripped.strip("() ").isupper():
-                # Could be a character name — preserve
                 fountain_lines.append(stripped)
                 continue
 
-            # Parentheticals
             if stripped.startswith("(") and stripped.endswith(")"):
                 fountain_lines.append(stripped)
                 continue
 
-            # Preserve blank lines (scene breaks)
             if not stripped:
                 fountain_lines.append("")
                 continue
 
-            # Action / description — pass through
             fountain_lines.append(stripped)
 
         return "\n".join(fountain_lines)

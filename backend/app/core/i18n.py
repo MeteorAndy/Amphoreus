@@ -314,6 +314,27 @@ _T: dict[str, dict[Lang, str]] = {
         Lang.ZH: "第二主角",
         Lang.EN: "Deuteragonist",
     },
+    # Writer
+    "writer.default_title": {
+        Lang.ZH: "未命名小说",
+        Lang.EN: "Untitled Novel",
+    },
+    "writer.default_screenplay_title": {
+        Lang.ZH: "未命名剧本",
+        Lang.EN: "Untitled Screenplay",
+    },
+    "writer.generating_titles": {
+        Lang.ZH: "正在生成标题...",
+        Lang.EN: "Generating title candidates...",
+    },
+    "writer.planning_chapters": {
+        Lang.ZH: "正在规划章节...",
+        Lang.EN: "Planning chapters...",
+    },
+    "writer.writing_chapter": {
+        Lang.ZH: "正在写第 {n} 章...",
+        Lang.EN: "Writing chapter {n}...",
+    },
 }
 
 
