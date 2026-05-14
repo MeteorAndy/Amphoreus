@@ -1,0 +1,121 @@
+<script setup lang="ts">
+import type { PlotOutline, Act, SceneSpec } from '../types/api'
+
+const props = defineProps<{
+  outline: PlotOutline | null
+}>()
+
+const emit = defineEmits<{
+  selectScene: [scene: SceneSpec]
+  reorder: [sceneIds: string[]]
+  addScene: [actId: string]
+  editScene: [scene: SceneSpec]
+  deleteScene: [id: string]
+}>()
+
+function moveScene(act: Act, fromIdx: number, direction: -1 | 1): void {
+  const toIdx = fromIdx + direction
+  if (toIdx < 0 || toIdx >= act.scenes.length) return
+  const scenes = [...act.scenes]
+  ;[scenes[fromIdx], scenes[toIdx]] = [scenes[toIdx], scenes[fromIdx]]
+  emit('reorder', scenes.map((s) => s.id))
+}
+</script>
+
+<template>
+  <div v-if="outline" class="space-y-6">
+    <div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-lg font-semibold text-gray-100">{{ outline.title }}</h2>
+        <span class="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded-full">
+          {{ outline.structure }}
+        </span>
+      </div>
+      <p class="text-sm text-gray-400">{{ outline.description }}</p>
+    </div>
+    <div v-for="act in outline.acts" :key="act.id" class="relative">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold text-white">
+          {{ act.number }}
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-gray-200">{{ act.title }}</h3>
+          <p v-if="act.summary" class="text-xs text-gray-500">{{ act.summary }}</p>
+        </div>
+        <button
+          @click="emit('addScene', act.id)"
+          class="ml-auto text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+        >
+          + Add Scene
+        </button>
+      </div>
+      <div class="ml-4 pl-6 border-l-2 border-gray-800 space-y-3">
+        <div
+          v-for="(scene, idx) in act.scenes"
+          :key="scene.id"
+          class="bg-gray-900 border border-gray-800 rounded-lg p-3 hover:border-gray-700 transition-colors cursor-pointer"
+          @click="emit('selectScene', scene)"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs text-gray-500">#{{ scene.order }}</span>
+                <h4 class="text-sm font-medium text-gray-200 truncate">{{ scene.title }}</h4>
+              </div>
+              <p class="text-xs text-gray-500 line-clamp-2">{{ scene.description }}</p>
+              <div class="mt-2 flex flex-wrap gap-1">
+                <span
+                  v-for="char in scene.characters?.slice(0, 3)"
+                  :key="char"
+                  class="text-xs text-indigo-400 bg-indigo-900/30 px-1.5 py-0.5 rounded"
+                >
+                  {{ char }}
+                </span>
+                <span
+                  v-if="scene.characters && scene.characters.length > 3"
+                  class="text-xs text-gray-500"
+                >
+                  +{{ scene.characters.length - 3 }}
+                </span>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <button
+                @click.stop="emit('editScene', scene)"
+                class="text-xs text-gray-500 hover:text-indigo-400 transition-colors px-1"
+              >
+                Edit
+              </button>
+              <button
+                @click.stop="moveScene(act, idx, -1)"
+                :disabled="idx === 0"
+                class="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-30 transition-colors px-1"
+              >
+                Up
+              </button>
+              <button
+                @click.stop="moveScene(act, idx, 1)"
+                :disabled="idx === act.scenes.length - 1"
+                class="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-30 transition-colors px-1"
+              >
+                Down
+              </button>
+              <button
+                @click.stop="emit('deleteScene', scene.id)"
+                class="text-xs text-red-400 hover:text-red-300 transition-colors px-1"
+              >
+                Del
+              </button>
+            </div>
+          </div>
+        </div>
+        <div v-if="act.scenes.length === 0" class="text-center py-6 text-gray-600 text-sm">
+          No scenes yet. Click "+ Add Scene" to create one.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-else class="flex items-center justify-center h-64 text-gray-500 text-sm">
+    Select or create a plot outline to view the timeline
+  </div>
+</template>

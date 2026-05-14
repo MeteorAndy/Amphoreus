@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cd Z:/TheWorld/frontend && pnpm build 2>&1\",\"timeout\":120000,\"description\":\"Run build and capture errors\"}",
+  "error": "Exit code 2\n\n> frontend@0.0.0 build Z:\\TheWorld\\frontend\n> vue-tsc --noEmit && vite build\n\nsrc/api/client.ts(26,15): error TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled.\r\nsrc/composables/usePlotArchitect.ts(2,28): error TS6196: 'SceneSpec' is declared but never used.\r\nsrc/views/CharacterView.vue(107,7): error TS6133: 'characterForEdit' is declared but its value is never read.\r\nsrc/views/CharacterView.vue(135,10): error TS2322: Type '(char: CharacterProfile) => Promise<v...",
+  "timestamp": "2026-05-14T09:51:53.894Z",
+  "retry_count": 1
+}
