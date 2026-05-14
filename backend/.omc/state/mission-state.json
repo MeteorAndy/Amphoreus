@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-05-13T06:45:44.231Z",
+  "updatedAt": "2026-05-14T04:08:47.386Z",
   "missions": [
     {
       "id": "session:0322b52b-c279-49ab-b096-84cd8e194108:none",
@@ -7,15 +7,15 @@
       "name": "none",
       "objective": "Session mission",
       "createdAt": "2026-05-13T06:39:20.015Z",
-      "updatedAt": "2026-05-13T06:45:44.231Z",
+      "updatedAt": "2026-05-14T04:08:47.386Z",
       "status": "done",
-      "workerCount": 1,
+      "workerCount": 2,
       "taskCounts": {
-        "total": 1,
+        "total": 2,
         "pending": 0,
         "blocked": 0,
         "inProgress": 0,
-        "completed": 1,
+        "completed": 2,
         "failed": 0
       },
       "agents": [
@@ -28,6 +28,16 @@
           "latestUpdate": "completed",
           "completedSummary": null,
           "updatedAt": "2026-05-13T06:45:44.231Z"
+        },
+        {
+          "name": "general-purpose:a5b810e",
+          "role": "general-purpose",
+          "ownership": "a5b810ebb35be6e31",
+          "status": "done",
+          "currentStep": null,
+          "latestUpdate": "completed",
+          "completedSummary": null,
+          "updatedAt": "2026-05-14T04:08:47.386Z"
         }
       ],
       "timeline": [
@@ -46,6 +56,22 @@
           "agent": "general-purpose:afc2856",
           "detail": "completed",
           "sourceKey": "session-stop:afc28569d51e6fbc2"
+        },
+        {
+          "id": "session-start:a5b810ebb35be6e31:2026-05-14T04:04:10.755Z",
+          "at": "2026-05-14T04:04:10.755Z",
+          "kind": "update",
+          "agent": "general-purpose:a5b810e",
+          "detail": "started general-purpose:a5b810e",
+          "sourceKey": "session-start:a5b810ebb35be6e31"
+        },
+        {
+          "id": "session-stop:a5b810ebb35be6e31:2026-05-14T04:08:47.386Z",
+          "at": "2026-05-14T04:08:47.386Z",
+          "kind": "completion",
+          "agent": "general-purpose:a5b810e",
+          "detail": "completed",
+          "sourceKey": "session-stop:a5b810ebb35be6e31"
         }
       ]
     }

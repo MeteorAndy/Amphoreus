@@ -335,6 +335,18 @@ _T: dict[str, dict[Lang, str]] = {
         Lang.ZH: "正在写第 {n} 章...",
         Lang.EN: "Writing chapter {n}...",
     },
+    "writer.no_archives": {
+        Lang.ZH: "没有场景存档可供写作。",
+        Lang.EN: "No scene archives to write.",
+    },
+    "writer.select_title": {
+        Lang.ZH: "选择书名 (1-5, 或回车选第一个)",
+        Lang.EN: "Select title (1-5, or Enter for first)",
+    },
+    "writer.chapter_plan": {
+        Lang.ZH: "章节规划",
+        Lang.EN: "Chapter Plan",
+    },
 }
 
 
