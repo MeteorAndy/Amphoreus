@@ -65,6 +65,12 @@
       "type": "file"
     },
     {
+      "path": "backend\\app\\services\\narrative_writer.py",
+      "accessCount": 16,
+      "lastAccessed": 1778744455323,
+      "type": "file"
+    },
+    {
       "path": "openspec\\changes\\fix-narrative-output-quality\\design.md",
       "accessCount": 7,
       "lastAccessed": 1778730591299,
@@ -74,12 +80,6 @@
       "path": ".claude\\worktrees\\the-world-story-engine\\backend\\app\\core\\i18n.py",
       "accessCount": 4,
       "lastAccessed": 1778739011175,
-      "type": "file"
-    },
-    {
-      "path": "backend\\app\\services\\narrative_writer.py",
-      "accessCount": 4,
-      "lastAccessed": 1778741086313,
       "type": "file"
     },
     {
@@ -110,6 +110,12 @@
       "path": ".claude\\worktrees\\the-world-story-engine\\backend\\app\\services\\plot_architect.py",
       "accessCount": 2,
       "lastAccessed": 1778738874580,
+      "type": "file"
+    },
+    {
+      "path": "backend\\fix_narrative.py",
+      "accessCount": 2,
+      "lastAccessed": 1778741498745,
       "type": "file"
     },
     {

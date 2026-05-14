@@ -65,7 +65,11 @@
       "Bash(uv init *)",
       "Bash(uv add *)",
       "Bash(uv run *)",
-      "Bash(DEEPSEEK_API_KEY=\"sk-fc57ef0a01ae4481a246fd96ed3e6504\" uv run python test_pipeline.py)"
+      "Bash(DEEPSEEK_API_KEY=\"sk-fc57ef0a01ae4481a246fd96ed3e6504\" uv run python test_pipeline.py)",
+      "Bash(python)",
+      "Bash(python fix_narrative.py)",
+      "Bash(python -c \"s = chr\\(92\\) + chr\\(49\\); print\\(repr\\(s\\)\\); print\\([ord\\(c\\) for c in s]\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\('app/services/narrative_writer.py', doraise=True\\)\")"
     ]
   }
 }

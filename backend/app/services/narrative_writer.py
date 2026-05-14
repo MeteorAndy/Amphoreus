@@ -858,6 +858,7 @@ class ScreenplayWriter:
     ) -> WrittenOutput:
         """Convert scene archives to screenplay-format text with act structure."""
         char_by_id = {c.id: c for c in characters}
+        char_names = "、".join(c.name for c in characters if c.name)
         scene_pages: dict[str, str] = {}
 
         for archive in scene_archives:
@@ -865,7 +866,7 @@ class ScreenplayWriter:
             if scene_specs and archive.scene_id in scene_specs:
                 location = scene_specs[archive.scene_id].location
             scene_log = self._format_scene_log(archive, char_by_id, location)
-            formatted = await self._generate_screenplay(scene_log)
+            formatted = await self._generate_screenplay(scene_log, char_names)
             formatted = self._strip_thinking_tags(formatted)
             if options.enhance:
                 formatted = await self._enhance_screenplay(formatted)
@@ -891,14 +892,20 @@ class ScreenplayWriter:
     # Internal: LLM calls
     # ------------------------------------------------------------------
 
-    async def _generate_screenplay(self, scene_log: str) -> str:
+    async def _generate_screenplay(
+        self, scene_log: str, character_names: str = ""
+    ) -> str:
         """Send a scene log to the LLM and return screenplay-format text."""
         from app.core.i18n import Lang, get_lang
         messages: list[dict[str, str]] = [
             {"role": "system", "content": _get_screenplay_system_prompt()},
         ]
         if get_lang() == Lang.ZH:
-            messages.append({"role": "user", "content": "请用简体中文创作这个场景的剧本。"})
+            name_rule = (
+                f"场景中的角色名称为：{character_names}。"
+                "你必须使用这些中文名称，绝对不能写成拼音或英文大写。"
+            ) if character_names else "你必须使用简体中文角色名，绝对不能写成拼音或英文大写。"
+            messages.append({"role": "user", "content": name_rule})
         messages.append({"role": "user", "content": scene_log})
         return await self._llm.chat(messages)
 
