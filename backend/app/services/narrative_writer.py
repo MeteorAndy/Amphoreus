@@ -956,23 +956,21 @@ class ScreenplayWriter:
         scene_pages: dict[str, str],
         act_plan: ChapterPlan,
     ) -> str:
-        """Combine formatted scenes into a full screenplay with acts and scene numbers.
+        """Combine formatted scenes into full screenplay with markdown structure.
 
-        Scene numbering is global across all acts.
-        Acts and scene numbers are applied in code (not by the LLM).
+        Uses the same markdown hierarchy as the novel output:
+        # Title → ## Act → ### Scene
         """
         lang = get_lang()
-        parts: list[str] = [f"{title}", "=" * len(title), ""]
+        parts: list[str] = [f"# {title}", ""]
 
         global_scene_num = 1
 
         for act_spec in act_plan.chapters:
             if lang == Lang.ZH:
-                act_heading = f"第{act_spec.number}幕 {act_spec.title}"
+                parts.append(f"## 第{act_spec.number}幕 {act_spec.title}")
             else:
-                act_heading = f"Act {act_spec.number}: {act_spec.title}"
-            parts.append(act_heading)
-            parts.append("-" * len(act_heading))
+                parts.append(f"## Act {act_spec.number}: {act_spec.title}")
             parts.append("")
 
             for scene_id in act_spec.scene_ids:
@@ -981,9 +979,9 @@ class ScreenplayWriter:
                     continue
 
                 if lang == Lang.ZH:
-                    parts.append(f"第{global_scene_num}场")
+                    parts.append(f"### 第{global_scene_num}场")
                 else:
-                    parts.append(f"Scene {global_scene_num}")
+                    parts.append(f"### Scene {global_scene_num}")
                 parts.append("")
                 parts.append(scene_text)
                 parts.append("")
