@@ -347,6 +347,14 @@ _T: dict[str, dict[Lang, str]] = {
         Lang.ZH: "章节规划",
         Lang.EN: "Chapter Plan",
     },
+    "writer.scene_number": {
+        Lang.ZH: "第{n}场",
+        Lang.EN: "Scene {n}",
+    },
+    "writer.act_number": {
+        Lang.ZH: "第{n}幕",
+        Lang.EN: "Act {n}",
+    },
 }
 
 

@@ -221,32 +221,40 @@ _NOVEL_ENHANCE_PROMPT_ZH = """\
 重要提示：所有输出必须使用简体中文。"""
 
 _SCREENPLAY_SYSTEM_PROMPT_EN = """\
-Convert this scene log to standard screenplay format.
-Formatting rules:
-- [INT./EXT.] LOCATION - TIME for each scene heading
-- Action descriptions in present tense, in paragraph form
-- CHARACTER NAME in ALL CAPS, centered above dialogue
-- (parenthetical) for tone/action within dialogue when needed
-- Double-space between scene headings, action blocks, and dialogue blocks
+You are a professional screenwriter. You need to create an engaging, creative screenplay for a feature film or web series.
 
-Preserve all dialogue and key actions exactly as recorded. Do NOT add meta-commentary."""
+Before writing:
+1. Review all scenes — understand each character's motivation, background, and relationships
+2. Identify the narrative arc across scenes — where is setup, confrontation, climax
+
+Writing requirements:
+- Craft compelling character dialogue, with each character's speech matching their personality
+- Create plot lines full of twists and suspense, keeping the audience tense and expectant until the end
+- Before writing, put your thoughts on character motivation and plot structure inside <thinking> tags
+
+Formatting rules (strictly follow):
+- Scene headings: [INT.] Location - Time or [EXT.] Location - Time
+- Keep character names in their original language. Chinese names must be written in Chinese, never converted to pinyin or English uppercase
+- Dialogue format: character name on its own line, dialogue on a new line
+- Use (parenthetical) before dialogue for tone/action when necessary"""
 
 _SCREENPLAY_SYSTEM_PROMPT_ZH = """\
-将以下场景日志转换为标准剧本格式。
-格式规则：
-- [内景/外景] 地点 - 时间 作为每个场景的标题
-- 动作描述使用现在时，以段落形式呈现
-- 角色名全大写，居中显示在对话上方
-- （括号内）用于在对话中标注语气/动作
-- 场景标题、动作块和对话块之间空两行
+你是一个专业编剧。你需要为一部故事长片或网络系列剧创作一个有趣、有创意的剧本。
 
-保留所有对话和关键动作，精确记录。不要添加元评论。
+在开始写作之前：
+1. 先审视所有场景——理解每个角色的动机、背景、与其他角色的关系
+2. 找出场景间的叙事弧——哪里是建置、哪里是对抗、哪里是高潮
 
-重要提示：
-- 场景标题中的地点名称使用中文
-- 对话和动作描述使用简体中文
-- 角色名保持全大写格式
-- 格式标记（内景/外景等）可以使用中文"""
+写作要求：
+- 构思引人入胜的角色对白，每个角色的说话方式应与其性格一致
+- 创作充满转折与悬念的情节主线，让观众保持紧张和期待直到最后
+- 开始写作前，在<构思>标签中写下你对角色动机和情节结构的思考
+
+格式规则（严格遵守）：
+- 场景标题统一使用：[内景] 地点 - 时间 或 [外景] 地点 - 时间
+- 角色名保持原始语言写法。中文名必须写中文，绝对不能转换为拼音或英文大写
+- 对话格式：角色名单独一行，对话另起一行
+- 必要时在对话前用（括号）标注表情或动作指示"""
 
 _SCREENPLAY_ENHANCE_PROMPT_EN = """\
 Review the screenplay above for formatting consistency and quality:
@@ -581,6 +589,65 @@ class PostProcessor:
         text = re.sub(r" {2,}", " ", text)
         return text.strip()
 
+    # ------------------------------------------------------------------
+    # Screenplay-specific normalisation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def normalize_screenplay(text: str, characters: list[CharacterProfile]) -> str:
+        """Apply screenplay-specific normalisations (headings, character names)."""
+        if get_lang() == Lang.ZH:
+            text = PostProcessor._normalize_scene_headings_zh(text)
+            text = PostProcessor._normalize_character_names(text, characters)
+        else:
+            text = PostProcessor._normalize_scene_headings_en(text)
+        return text
+
+    @staticmethod
+    def _normalize_scene_headings_zh(text: str) -> str:
+        """Normalise Chinese scene headings to [内景]/[外景] format."""
+        text = re.sub(r'\[INT\.\]', '[内景]', text)
+        text = re.sub(r'\[EXT\.\]', '[外景]', text)
+        text = re.sub(r'\[INT/EXT\.\]', '[内景/外景]', text)
+        text = re.sub(r'\[EXT/INT\.\]', '[外景/内景]', text)
+        text = re.sub(r'(?<!\w)INT/EXT\.', '[内景/外景]', text)
+        text = re.sub(r'(?<!\w)EXT/INT\.', '[外景/内景]', text)
+        text = re.sub(r'(?<!\w)INT\.', '[内景]', text)
+        text = re.sub(r'(?<!\w)EXT\.', '[外景]', text)
+        text = re.sub(r'内景\.', '[内景]', text)
+        text = re.sub(r'外景\.', '[外景]', text)
+        return text
+
+    @staticmethod
+    def _normalize_scene_headings_en(text: str) -> str:
+        """Normalise English scene headings to [INT.]/[EXT.] format."""
+        for prefix in ('INT/EXT.', 'EXT/INT.', 'INT.', 'EXT.'):
+            text = re.sub(
+                rf'(?<!\w){re.escape(prefix)}(?!\])',
+                f'[{prefix}]',
+                text,
+            )
+        text = re.sub(r'\[\[(.*?)\]\]', r'[\1]', text)
+        return text
+
+    @staticmethod
+    def _normalize_character_names(text: str, characters: list[CharacterProfile]) -> str:
+        """Revert ALL CAPS English names to original form (ZH mode only)."""
+        if get_lang() != Lang.ZH:
+            return text
+        for char in characters:
+            if not char.name:
+                continue
+            upper_name = char.name.upper()
+            if upper_name == char.name:
+                continue
+            text = re.sub(
+                rf'(?<!\w){re.escape(upper_name)}(?!\w)',
+                char.name,
+                text,
+            )
+        return text
+
 
 # ---------------------------------------------------------------------------
 # Novel writer
@@ -765,9 +832,10 @@ class NovelWriter:
 
 
 class ScreenplayWriter:
-    """Converts scene logs to standard screenplay format.
+    """Converts scene logs to standard screenplay format with act structure.
 
     ZH scene headings use [内景]/[外景]; EN uses [INT.]/[EXT.].
+    Acts and scene numbers are applied during assembly (not by the LLM).
     """
 
     def __init__(self, llm: LLMClient) -> None:
@@ -778,35 +846,39 @@ class ScreenplayWriter:
         scene_archives: list[SceneArchive],
         characters: list[CharacterProfile],
         options: WritingOptions,
+        act_plan: ChapterPlan,
+        title: str,
+        title_candidates: list[str],
         scene_specs: dict[str, SceneSpec] | None = None,
     ) -> WrittenOutput:
-        """Convert scene archives to screenplay-format text."""
+        """Convert scene archives to screenplay-format text with act structure."""
         char_by_id = {c.id: c for c in characters}
-        pages: list[str] = []
+        scene_pages: dict[str, str] = {}
 
         for archive in scene_archives:
             location = ""
             if scene_specs and archive.scene_id in scene_specs:
                 location = scene_specs[archive.scene_id].location
             scene_log = self._format_scene_log(archive, char_by_id, location)
-            formatted_scene = await self._generate_screenplay(scene_log)
+            formatted = await self._generate_screenplay(scene_log)
+            formatted = self._strip_thinking_tags(formatted)
             if options.enhance:
-                formatted_scene = await self._enhance_screenplay(formatted_scene)
-            pages.append(formatted_scene)
+                formatted = await self._enhance_screenplay(formatted)
+            scene_pages[archive.scene_id] = formatted
 
-        lang = get_lang()
-        if lang == Lang.ZH:
-            title = "剧本"
-        else:
-            title = "SCREENPLAY"
-
-        content = self._assemble_screenplay(title, pages)
+        content = self._assemble_screenplay(
+            title=title,
+            scene_pages=scene_pages,
+            act_plan=act_plan,
+        )
 
         return WrittenOutput(
             content=content,
             format="screenplay",
             word_count=len(content.split()),
             scene_count=len(scene_archives),
+            title=title,
+            title_candidates=title_candidates,
             export_formats=["txt", "fountain"],
         )
 
@@ -829,6 +901,13 @@ class ScreenplayWriter:
             {"role": "user", "content": text},
         ]
         return await self._llm.chat(messages)
+
+    @staticmethod
+    def _strip_thinking_tags(text: str) -> str:
+        """Remove <构思> / <thinking> tags from LLM screenplay output."""
+        cleaned = re.sub(r'<构思>.*?</构思>', '', text, flags=re.DOTALL)
+        cleaned = re.sub(r'<thinking>.*?</thinking>', '', cleaned, flags=re.DOTALL)
+        return cleaned.strip()
 
     # ------------------------------------------------------------------
     # Internal: formatting
@@ -872,16 +951,44 @@ class ScreenplayWriter:
         return "\n".join(lines)
 
     @staticmethod
-    def _assemble_screenplay(title: str, pages: list[str]) -> str:
-        """Combine formatted scenes into a full screenplay document."""
-        parts: list[str] = [
-            title,
-            "=" * len(title),
-            "",
-        ]
-        for page in pages:
-            parts.append(page)
+    def _assemble_screenplay(
+        title: str,
+        scene_pages: dict[str, str],
+        act_plan: ChapterPlan,
+    ) -> str:
+        """Combine formatted scenes into a full screenplay with acts and scene numbers.
+
+        Scene numbering is global across all acts.
+        Acts and scene numbers are applied in code (not by the LLM).
+        """
+        lang = get_lang()
+        parts: list[str] = [f"{title}", "=" * len(title), ""]
+
+        global_scene_num = 1
+
+        for act_spec in act_plan.chapters:
+            if lang == Lang.ZH:
+                act_heading = f"第{act_spec.number}幕 {act_spec.title}"
+            else:
+                act_heading = f"Act {act_spec.number}: {act_spec.title}"
+            parts.append(act_heading)
+            parts.append("-" * len(act_heading))
             parts.append("")
+
+            for scene_id in act_spec.scene_ids:
+                scene_text = scene_pages.get(scene_id)
+                if scene_text is None:
+                    continue
+
+                if lang == Lang.ZH:
+                    parts.append(f"第{global_scene_num}场")
+                else:
+                    parts.append(f"Scene {global_scene_num}")
+                parts.append("")
+                parts.append(scene_text)
+                parts.append("")
+                global_scene_num += 1
+
         return "\n".join(parts)
 
 
@@ -1021,20 +1128,31 @@ class NarrativeWriter:
         selected_title: str,
         title_candidates: list[str],
     ) -> WrittenOutput:
-        """Screenplay pipeline: per-scene conversion, post-processing, assembly."""
+        """Screenplay pipeline: act planning, per-scene conversion, post-processing, assembly."""
         scene_specs: dict[str, SceneSpec] = {}
         if plot_outline is not None:
             scene_specs = _flatten_scenes(plot_outline)
+
+        # Plan acts (reuse ChapterPlanner — chapters become acts in screenplay context)
+        if plot_outline is not None:
+            act_plan = await self._planner.plan_chapters(plot_outline, characters)
+        else:
+            act_plan = self._fallback_chapter_plan(scene_archives)
 
         output = await self._screenplay_writer.convert(
             scene_archives=scene_archives,
             characters=characters,
             options=options,
+            act_plan=act_plan,
+            title=selected_title,
+            title_candidates=title_candidates,
             scene_specs=scene_specs if scene_specs else None,
         )
 
-        output.title = selected_title
-        output.title_candidates = title_candidates
+        # Post-process with screenplay-specific rules
+        output.content = PostProcessor.normalize_screenplay(output.content, characters)
+        output.word_count = len(output.content.split())
+
         return output
 
     # ------------------------------------------------------------------
