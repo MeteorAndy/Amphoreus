@@ -296,7 +296,7 @@ async def _world_building_pipeline(
     stage_map = {"rules": 0, "locations": 1, "factions": 2, "timeline": 3, "done": 4}
 
     with _progress() as p:
-        p.add_item(description=f"[yellow]{t('general.loading')}[/]")
+        p.add_task(description=f"[yellow]{t('general.loading')}[/]")
         wb_session = await builder.start_new_world(seed_idea)
 
     session.world_session_id = wb_session.session_id
@@ -325,7 +325,7 @@ async def _world_building_pipeline(
         user_input = Prompt.ask(f"[bold cyan]{answer_label}[/]")
 
         with _progress() as p:
-            p.add_item(description=f"[yellow]{t('general.loading')}[/]")
+            p.add_task(description=f"[yellow]{t('general.loading')}[/]")
             try:
                 wb_session = await builder.continue_session(wb_session.session_id, user_input)
             except Exception as e:
@@ -361,7 +361,7 @@ async def _upload_document_pipeline(llm: LLMClient) -> WorldState:
         break
 
     with _progress() as p:
-        task = p.add_item(description=f"[yellow]{t('doc.parsing')}[/]")
+        task = p.add_task(description=f"[yellow]{t('doc.parsing')}[/]")
         try:
             parsed: ParsedDocument = await parser.parse(str(path))
         except Exception as e:
@@ -389,7 +389,7 @@ async def _character_generation_pipeline(
 
     generating = "个角色生成中..." if get_lang() == Lang.ZH else "characters..."
     with _progress() as p:
-        p.add_item(description=f"[yellow]{t('chars.generating')} ({char_count} {generating})[/]")
+        p.add_task(description=f"[yellow]{t('chars.generating')} ({char_count} {generating})[/]")
         try:
             characters = await char_mgr.generate_characters(world, count=char_count)
         except Exception as e:
@@ -495,7 +495,7 @@ async def _edit_character(char_mgr: CharacterManager, char: CharacterProfile) ->
 
     refining = f"正在优化 {char.name}..." if get_lang() == Lang.ZH else f"Refining {char.name}..."
     with _progress() as p:
-        p.add_item(description=f"[yellow]{refining}[/]")
+        p.add_task(description=f"[yellow]{refining}[/]")
         try:
             updated = await char_mgr.refine_character(char.id, feedback)
             updated_l = "已更新" if get_lang() == Lang.ZH else "Updated"
@@ -514,7 +514,7 @@ async def _relationship_pipeline(
 
     inferring = "正在推断角色关系..." if get_lang() == Lang.ZH else "Inferring character relationships..."
     with _progress() as p:
-        p.add_item(description=f"[yellow]{inferring}[/]")
+        p.add_task(description=f"[yellow]{inferring}[/]")
         try:
             relationships = await rel_builder.build_relationships(characters, world)
         except Exception as e:
@@ -599,7 +599,7 @@ async def _plot_architecture_pipeline(
 
     generating = "正在生成剧情大纲..." if get_lang() == Lang.ZH else "Generating plot outline..."
     with _progress() as p:
-        p.add_item(description=f"[yellow]{generating}[/]")
+        p.add_task(description=f"[yellow]{generating}[/]")
         try:
             outline = await plotter.generate_plot(world, characters, structures[idx])
         except Exception as e:
@@ -756,7 +756,7 @@ async def _narrative_writing_pipeline(
     # ------------------------------------------------------------------
     console.print()
     with _progress() as p:
-        p.add_item(description=f"[yellow]{t('writer.generating_titles')}[/]")
+        p.add_task(description=f"[yellow]{t('writer.generating_titles')}[/]")
         tg = TitleGenerator(llm)
         title_candidates = await tg.generate_titles(world_summary, characters, outline)
 
@@ -800,7 +800,7 @@ async def _narrative_writing_pipeline(
     # ------------------------------------------------------------------
     console.print()
     with _progress() as p:
-        p.add_item(description=f"[yellow]{t('writer.planning_chapters')}[/]")
+        p.add_task(description=f"[yellow]{t('writer.planning_chapters')}[/]")
         cp = ChapterPlanner(llm)
         if outline is not None:
             chapter_plan = await cp.plan_chapters(outline, characters)
@@ -861,7 +861,7 @@ async def _narrative_writing_pipeline(
             progress_label = f"Writing Chapter {spec.number}: {spec.title}..."
 
         with _progress() as p:
-            p.add_item(description=f"[yellow]{progress_label}[/]")
+            p.add_task(description=f"[yellow]{progress_label}[/]")
 
             scene_logs = NovelWriter._build_chapter_scene_logs(
                 spec, archive_by_id, char_by_id,
