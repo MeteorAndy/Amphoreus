@@ -50,7 +50,31 @@ class PlotOutline:
 # Narrative structure templates
 # ---------------------------------------------------------------------------
 
-_STRUCTURE_TEMPLATES: dict[NarrativeStructure, str] = {
+_STRUCTURE_TEMPLATES_ZH: dict[NarrativeStructure, str] = {
+    NarrativeStructure.THREE_ACT: (
+        "三幕结构：第一幕 建置 (25%) — 建立世界、角色与核心冲突。"
+        "第二幕 对抗 (50%) — 升级危机、障碍与中点转折。"
+        "第三幕 解决 (25%) — 高潮与余波。"
+    ),
+    NarrativeStructure.HERO_JOURNEY: (
+        "英雄之旅 (12步)：平凡世界 → 冒险召唤 → 拒绝召唤 → 遇见导师 → "
+        "跨越第一道门槛 → 考验、盟友、敌人 → 接近最深洞穴 → 磨难 → "
+        "奖赏 → 返回之路 → 复活 → 携万能药归来。"
+    ),
+    NarrativeStructure.SAVE_THE_CAT: (
+        "Save the Cat (15拍)：开篇画面 → 主题陈述 → 铺垫 → 催化剂 → "
+        "犹豫 → 第二幕开启 → B故事 → 趣味与游戏 → 中点 → 反派逼近 → "
+        "一无所有 → 灵魂黑夜 → 第三幕开启 → 终场 → 终场画面。"
+    ),
+    NarrativeStructure.QI_CHENG_ZHUAN_HE: (
+        "起承转合 (4段)：起 — 建立角色与设定。"
+        "承 — 发展冲突与角色关系。"
+        "转 — 意外转折或逆转，升级危机。"
+        "合 — 所有线索汇聚与解决。"
+    ),
+}
+
+_STRUCTURE_TEMPLATES_EN: dict[NarrativeStructure, str] = {
     NarrativeStructure.THREE_ACT: (
         "Three-Act Structure: Setup (25%) — Establish the world, characters, and "
         "central conflict. Confrontation (50%) — Rising stakes, obstacles, and midpoint "
@@ -75,6 +99,7 @@ _STRUCTURE_TEMPLATES: dict[NarrativeStructure, str] = {
         "合 (He/Resolution) — Convergence and resolution of all threads."
     ),
 }
+
 
 _PLOT_SYSTEM_PROMPT_EN = """\
 You are a master plot architect for a story engine. Given a world state, character \
@@ -289,7 +314,8 @@ class PlotArchitect:
 
     def get_structure_templates(self) -> dict[str, str]:
         """Return descriptions of each available narrative template."""
-        return {k.value: v for k, v in _STRUCTURE_TEMPLATES.items()}
+        templates = _STRUCTURE_TEMPLATES_ZH if get_lang() == Lang.ZH else _STRUCTURE_TEMPLATES_EN
+        return {k.value: v for k, v in templates.items()}
 
     # ------------------------------------------------------------------
     # Persistence
