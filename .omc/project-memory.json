@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1778729292439,
+  "lastScanned": 1779066982055,
   "projectRoot": "Z:\\TheWorld",
   "techStack": {
     "languages": [],
@@ -9,7 +9,7 @@
     "runtime": null
   },
   "build": {
-    "buildCommand": "cd \"Z:/TheWorld/frontend\" && git commit -m \"$(cat <<'EOF'\nfeat: wire Character/Plot/Scene/Writer views to backend API\n\nAlign frontend types, API client, composables, and views with the actual\nFastAPI backend at localhost:5001. Key changes:\n\n- Update CharacterProfile type to match backend model (personality, core_desire,\n  deep_fear, voice_sample, secrets, knowledge_scope, arc_stage)\n- Add Personality, Big5, NetworkData, PathStep, PlotOutlineResponse types\n- Add generateCharacters, refineCharacter, getCharacterNetwork, getRelationshipPath\n- Fix plot API client: createOutline sends world_id/structure/character_ids,\n  listOutlines uses /api/plot/templates, add refinePlot/checkConsistency\n- Fix writer API client: generate uses ConvertRequest (scene_ids, character_ids)\n- Add refine/consistency-check/regenerate capabilities to all views\n- Add generate/refine/proceed-to-plot buttons to CharacterView\n- Pass world_id between views via localStorage (amphoreus-world-id)\n- Pass character_ids and scene_ids from view state to API calls\n- Build passes cleanly (vue-tsc --noEmit && vite build)\n\nCo-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>\nEOF\n)\"",
+    "buildCommand": null,
     "testCommand": null,
     "lintCommand": null,
     "devCommand": null,
@@ -32,17 +32,32 @@
     "backend": {
       "path": "backend",
       "purpose": null,
-      "fileCount": 1,
-      "lastAccessed": 1778729292416,
+      "fileCount": 3,
+      "lastAccessed": 1779066982023,
       "keyFiles": [
-        "pyproject.toml"
+        "cli.py",
+        "pyproject.toml",
+        "uv.lock"
+      ]
+    },
+    "frontend": {
+      "path": "frontend",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1779066982024,
+      "keyFiles": [
+        "index.html",
+        "package.json",
+        "pnpm-lock.yaml",
+        "tsconfig.json",
+        "vite.config.ts"
       ]
     },
     "openspec": {
       "path": "openspec",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1778729292417,
+      "lastAccessed": 1779066982025,
       "keyFiles": [
         "config.yaml"
       ]
@@ -51,9 +66,48 @@
       "path": "backend\\app",
       "purpose": "Application code",
       "fileCount": 1,
-      "lastAccessed": 1778729292417,
+      "lastAccessed": 1779066982025,
       "keyFiles": [
         "main.py"
+      ]
+    },
+    "frontend\\dist": {
+      "path": "frontend\\dist",
+      "purpose": "Distribution/build output",
+      "fileCount": 3,
+      "lastAccessed": 1779066982026,
+      "keyFiles": [
+        "favicon.svg",
+        "icons.svg",
+        "index.html"
+      ]
+    },
+    "frontend\\node_modules": {
+      "path": "frontend\\node_modules",
+      "purpose": "Dependencies",
+      "fileCount": 2,
+      "lastAccessed": 1779066982027,
+      "keyFiles": []
+    },
+    "frontend\\public": {
+      "path": "frontend\\public",
+      "purpose": "Public files",
+      "fileCount": 2,
+      "lastAccessed": 1779066982027,
+      "keyFiles": [
+        "favicon.svg",
+        "icons.svg"
+      ]
+    },
+    "frontend\\src": {
+      "path": "frontend\\src",
+      "purpose": "Source code",
+      "fileCount": 5,
+      "lastAccessed": 1779066982028,
+      "keyFiles": [
+        "App.vue",
+        "env.d.ts",
+        "i18n.ts"
       ]
     }
   },

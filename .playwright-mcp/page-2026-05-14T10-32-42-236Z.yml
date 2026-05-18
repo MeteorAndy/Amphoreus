@@ -1,0 +1,32 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e6]: AS
+    - navigation [ref=e7]:
+      - button "🌍 世界构建" [ref=e8]:
+        - generic [ref=e10]: 🌍
+        - generic [ref=e11]: 世界构建
+      - button "👥 角色管理" [ref=e12]:
+        - generic [ref=e14]: 👥
+        - generic [ref=e15]: 角色管理
+      - button "📋 剧情架构" [ref=e16]:
+        - generic [ref=e18]: 📋
+        - generic [ref=e19]: 剧情架构
+      - button "🎭 场景执行" [ref=e20]:
+        - generic [ref=e22]: 🎭
+        - generic [ref=e23]: 场景执行
+      - button "✍️ 叙事写作" [ref=e24]:
+        - generic [ref=e26]: ✍️
+        - generic [ref=e27]: 叙事写作
+    - button "English" [ref=e29]
+  - main [ref=e30]:
+    - generic [ref=e32]:
+      - heading "世界构建" [level=1] [ref=e34]
+      - generic [ref=e35]:
+        - generic [ref=e38]:
+          - generic [ref=e39]: 🌎
+          - heading "准备好构建你的世界了吗？" [level=2] [ref=e40]
+          - paragraph [ref=e41]: 描述你的故事创意，我会通过对话引导你逐步完善世界观设定。
+          - generic [ref=e42]:
+            - textbox "输入你的故事 idea..." [ref=e43]
+            - button "开始构建" [disabled] [ref=e44]
+        - paragraph [ref=e47]: 开始聊天或上传文档来构建你的世界

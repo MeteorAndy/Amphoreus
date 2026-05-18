@@ -81,7 +81,20 @@
       "mcp__plugin_playwright_playwright__browser_navigate",
       "mcp__plugin_playwright_playwright__browser_take_screenshot",
       "mcp__plugin_playwright_playwright__browser_console_messages",
-      "mcp__zai-mcp-server__analyze_image"
+      "mcp__zai-mcp-server__analyze_image",
+      "Bash(Z:/TheWorld/backend/.venv/Scripts/python.exe --version)",
+      "Read(//c/Users/AndyL/.amphoreus/**)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\({k:\\('***SET***' if v else 'EMPTY'\\) for k,v in d.items\\(\\)}\\)\")",
+      "Bash(.venv/Scripts/python.exe -m app.main)",
+      "Bash(node_modules/.bin/vite)",
+      "Bash(curl -s http://127.0.0.1:5001/health)",
+      "Bash(curl -s http://127.0.0.1:5001/openapi.json)",
+      "Bash(Z:/TheWorld/backend/.venv/Scripts/python.exe -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(f'{list\\(m.keys\\(\\)\\)[0].upper\\(\\):6s} {p}'\\) for p,m in sorted\\(d['paths'].items\\(\\)\\)]\")",
+      "Bash(curl -s http://127.0.0.1:5173/)",
+      "Bash(curl -s -i http://127.0.0.1:5173/)",
+      "Bash(curl -v http://127.0.0.1:5173/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(netstat -ano)"
     ]
   }
 }

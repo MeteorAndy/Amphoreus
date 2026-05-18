@@ -2,13 +2,34 @@ from __future__ import annotations
 
 import asyncio
 import json
+from enum import Enum
 from typing import Any, Optional, TypeVar
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, APIStatusError
 
 from app.core.config import get_settings
 
 T = TypeVar("T")
+
+
+class LLMErrorCode(str, Enum):
+    QUOTA_EXHAUSTED = "QUOTA_EXHAUSTED"
+    RATE_LIMITED = "RATE_LIMITED"
+    NETWORK_ERROR = "NETWORK_ERROR"
+    UNKNOWN = "UNKNOWN"
+
+
+class LLMError(Exception):
+    """Typed LLM error with classification for proper error handling."""
+
+    def __init__(self, code: LLMErrorCode, message: str, original: Exception | None = None) -> None:
+        super().__init__(message)
+        self.code = code
+        self.original = original
+
+    @property
+    def is_retryable(self) -> bool:
+        return self.code not in (LLMErrorCode.QUOTA_EXHAUSTED, LLMErrorCode.UNKNOWN)
 
 
 class LLMClient:
@@ -28,6 +49,23 @@ class LLMClient:
         self._max_retries = 3
         self._timeout = 120.0
 
+    @staticmethod
+    def _classify_error(exc: Exception) -> LLMErrorCode:
+        if isinstance(exc, APIStatusError):
+            status = exc.status_code
+            if status == 402 or (status == 429 and "quota" in str(exc).lower()):
+                return LLMErrorCode.QUOTA_EXHAUSTED
+            if status == 429:
+                return LLMErrorCode.RATE_LIMITED
+        msg = str(exc).lower()
+        if "insufficient_quota" in msg or "insufficient balance" in msg:
+            return LLMErrorCode.QUOTA_EXHAUSTED
+        if "rate_limit" in msg:
+            return LLMErrorCode.RATE_LIMITED
+        if "timeout" in msg or "connection" in msg or "network" in msg:
+            return LLMErrorCode.NETWORK_ERROR
+        return LLMErrorCode.UNKNOWN
+
     async def chat(
         self,
         messages: list[dict[str, str]],
@@ -45,14 +83,17 @@ class LLMClient:
         if response_format is not None:
             kwargs["response_format"] = response_format
 
-        last_exc: Optional[Exception] = None
+        last_exc: Optional[LLMError] = None
         for attempt in range(self._max_retries):
             try:
                 response = await self._client.chat.completions.create(**kwargs)
                 content = response.choices[0].message.content or ""
                 return content
             except Exception as exc:
-                last_exc = exc
+                code = self._classify_error(exc)
+                last_exc = LLMError(code, str(exc), exc)
+                if not last_exc.is_retryable:
+                    break
                 if attempt < self._max_retries - 1:
                     await asyncio.sleep(2.0 * (attempt + 1))
         raise last_exc  # type: ignore[misc]

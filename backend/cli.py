@@ -41,7 +41,7 @@ from rich.tree import Tree
 from app.core.api_keys import KeyManager
 from app.core.config import get_settings
 from app.core.i18n import Lang, get_lang, set_lang, t
-from app.core.llm_client import LLMClient
+from app.core.llm_client import LLMClient, LLMError, LLMErrorCode
 from app.models.character import CharacterProfile
 from app.services.character_manager import CharacterManager
 from app.services.document_parser import DocumentParser, ParsedDocument
@@ -54,6 +54,7 @@ from app.services.plot_architect import NarrativeStructure, PlotArchitect, PlotO
 from app.services.relationship_builder import Relationship, RelationshipBuilder
 from app.services.scene_engine import SceneEngine
 from app.services.scene_engine.resolution import SceneArchive
+from app.services.scene_engine.types import EnvironmentUpdate
 from app.services.story_guardian import GuardianResult, Severity, StoryGuardian, Verdict
 from app.services.world_builder import WorldBuilder, WorldState
 
@@ -714,19 +715,77 @@ async def _scene_execution_pipeline(
         console.print(f"[dim]{chars_in_scene}: {', '.join(c.name for c in scene_characters)}[/]")
         console.print()
 
+        # Stream rounds in real-time; collect for archive
         try:
-            archive = await scene_engine.run_scene(scene_spec=scene_spec, characters=scene_characters, max_rounds=30)
+            round_count = 0
+            env_update = None
+            async for event in scene_engine.run_scene_stream(
+                scene_spec=scene_spec, characters=scene_characters, max_rounds=30
+            ):
+                etype = event.get("type", "")
+                if etype == "setup":
+                    data = event.get("data", {})
+                    loc_desc = data.get("location_description", "")[:200]
+                    if loc_desc:
+                        console.print(f"[dim italic]{loc_desc}[/]")
+                elif etype == "environment":
+                    env_update = event.get("data", {})
+                    data = event.get("data", {})
+                    atm = data.get("atmosphere", "")[:150]
+                    if atm:
+                        console.print(f"[dim italic]{atm}[/]")
+                elif etype == "round":
+                    data = event.get("data", {})
+                    rn = data.get("round_num", "?")
+                    actor = data.get("actor_name", "?")
+                    dialogue = data.get("dialogue", "")
+                    action = data.get("action", "")
+                    emotion = data.get("emotion", "")
+                    inner = data.get("inner_thought", "")
+
+                    console.print(f"  [bold cyan][{rn}] {actor}[/] [dim]({emotion})[/]")
+                    if dialogue:
+                        console.print(f'    "[cyan]{dialogue[:200]}[/]"')
+                    if action:
+                        console.print(f"    [dim]* {action[:200]}[/]")
+                    if inner:
+                        console.print(f"    [dim]({inner[:150]})[/]")
+
+                    round_count += 1
+                    session.last_step = f"scene_{scene_spec.id}_round_{rn}"
+                    _save_cli_session(session)
+                elif etype == "complete":
+                    archive = SceneArchive(
+                        scene_id=scene_spec.id,
+                        rounds=[],  # rounds collected live above, resolution handles persistence
+                        final_environment=EnvironmentUpdate(
+                            atmosphere=env_update.get("atmosphere", "") if env_update else "",
+                            changes=[],
+                            background_activity="",
+                        ),
+                        character_changes={},
+                    )
+                    completed_archives[scene_spec.id] = archive
+                    session.completed_scene_ids.append(scene_spec.id)
+                    _save_cli_session(session)
+                    total_rounds = "共 {n} 轮" if get_lang() == Lang.ZH else "{n} rounds"
+                    console.print(f"[dim]{total_rounds.format(n=round_count)}[/]")
+
+        except LLMError as e:
+            if e.code == LLMErrorCode.QUOTA_EXHAUSTED:
+                console.print(f"\n[red bold]API 额度已用尽！[/]")
+                console.print(f"[yellow]进度已保存。充值后重新运行 CLI 即可从中断处继续。[/]")
+                console.print(f"[dim]DeepSeek 充值: https://platform.deepseek.com/top_up[/]")
+            else:
+                console.print(f"\n[red]LLM 错误 ({e.code.value}): {e}[/]")
+                console.print(f"[yellow]进度已保存，稍后重试。[/]")
+            _save_cli_session(session)
+            return completed_archives
         except Exception as e:
             failed = "场景执行失败" if get_lang() == Lang.ZH else "Scene execution failed"
             console.print(f"[red]{failed}: {e}[/]")
+            _save_cli_session(session)
             continue
-
-        completed_archives[scene_spec.id] = archive
-        session.completed_scene_ids.append(scene_spec.id)
-        _save_cli_session(session)
-
-        total_rounds = "共 {n} 轮" if get_lang() == Lang.ZH else "{n} rounds"
-        console.print(f"[dim]{total_rounds.format(n=len(archive.rounds))}[/]")
 
     console.print()
     done = f"场景完成！共 {len(completed_archives)} 个存档。" if get_lang() == Lang.ZH else f"Scene(s) complete! {len(completed_archives)} archive(s)."
