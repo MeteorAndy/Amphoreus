@@ -101,7 +101,10 @@
       "Bash(winget install *)",
       "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
       "Bash(gh --version)",
-      "Bash(gh repo *)"
+      "Bash(gh repo *)",
+      "Bash(openspec list *)",
+      "Bash(ls docs/)",
+      "Bash(ls *.md)"
     ]
   }
 }
