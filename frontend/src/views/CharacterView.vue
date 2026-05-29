@@ -5,14 +5,14 @@ import CharacterCard from '../components/CharacterCard.vue'
 import RelationshipGraph from '../components/RelationshipGraph.vue'
 import { useCharacters } from '../composables/useCharacters'
 import { useI18n } from '../i18n'
-import type { CharacterProfile } from '../types/api'
+import { listRelationships } from '../api/client'
+import type { CharacterProfile, Relationship } from '../types/api'
 
 const { t } = useI18n()
 const router = useRouter()
 
 const {
   characters,
-  networkData,
   loading,
   error,
   selectedCharacter,
@@ -21,9 +21,32 @@ const {
   updateCharacter,
   removeCharacter,
   refineCharacter,
-  fetchCharacterNetwork,
   selectCharacter,
 } = useCharacters()
+
+// ── View toggle: list vs graph ────────────────────────────────────────────────
+type ViewMode = 'list' | 'graph'
+const viewMode = ref<ViewMode>('list')
+
+// ── All relationships (for graph view) ───────────────────────────────────────
+const allRelationships = ref<Relationship[]>([])
+const relationshipsLoading = ref(false)
+
+async function fetchAllRelationships(): Promise<void> {
+  relationshipsLoading.value = true
+  try {
+    allRelationships.value = await listRelationships()
+  } catch {
+    allRelationships.value = []
+  } finally {
+    relationshipsLoading.value = false
+  }
+}
+
+function switchToGraph(): void {
+  viewMode.value = 'graph'
+  if (allRelationships.value.length === 0) fetchAllRelationships()
+}
 
 const showEditModal = ref(false)
 const showRefineModal = ref(false)
@@ -50,6 +73,7 @@ const knowledgeInput = ref('')
 
 onMounted(() => {
   fetchCharacters()
+  fetchAllRelationships()
 })
 
 function getWorldId(): string | null {
@@ -112,10 +136,6 @@ async function deleteCharacterById(id: string): Promise<void> {
 
 function handleSelect(char: CharacterProfile): void {
   selectCharacter(char)
-  // Load network data for the selected character
-  if (char.id) {
-    fetchCharacterNetwork(char.id)
-  }
 }
 
 function handleGraphSelect(characterId: string): void {
@@ -205,24 +225,6 @@ function goToPlot(): void {
       {{ t('chars.loading') }}
     </div>
 
-    <!-- Character grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      <CharacterCard
-        v-for="char in characters"
-        :key="char.id"
-        :character="char"
-        :selected="selectedCharacter?.id === char.id"
-        @select="handleSelect"
-        @edit="openEdit"
-        @delete="deleteCharacterById"
-      />
-    </div>
-
-    <!-- Empty state -->
-    <div v-if="characters.length === 0 && !loading" class="text-center py-12 text-gray-600 text-sm">
-      {{ t('chars.empty') }}
-    </div>
-
     <!-- Selected character actions -->
     <div v-if="selectedCharacter" class="bg-gray-900 rounded-lg border border-gray-800 p-4">
       <div class="flex items-center gap-3 mb-3">
@@ -235,14 +237,62 @@ function goToPlot(): void {
       </div>
     </div>
 
-    <!-- Relationship graph -->
+    <!-- Relationships section with List / Graph toggle -->
     <div>
-      <h2 class="text-lg font-semibold text-gray-200 mb-3">{{ t('chars.relationships') }}</h2>
-      <RelationshipGraph
-        :characters="characters"
-        :network-data="networkData"
-        @select="handleGraphSelect"
-      />
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold text-gray-200">{{ t('chars.relationships') }}</h2>
+        <div class="flex rounded-lg overflow-hidden border border-gray-700 text-xs font-medium">
+          <button
+            @click="viewMode = 'list'"
+            :class="viewMode === 'list'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-700'"
+            class="px-3 py-1.5 transition-colors"
+          >
+            {{ t('chars.view_list') }}
+          </button>
+          <button
+            @click="switchToGraph"
+            :class="viewMode === 'graph'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-700'"
+            class="px-3 py-1.5 transition-colors"
+          >
+            {{ t('chars.view_graph') }}
+          </button>
+        </div>
+      </div>
+
+      <!-- List view: character grid -->
+      <template v-if="viewMode === 'list'">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <CharacterCard
+            v-for="char in characters"
+            :key="char.id"
+            :character="char"
+            :selected="selectedCharacter?.id === char.id"
+            @select="handleSelect"
+            @edit="openEdit"
+            @delete="deleteCharacterById"
+          />
+        </div>
+        <div v-if="characters.length === 0 && !loading" class="text-center py-12 text-gray-600 text-sm">
+          {{ t('chars.empty') }}
+        </div>
+      </template>
+
+      <!-- Graph view: d3-force relationship graph -->
+      <template v-else>
+        <div v-if="relationshipsLoading" class="flex items-center justify-center h-32 text-gray-500 text-sm">
+          {{ t('general.loading') }}
+        </div>
+        <RelationshipGraph
+          v-else
+          :characters="characters"
+          :relationships="allRelationships"
+          @select-character="handleGraphSelect"
+        />
+      </template>
     </div>
 
     <!-- Proceed to Plot -->

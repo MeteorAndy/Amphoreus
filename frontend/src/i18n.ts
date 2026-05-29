@@ -60,6 +60,8 @@ const translations: Record<string, Record<Lang, string>> = {
   'chars.save': { zh: '保存', en: 'Save' },
   'chars.delete': { zh: '删除', en: 'Delete' },
   'chars.relationships': { zh: '角色关系', en: 'Relationships' },
+  'chars.view_list': { zh: '列表', en: 'List' },
+  'chars.view_graph': { zh: '关系图', en: 'Graph' },
   'chars.create_title': { zh: '创建角色', en: 'Create Character' },
   'chars.edit_title': { zh: '编辑角色', en: 'Edit Character' },
   'chars.name': { zh: '名称', en: 'Name' },
