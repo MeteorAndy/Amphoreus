@@ -156,6 +156,8 @@ const translations: Record<string, Record<Lang, string>> = {
   'projects.created': { zh: '创建于', en: 'Created' },
   'projects.updated': { zh: '更新于', en: 'Updated' },
   'projects.creating': { zh: '创建中...', en: 'Creating...' },
+  'plot.drag_hint': { zh: '拖拽排序场次', en: 'Drag to reorder scenes' },
+  'plot.reorder_saved': { zh: '顺序已保存', en: 'Order saved' },
   'toast.dismiss': { zh: '关闭', en: 'Dismiss' },
   'empty.default_title': { zh: '暂无内容', en: 'Nothing here yet' },
 }

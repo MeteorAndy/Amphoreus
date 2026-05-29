@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { PlotOutline, Act, SceneSpec } from '../types/api'
+import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
+import Sortable from 'sortablejs'
+import type { PlotOutline, SceneSpec } from '../types/api'
+import { useI18n } from '../i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   outline: PlotOutline | null
@@ -7,19 +12,66 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   selectScene: [scene: SceneSpec]
-  reorder: [sceneIds: string[]]
+  reorder: [actId: string, sceneIds: string[]]
   addScene: [actId: string]
   editScene: [scene: SceneSpec]
   deleteScene: [id: string]
 }>()
 
-function moveScene(act: Act, fromIdx: number, direction: -1 | 1): void {
-  const toIdx = fromIdx + direction
-  if (toIdx < 0 || toIdx >= act.scenes.length) return
-  const scenes = [...act.scenes]
-  ;[scenes[fromIdx], scenes[toIdx]] = [scenes[toIdx], scenes[fromIdx]]
-  emit('reorder', scenes.map((s) => s.id))
+// Map of actId → Sortable instance
+const sortableInstances = new Map<string, Sortable>()
+// Map of actId → container element ref
+const actContainerRefs = ref<Record<string, HTMLElement | null>>({})
+
+function setActContainerRef(actId: string, el: HTMLElement | null): void {
+  actContainerRefs.value[actId] = el
 }
+
+function initSortable(actId: string, el: HTMLElement): void {
+  // Destroy existing instance if any
+  const existing = sortableInstances.get(actId)
+  if (existing) {
+    existing.destroy()
+    sortableInstances.delete(actId)
+  }
+
+  const instance = Sortable.create(el, {
+    handle: '.drag-handle',
+    animation: 150,
+    ghostClass: 'opacity-50',
+    chosenClass: 'sortable-chosen',
+    onEnd(_evt) {
+      const items = Array.from(el.querySelectorAll('[data-scene-id]'))
+      const sceneIds = items.map((item) => (item as HTMLElement).dataset.sceneId!)
+      emit('reorder', actId, sceneIds)
+    },
+  })
+
+  sortableInstances.set(actId, instance)
+}
+
+function initAllSortables(): void {
+  if (!props.outline) return
+  nextTick(() => {
+    for (const act of props.outline!.acts) {
+      const el = actContainerRefs.value[act.id]
+      if (el) {
+        initSortable(act.id, el)
+      }
+    }
+  })
+}
+
+watch(() => props.outline, () => {
+  initAllSortables()
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  for (const instance of sortableInstances.values()) {
+    instance.destroy()
+  }
+  sortableInstances.clear()
+})
 </script>
 
 <template>
@@ -49,14 +101,29 @@ function moveScene(act: Act, fromIdx: number, direction: -1 | 1): void {
           + Add Scene
         </button>
       </div>
-      <div class="ml-4 pl-6 border-l-2 border-gray-800 space-y-3">
+      <div
+        class="ml-4 pl-6 border-l-2 border-gray-800 space-y-3"
+        :ref="(el) => setActContainerRef(act.id, el as HTMLElement | null)"
+      >
         <div
-          v-for="(scene, idx) in act.scenes"
+          v-for="scene in act.scenes"
           :key="scene.id"
-          class="bg-gray-900 border border-gray-800 rounded-lg p-3 hover:border-gray-700 transition-colors cursor-pointer"
+          :data-scene-id="scene.id"
+          class="bg-gray-900 border border-gray-800 rounded-lg p-3 hover:border-gray-700 transition-colors cursor-pointer [&.sortable-chosen]:cursor-grabbing"
           @click="emit('selectScene', scene)"
         >
-          <div class="flex items-start justify-between gap-2">
+          <div class="flex items-start gap-2">
+            <!-- Drag handle -->
+            <div
+              class="drag-handle flex-shrink-0 flex flex-col gap-0.5 pt-1 cursor-grab text-gray-600 hover:text-gray-400 transition-colors select-none"
+              @click.stop
+              :title="t('plot.drag_hint')"
+            >
+              <span class="block w-3.5 h-0.5 bg-current rounded-full"></span>
+              <span class="block w-3.5 h-0.5 bg-current rounded-full"></span>
+              <span class="block w-3.5 h-0.5 bg-current rounded-full"></span>
+              <span class="block w-3.5 h-0.5 bg-current rounded-full"></span>
+            </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-xs text-gray-500">#{{ scene.order }}</span>
@@ -85,20 +152,6 @@ function moveScene(act: Act, fromIdx: number, direction: -1 | 1): void {
                 class="text-xs text-gray-500 hover:text-indigo-400 transition-colors px-1"
               >
                 Edit
-              </button>
-              <button
-                @click.stop="moveScene(act, idx, -1)"
-                :disabled="idx === 0"
-                class="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-30 transition-colors px-1"
-              >
-                Up
-              </button>
-              <button
-                @click.stop="moveScene(act, idx, 1)"
-                :disabled="idx === act.scenes.length - 1"
-                class="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-30 transition-colors px-1"
-              >
-                Down
               </button>
               <button
                 @click.stop="emit('deleteScene', scene.id)"
