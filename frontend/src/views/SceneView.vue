@@ -174,6 +174,7 @@ function canStart(): boolean {
           :status="status"
           :connected="connected"
           :scene-id="selectedSceneId"
+          :rounds="rounds"
           @intervene="intervene"
           @end-scene="endSceneSession"
           @start-scene="handleStartScene"
