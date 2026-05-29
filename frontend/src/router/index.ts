@@ -4,9 +4,11 @@ import CharacterView from '../views/CharacterView.vue'
 import PlotView from '../views/PlotView.vue'
 import SceneView from '../views/SceneView.vue'
 import WriterView from '../views/WriterView.vue'
+import PipelineView from '../views/PipelineView.vue'
 
 const routes = [
-  { path: '/', redirect: '/world' },
+  { path: '/', redirect: '/pipeline' },
+  { path: '/pipeline', name: 'Pipeline', component: PipelineView },
   { path: '/world', name: 'World', component: WorldBuilderView },
   { path: '/characters', name: 'Characters', component: CharacterView },
   { path: '/plot', name: 'Plot', component: PlotView },
