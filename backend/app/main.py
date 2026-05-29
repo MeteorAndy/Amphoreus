@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.characters import router as char_router
 from app.api.guardian import router as guardian_router
+from app.api.pipeline import router as pipeline_router
 from app.api.plot import router as plot_router
 from app.api.scene import router as scene_router
 from app.api.world import router as world_router
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(guardian_router)
     app.include_router(scene_router)
     app.include_router(writer_router)
+    app.include_router(pipeline_router)
 
     return app
 
