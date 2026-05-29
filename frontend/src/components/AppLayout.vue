@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '../i18n'
+import ToastContainer from './ToastContainer.vue'
 
 const { t, setLang, currentLang } = useI18n()
 const route = useRoute()
@@ -73,5 +74,6 @@ function toggleLang(): void {
         <slot />
       </div>
     </main>
+    <ToastContainer />
   </div>
 </template>

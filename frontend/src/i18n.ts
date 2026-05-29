@@ -154,6 +154,8 @@ const translations: Record<string, Record<Lang, string>> = {
   'projects.created': { zh: '创建于', en: 'Created' },
   'projects.updated': { zh: '更新于', en: 'Updated' },
   'projects.creating': { zh: '创建中...', en: 'Creating...' },
+  'toast.dismiss': { zh: '关闭', en: 'Dismiss' },
+  'empty.default_title': { zh: '暂无内容', en: 'Nothing here yet' },
 }
 
 export type { Lang }
