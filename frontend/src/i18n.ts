@@ -171,6 +171,20 @@ const translations: Record<string, Record<Lang, string>> = {
   'plot.reorder_saved': { zh: '顺序已保存', en: 'Order saved' },
   'toast.dismiss': { zh: '关闭', en: 'Dismiss' },
   'empty.default_title': { zh: '暂无内容', en: 'Nothing here yet' },
+  // Interactive
+  'nav.interactive': { zh: '互动创作', en: 'Interactive' },
+  'interactive.title': { zh: '互动创作', en: 'Interactive Creation' },
+  'interactive.subtitle': { zh: '分阶段创作，每步可编辑', en: 'Step-by-step creation with editing at each stage' },
+  'interactive.step_world': { zh: '世界构建', en: 'World' },
+  'interactive.step_characters': { zh: '角色', en: 'Characters' },
+  'interactive.step_plot': { zh: '剧情', en: 'Plot' },
+  'interactive.step_scenes': { zh: '场景', en: 'Scenes' },
+  'interactive.step_writing': { zh: '写作', en: 'Writing' },
+  'interactive.next': { zh: '下一步', en: 'Next' },
+  'interactive.back': { zh: '上一步', en: 'Back' },
+  'interactive.generating': { zh: '生成中...', en: 'Generating...' },
+  'interactive.review': { zh: '请检查结果，满意后点击下一步', en: 'Review results, then click Next to proceed' },
+  'interactive.edit_hint': { zh: '你可以编辑以上内容', en: 'You can edit the content above' },
 }
 
 export type { Lang }
