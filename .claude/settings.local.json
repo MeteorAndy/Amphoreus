@@ -110,7 +110,15 @@
       "Bash(ls src/views/SandboxView.vue src/composables/useSandbox.ts)",
       "Bash(grep -c \"sandbox\" src/router/index.ts)",
       "Bash(pnpm test *)",
-      "Bash(pnpm exec *)"
+      "Bash(pnpm exec *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/docs)",
+      "Bash(curl -s http://localhost:8000/api/projects)",
+      "Bash(curl -s -X POST http://localhost:8000/api/projects -H \"Content-Type: application/json\" -d '{\"name\":\"Test Project\",\"seed_idea\":\"a town where memories can be traded\"}')",
+      "Bash(sed -n '9,20p' app/api/guardian.py)",
+      "Bash(sed -n '13,22p' app/api/plot.py)",
+      "Bash(sed -n '1295,1310p' backend/cli.py)",
+      "Bash(sed -n '1,60p' backend/cli.py)",
+      "Bash(python -c \"from app.services.story_guardian import GuardianIssue, GuardianResult, Severity, StoryGuardian, Verdict, EvaluationContext, BaseValidator, CharacterConsistencyValidator, RelationshipLogicValidator, WorldRulesValidator, PacingValidator, ArcIntegrityValidator; print\\('imports OK'\\)\")"
     ]
   }
 }
