@@ -185,6 +185,22 @@ const translations: Record<string, Record<Lang, string>> = {
   'interactive.generating': { zh: '生成中...', en: 'Generating...' },
   'interactive.review': { zh: '请检查结果，满意后点击下一步', en: 'Review results, then click Next to proceed' },
   'interactive.edit_hint': { zh: '你可以编辑以上内容', en: 'You can edit the content above' },
+  // Sandbox
+  'nav.sandbox': { zh: '沙盒观察', en: 'Sandbox' },
+  'sandbox.title': { zh: '沙盒观察', en: 'Sandbox Observation' },
+  'sandbox.subtitle': { zh: '观察角色自由行动，注入世界事件', en: 'Watch characters roam freely, inject world events' },
+  'sandbox.start': { zh: '开始观察', en: 'Start Observing' },
+  'sandbox.stop': { zh: '停止', en: 'Stop' },
+  'sandbox.inject': { zh: '注入事件', en: 'Inject Event' },
+  'sandbox.inject_placeholder': { zh: '描述世界事件...', en: 'Describe a world event...' },
+  'sandbox.quick_storm': { zh: '暴风雨来袭', en: 'Storm arrives' },
+  'sandbox.quick_npc': { zh: '陌生人出现', en: 'Stranger appears' },
+  'sandbox.quick_quake': { zh: '地震', en: 'Earthquake' },
+  'sandbox.quick_news': { zh: '传来消息', en: 'News arrives' },
+  'sandbox.feed_empty': { zh: '等待角色行动...', en: 'Waiting for characters...' },
+  'sandbox.stopped': { zh: '沙盒已停止', en: 'Sandbox stopped' },
+  'sandbox.select_chars': { zh: '选择角色', en: 'Select Characters' },
+  'sandbox.location': { zh: '地点（可选）', en: 'Location (optional)' },
 }
 
 export type { Lang }

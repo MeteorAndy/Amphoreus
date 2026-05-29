@@ -19,6 +19,8 @@ import type {
   TitleCandidate,
   WorldState,
   WorldBuildResponse,
+  SandboxStartRequest,
+  SandboxStartResponse,
 } from '../types/api'
 
 export class ApiError extends Error {
@@ -299,4 +301,29 @@ export async function exportOutput(content: string, format: NarrativeFormat): Pr
 export function createSceneWebSocket(): WebSocket {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   return new WebSocket(`${protocol}//${window.location.host}/api/scene/ws/run`)
+}
+
+// ---------------------------------------------------------------------------
+// Sandbox API
+// ---------------------------------------------------------------------------
+
+export async function startSandbox(req: SandboxStartRequest): Promise<SandboxStartResponse> {
+  return request<SandboxStartResponse>('/api/sandbox/start', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
+}
+
+export async function injectSandboxEvent(sessionId: string, event: string): Promise<void> {
+  return request<void>('/api/sandbox/inject', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId, event }),
+  })
+}
+
+export async function stopSandbox(sessionId: string): Promise<{ ok: boolean; rounds: number }> {
+  return request<{ ok: boolean; rounds: number }>('/api/sandbox/stop', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId }),
+  })
 }
