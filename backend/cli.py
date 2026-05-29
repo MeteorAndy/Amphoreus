@@ -163,11 +163,11 @@ def _stage_progress(stage: str, completeness: float) -> str:
     filled = int(completeness * bar_len)
     bar = "█" * filled + "░" * (bar_len - filled)
     stage_names: dict[str, str] = {
-        "rules": t("world.rules") if get_lang() == Lang.EN else "规则",
-        "locations": t("world.locations") if get_lang() == Lang.EN else "地点",
-        "factions": t("world.factions") if get_lang() == Lang.EN else "势力",
-        "timeline": t("world.timeline") if get_lang() == Lang.EN else "时间线",
-        "done": "Done / 完成",
+        "rules": t("world.rules"),
+        "locations": t("world.locations"),
+        "factions": t("world.factions"),
+        "timeline": t("world.timeline"),
+        "done": "Done" if get_lang() == Lang.EN else "完成",
     }
     label = stage_names.get(stage, stage)
     return f"[bold]{t('world.stage')}:[/] {label} | {t('world.completeness')}: [{bar}] {int(completeness * 100)}%"
@@ -303,11 +303,11 @@ async def _world_building_pipeline(
     session.world_session_id = wb_session.session_id
 
     stage_names: dict[str, str] = {
-        "rules": "规则" if get_lang() == Lang.ZH else "Rules",
-        "locations": "地点" if get_lang() == Lang.ZH else "Locations",
-        "factions": "势力" if get_lang() == Lang.ZH else "Factions",
-        "timeline": "时间线" if get_lang() == Lang.ZH else "Timeline",
-        "done": "完成" if get_lang() == Lang.ZH else "Done",
+        "rules": t("world.rules"),
+        "locations": t("world.locations"),
+        "factions": t("world.factions"),
+        "timeline": t("world.timeline"),
+        "done": "Done" if get_lang() == Lang.EN else "完成",
     }
 
     while wb_session.stage != "done":
@@ -510,7 +510,8 @@ async def _relationship_pipeline(
     llm: LLMClient, memory: MemoryManager,
     characters: list[CharacterProfile], world: WorldState,
 ) -> list[Relationship]:
-    console.print(Rule("[bold cyan]Relationships / 角色关系[/]"))
+    rels_section_title = "角色关系" if get_lang() == Lang.ZH else "Relationships"
+    console.print(Rule(f"[bold cyan]{rels_section_title}[/]"))
     rel_builder = RelationshipBuilder(llm, memory)
 
     inferring = "正在推断角色关系..." if get_lang() == Lang.ZH else "Inferring character relationships..."
@@ -773,12 +774,16 @@ async def _scene_execution_pipeline(
 
         except LLMError as e:
             if e.code == LLMErrorCode.QUOTA_EXHAUSTED:
-                console.print(f"\n[red bold]API 额度已用尽！[/]")
-                console.print(f"[yellow]进度已保存。充值后重新运行 CLI 即可从中断处继续。[/]")
-                console.print(f"[dim]DeepSeek 充值: https://platform.deepseek.com/top_up[/]")
+                quota_msg = "API 额度已用尽！" if get_lang() == Lang.ZH else "API quota exhausted!"
+                saved_msg = "进度已保存。充值后重新运行 CLI 即可从中断处继续。" if get_lang() == Lang.ZH else "Progress saved. Recharge and re-run CLI to resume."
+                console.print(f"\n[red bold]{quota_msg}[/]")
+                console.print(f"[yellow]{saved_msg}[/]")
+                console.print(f"[dim]DeepSeek: https://platform.deepseek.com/top_up[/]")
             else:
-                console.print(f"\n[red]LLM 错误 ({e.code.value}): {e}[/]")
-                console.print(f"[yellow]进度已保存，稍后重试。[/]")
+                err_msg = "LLM 错误" if get_lang() == Lang.ZH else "LLM Error"
+                retry_msg = "进度已保存，稍后重试。" if get_lang() == Lang.ZH else "Progress saved. Retry later."
+                console.print(f"\n[red]{err_msg} ({e.code.value}): {e}[/]")
+                console.print(f"[yellow]{retry_msg}[/]")
             _save_cli_session(session)
             return completed_archives
         except Exception as e:

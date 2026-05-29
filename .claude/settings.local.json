@@ -94,7 +94,14 @@
       "Bash(curl -s -i http://127.0.0.1:5173/)",
       "Bash(curl -v http://127.0.0.1:5173/)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(gh auth *)",
+      "Bash(winget list *)",
+      "Bash(where gh *)",
+      "Bash(winget install *)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
+      "Bash(gh --version)",
+      "Bash(gh repo *)"
     ]
   }
 }

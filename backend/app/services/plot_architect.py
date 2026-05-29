@@ -394,7 +394,7 @@ class PlotArchitect:
         ]
         char_json = json.dumps(char_descs, indent=2, ensure_ascii=False)
 
-        template_desc = _STRUCTURE_TEMPLATES.get(structure, "")
+        template_desc = _STRUCTURE_TEMPLATES_EN.get(structure, "")
 
         return [
             {"role": "system", "content": _get_plot_prompt()},
