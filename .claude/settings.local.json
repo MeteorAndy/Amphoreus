@@ -108,7 +108,9 @@
       "Bash(xargs wc -l)",
       "Bash(echo \"EXIT:$?\")",
       "Bash(ls src/views/SandboxView.vue src/composables/useSandbox.ts)",
-      "Bash(grep -c \"sandbox\" src/router/index.ts)"
+      "Bash(grep -c \"sandbox\" src/router/index.ts)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm exec *)"
     ]
   }
 }
