@@ -140,6 +140,20 @@ const translations: Record<string, Record<Lang, string>> = {
   'pipeline.screenplay': { zh: '剧本', en: 'Screenplay' },
   'pipeline.structure': { zh: '叙事结构', en: 'Narrative Structure' },
   'pipeline.characters_count': { zh: '角色数量', en: 'Character Count' },
+  // Projects
+  'nav.projects': { zh: '项目', en: 'Projects' },
+  'projects.title': { zh: '我的项目', en: 'My Projects' },
+  'projects.new': { zh: '新建项目', en: 'New Project' },
+  'projects.empty': { zh: '还没有项目，创建一个开始吧', en: 'No projects yet. Create one to get started.' },
+  'projects.name': { zh: '项目名称', en: 'Project Name' },
+  'projects.name_placeholder': { zh: '给你的故事起个名字...', en: 'Name your story...' },
+  'projects.seed_idea': { zh: '故事创意', en: 'Story Idea' },
+  'projects.seed_idea_placeholder': { zh: '简单描述你的故事创意...', en: 'Briefly describe your story idea...' },
+  'projects.delete_confirm': { zh: '确定删除此项目？', en: 'Delete this project?' },
+  'projects.last_stage': { zh: '进度', en: 'Progress' },
+  'projects.created': { zh: '创建于', en: 'Created' },
+  'projects.updated': { zh: '更新于', en: 'Updated' },
+  'projects.creating': { zh: '创建中...', en: 'Creating...' },
 }
 
 export type { Lang }

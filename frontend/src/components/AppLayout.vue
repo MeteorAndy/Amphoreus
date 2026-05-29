@@ -14,6 +14,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  { labelKey: 'nav.projects', path: '/projects', icon: '📁' },
   { labelKey: 'nav.pipeline', path: '/pipeline', icon: '⚡' },
   { labelKey: 'nav.world', path: '/world', icon: '🌍' },
   { labelKey: 'nav.characters', path: '/characters', icon: '👥' },
