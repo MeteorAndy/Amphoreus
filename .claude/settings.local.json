@@ -104,7 +104,9 @@
       "Bash(gh repo *)",
       "Bash(openspec list *)",
       "Bash(ls docs/)",
-      "Bash(ls *.md)"
+      "Bash(ls *.md)",
+      "Bash(xargs wc -l)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }
