@@ -118,7 +118,10 @@
       "Bash(sed -n '13,22p' app/api/plot.py)",
       "Bash(sed -n '1295,1310p' backend/cli.py)",
       "Bash(sed -n '1,60p' backend/cli.py)",
-      "Bash(python -c \"from app.services.story_guardian import GuardianIssue, GuardianResult, Severity, StoryGuardian, Verdict, EvaluationContext, BaseValidator, CharacterConsistencyValidator, RelationshipLogicValidator, WorldRulesValidator, PacingValidator, ArcIntegrityValidator; print\\('imports OK'\\)\")"
+      "Bash(python -c \"from app.services.story_guardian import GuardianIssue, GuardianResult, Severity, StoryGuardian, Verdict, EvaluationContext, BaseValidator, CharacterConsistencyValidator, RelationshipLogicValidator, WorldRulesValidator, PacingValidator, ArcIntegrityValidator; print\\('imports OK'\\)\")",
+      "Read(//z/z/TheWorld/backend/**)",
+      "Read(//z/z/TheWorld/backend/app/**)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }
