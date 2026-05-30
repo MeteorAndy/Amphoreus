@@ -3,6 +3,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import CharacterCard from '../components/CharacterCard.vue'
 import RelationshipGraph from '../components/RelationshipGraph.vue'
+import CharacterEditModal from '../components/CharacterEditModal.vue'
+import CharacterRefineModal from '../components/CharacterRefineModal.vue'
 import { useCharacters } from '../composables/useCharacters'
 import { useI18n } from '../i18n'
 import { listRelationships } from '../api/client'
@@ -54,22 +56,6 @@ const editingCharacter = ref<CharacterProfile | null>(null)
 const generateCount = ref(5)
 const generating = ref(false)
 const refining = ref(false)
-const refineFeedback = ref('')
-
-// Form fields (partial character data for editing)
-const formName = ref('')
-const formRole = ref('')
-const formAppearance = ref('')
-const formCoreDesire = ref('')
-const formDeepFear = ref('')
-const formVoiceSample = ref('')
-const formArcStage = ref('')
-const formCoreTraits = ref<string[]>([])
-const formSecrets = ref<string[]>([])
-const formKnowledgeScope = ref<string[]>([])
-const traitInput = ref('')
-const secretInput = ref('')
-const knowledgeInput = ref('')
 
 onMounted(() => {
   fetchCharacters()
@@ -97,36 +83,12 @@ async function handleGenerate(): Promise<void> {
 
 function openEdit(char: CharacterProfile): void {
   editingCharacter.value = char
-  formName.value = char.name
-  formRole.value = char.role
-  formAppearance.value = char.appearance
-  formCoreDesire.value = char.core_desire
-  formDeepFear.value = char.deep_fear
-  formVoiceSample.value = char.voice_sample
-  formArcStage.value = char.arc_stage
-  formCoreTraits.value = [...(char.personality?.core_traits || [])]
-  formSecrets.value = [...(char.secrets || [])]
-  formKnowledgeScope.value = [...(char.knowledge_scope || [])]
   showEditModal.value = true
 }
 
-async function saveCharacter(): Promise<void> {
+async function saveCharacter(data: Partial<CharacterProfile>): Promise<void> {
   if (!editingCharacter.value) return
-  await updateCharacter(editingCharacter.value.id, {
-    name: formName.value,
-    role: formRole.value,
-    appearance: formAppearance.value,
-    core_desire: formCoreDesire.value,
-    deep_fear: formDeepFear.value,
-    voice_sample: formVoiceSample.value,
-    arc_stage: formArcStage.value,
-    personality: {
-      ...editingCharacter.value.personality,
-      core_traits: formCoreTraits.value,
-    },
-    secrets: formSecrets.value,
-    knowledge_scope: formKnowledgeScope.value,
-  })
+  await updateCharacter(editingCharacter.value.id, data)
   showEditModal.value = false
 }
 
@@ -143,52 +105,15 @@ function handleGraphSelect(characterId: string): void {
   if (char) selectCharacter(char)
 }
 
-function addTrait(): void {
-  const t = traitInput.value.trim()
-  if (t && !formCoreTraits.value.includes(t)) {
-    formCoreTraits.value.push(t)
-  }
-  traitInput.value = ''
-}
-
-function removeTrait(idx: number): void {
-  formCoreTraits.value.splice(idx, 1)
-}
-
-function addSecret(): void {
-  const s = secretInput.value.trim()
-  if (s && !formSecrets.value.includes(s)) {
-    formSecrets.value.push(s)
-  }
-  secretInput.value = ''
-}
-
-function removeSecret(idx: number): void {
-  formSecrets.value.splice(idx, 1)
-}
-
-function addKnowledge(): void {
-  const k = knowledgeInput.value.trim()
-  if (k && !formKnowledgeScope.value.includes(k)) {
-    formKnowledgeScope.value.push(k)
-  }
-  knowledgeInput.value = ''
-}
-
-function removeKnowledge(idx: number): void {
-  formKnowledgeScope.value.splice(idx, 1)
-}
-
 function openRefine(): void {
-  refineFeedback.value = ''
   showRefineModal.value = true
 }
 
-async function handleRefine(): Promise<void> {
-  if (!selectedCharacter.value || !refineFeedback.value.trim()) return
+async function handleRefine(feedback: string): Promise<void> {
+  if (!selectedCharacter.value || !feedback.trim()) return
   refining.value = true
   try {
-    await refineCharacter(selectedCharacter.value.id, refineFeedback.value)
+    await refineCharacter(selectedCharacter.value.id, feedback)
     showRefineModal.value = false
   } finally {
     refining.value = false
@@ -306,223 +231,20 @@ function goToPlot(): void {
     </div>
 
     <!-- Edit Modal -->
-    <Teleport to="body">
-      <div
-        v-if="showEditModal"
-        class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-        @click.self="showEditModal = false"
-      >
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
-          <h2 class="text-lg font-semibold text-gray-100 mb-4">{{ t('chars.edit_title') }}</h2>
-          <div class="space-y-4">
-            <!-- Name -->
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">{{ t('chars.name') }}</label>
-              <input
-                v-model="formName"
-                type="text"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <!-- Role -->
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">{{ t('chars.role') }}</label>
-              <select
-                v-model="formRole"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
-              >
-                <option value="protagonist">Protagonist</option>
-                <option value="antagonist">Antagonist</option>
-                <option value="supporting">Supporting</option>
-                <option value="minor">Minor</option>
-              </select>
-            </div>
-
-            <!-- Appearance -->
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Appearance</label>
-              <textarea
-                v-model="formAppearance"
-                rows="2"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 resize-none"
-              />
-            </div>
-
-            <!-- Core Desire -->
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Core Desire</label>
-              <input
-                v-model="formCoreDesire"
-                type="text"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <!-- Deep Fear -->
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Deep Fear</label>
-              <input
-                v-model="formDeepFear"
-                type="text"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <!-- Voice Sample -->
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Voice Sample</label>
-              <textarea
-                v-model="formVoiceSample"
-                rows="2"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 resize-none"
-              />
-            </div>
-
-            <!-- Arc Stage -->
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Arc Stage</label>
-              <select
-                v-model="formArcStage"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
-              >
-                <option value="introduction">Introduction</option>
-                <option value="rising_action">Rising Action</option>
-                <option value="climax">Climax</option>
-                <option value="resolution">Resolution</option>
-              </select>
-            </div>
-
-            <!-- Core Traits -->
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Core Traits</label>
-              <div class="flex flex-wrap gap-1 mb-2">
-                <span
-                  v-for="(trait, idx) in formCoreTraits"
-                  :key="idx"
-                  class="flex items-center gap-1 px-2 py-0.5 bg-indigo-900/30 text-indigo-300 text-xs rounded-full"
-                >
-                  {{ trait }}
-                  <button @click="removeTrait(idx)" class="hover:text-red-400">&times;</button>
-                </span>
-              </div>
-              <div class="flex gap-2">
-                <input
-                  v-model="traitInput"
-                  type="text"
-                  placeholder="Add trait..."
-                  class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
-                  @keydown.enter.prevent="addTrait"
-                />
-                <button @click="addTrait" class="px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg text-xs hover:bg-gray-600 transition-colors">Add</button>
-              </div>
-            </div>
-
-            <!-- Secrets -->
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Secrets</label>
-              <div class="flex flex-wrap gap-1 mb-2">
-                <span
-                  v-for="(secret, idx) in formSecrets"
-                  :key="idx"
-                  class="flex items-center gap-1 px-2 py-0.5 bg-gray-800 text-gray-300 text-xs rounded-full"
-                >
-                  {{ secret }}
-                  <button @click="removeSecret(idx)" class="hover:text-red-400">&times;</button>
-                </span>
-              </div>
-              <div class="flex gap-2">
-                <input
-                  v-model="secretInput"
-                  type="text"
-                  placeholder="Add secret..."
-                  class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
-                  @keydown.enter.prevent="addSecret"
-                />
-                <button @click="addSecret" class="px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg text-xs hover:bg-gray-600 transition-colors">Add</button>
-              </div>
-            </div>
-
-            <!-- Knowledge Scope -->
-            <div>
-              <label class="block text-xs text-gray-500 mb-1">Knowledge Scope</label>
-              <div class="flex flex-wrap gap-1 mb-2">
-                <span
-                  v-for="(k, idx) in formKnowledgeScope"
-                  :key="idx"
-                  class="flex items-center gap-1 px-2 py-0.5 bg-gray-800 text-gray-300 text-xs rounded-full"
-                >
-                  {{ k }}
-                  <button @click="removeKnowledge(idx)" class="hover:text-red-400">&times;</button>
-                </span>
-              </div>
-              <div class="flex gap-2">
-                <input
-                  v-model="knowledgeInput"
-                  type="text"
-                  placeholder="Add knowledge area..."
-                  class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
-                  @keydown.enter.prevent="addKnowledge"
-                />
-                <button @click="addKnowledge" class="px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg text-xs hover:bg-gray-600 transition-colors">Add</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex justify-end gap-2 mt-6">
-            <button
-              @click="showEditModal = false"
-              class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
-            >
-              {{ t('general.cancel') }}
-            </button>
-            <button
-              @click="saveCharacter"
-              :disabled="!formName"
-              class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
-            >
-              {{ t('general.save') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <CharacterEditModal
+      v-if="showEditModal && editingCharacter"
+      :character="editingCharacter"
+      @save="saveCharacter"
+      @close="showEditModal = false"
+    />
 
     <!-- Refine Modal -->
-    <Teleport to="body">
-      <div
-        v-if="showRefineModal"
-        class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-        @click.self="showRefineModal = false"
-      >
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md mx-4">
-          <h2 class="text-lg font-semibold text-gray-100 mb-2">Refine Character</h2>
-          <p class="text-xs text-gray-500 mb-4">
-            Provide feedback on how to improve "{{ selectedCharacter?.name }}"
-          </p>
-          <textarea
-            v-model="refineFeedback"
-            rows="4"
-            placeholder="Describe what should change about this character..."
-            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
-          />
-          <div class="flex justify-end gap-2 mt-4">
-            <button
-              @click="showRefineModal = false"
-              class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
-            >
-              {{ t('general.cancel') }}
-            </button>
-            <button
-              @click="handleRefine"
-              :disabled="refining || !refineFeedback.trim()"
-              class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
-            >
-              {{ refining ? t('general.loading') : t('general.confirm') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <CharacterRefineModal
+      v-if="showRefineModal"
+      :character-name="selectedCharacter?.name ?? ''"
+      :refining="refining"
+      @refine="handleRefine"
+      @close="showRefineModal = false"
+    />
   </div>
 </template>
