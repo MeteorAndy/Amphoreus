@@ -37,6 +37,38 @@ class WritingOptions:
     # Optional foreshadowing registry; when present the writers inject a
     # per-chapter T0 block. String-annotated to avoid an import cycle.
     foreshadowing_registry: "ForeshadowingRegistry | None" = None
+    # Optional post-generation quality loop (T1-①): when present and enabled,
+    # each chapter's cliche/canon/repeat diagnostics drive a bounded rewrite.
+    # Off by default, so existing callers are unchanged. NOTE: currently wired
+    # into the novel pipeline only (NovelWriter); the screenplay path ignores it.
+    revise: "ReviseConfig | None" = None
+
+
+@dataclass(frozen=True)
+class ReviseConfig:
+    """Thresholds and bounds for the post-generation revise loop (T1-①).
+
+    Pure config — the decision/directive logic lives in `reviser.py` and the
+    LLM rewrite seam in `NovelWriter`. Disabled by default; a caller opts in by
+    attaching one to `WritingOptions.revise`.
+
+    `ai_flavor_threshold` is read against `ClicheReport.ai_flavor_score`, which
+    cliche_scanner computes as (weight_sum / char_count) * 1000 — i.e. a
+    per-char density, NOT an absolute count. A full ZH chapter is ~2500-4000
+    chars, so on a 3000-char chapter weight_sum 9 (≈3 critical hits, each 3.0)
+    scores 3.0. The default 3.0 therefore means "≈3 critical-equivalents of
+    cliche density"; it both lets the score independently trigger a revise and
+    opens the gate that folds warning-severity hits into the directive. (The old
+    value 12.0 was calibrated to a ~200-char page and was effectively inert at
+    chapter scale, silently dropping the entire warning layer.)
+    """
+
+    enabled: bool = True
+    max_rounds: int = 1
+    ai_flavor_threshold: float = 3.0
+    repeat_min_len: int = 8
+    repeat_trigger_count: int = 3
+    max_directives: int = 12
 
 
 @dataclass

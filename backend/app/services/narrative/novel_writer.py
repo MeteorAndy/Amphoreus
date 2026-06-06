@@ -20,7 +20,11 @@ from .prompts import (
     _get_chapter_write_short_target,
     _get_novel_enhance_prompt,
 )
+from .canon_verifier import verify
+from .cliche_scanner import scan
 from .foreshadowing import render_foreshadowing_block
+from .post_processor import PostProcessor
+from .reviser import build_revise_directive
 from .types import ChapterPlan, ChapterSpec, WritingOptions
 
 
@@ -250,6 +254,9 @@ class NovelWriter:
             if options.enhance:
                 chapter_prose = await self._enhance_prose(chapter_prose, canon_block)
 
+            if options.revise is not None and options.revise.enabled:
+                chapter_prose = await self._revise_chapter(chapter_prose, options)
+
             chapters.append(chapter_prose)
 
         return chapters
@@ -319,6 +326,47 @@ class NovelWriter:
             messages.append({"role": "system", "content": canon_block})
         messages.append({"role": "user", "content": prose})
         return await self._llm.chat(messages)
+
+    async def _revise_chapter(self, prose: str, options: WritingOptions) -> str:
+        """Bounded quality-loop rewrite (T1-①), reusing the second-pass channel.
+
+        Each round runs the existing zero-LLM diagnostics — cliche scan, canon
+        verify, verbatim-repeat detection — and asks `reviser` for a directive.
+        An empty directive means nothing crossed threshold, so we stop without
+        spending an LLM call. Otherwise we rewrite the chapter against the
+        directive, then re-check; we stop early once clean or after max_rounds.
+        Rewrites that come back empty are discarded (keep the better draft).
+        """
+        config = options.revise
+        if config is None:
+            return prose
+        is_zh = get_lang() == Lang.ZH
+        facts = options.canonical_facts
+        # Inject the authoritative facts into the rewrite (their correct answers
+        # + rejected list), mirroring _generate_chapter — a canon directive that
+        # only says "this contradicts canon" without the correct value lets the
+        # model rewrite into a different-but-still-wrong phrasing that verify()
+        # (literal rejected_answers match) would not catch.
+        canon_block = facts.render_block("novel", is_zh) if facts is not None else ""
+
+        for _ in range(max(1, config.max_rounds)):
+            cliche = scan(prose)
+            canon = verify(prose, facts, "novel") if facts is not None else None
+            repeats = PostProcessor.find_repeated_fragments(prose, config.repeat_min_len)
+            directive = build_revise_directive(cliche, canon, repeats, config, is_zh)
+            if not directive:
+                break
+            messages: list[dict[str, str]] = [
+                {"role": "system", "content": directive},
+            ]
+            if canon_block:
+                messages.append({"role": "system", "content": canon_block})
+            messages.append({"role": "user", "content": prose})
+            raw = await self._llm.chat(messages)
+            revised = _extract_chapter_story(raw)
+            if revised.strip():
+                prose = revised
+        return prose
 
     # ------------------------------------------------------------------
     # Internal: scene log formatting
