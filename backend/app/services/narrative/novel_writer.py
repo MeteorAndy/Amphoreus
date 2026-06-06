@@ -190,6 +190,66 @@ def _extract_chapter_story(raw: str) -> str:
     return result
 
 
+def _render_phase_directive(
+    chapter_num: int, total: int, is_zh: bool
+) -> str:
+    """Return a compact phase-awareness directive, or '' if too few chapters."""
+    if total < 3:
+        return ""
+    ratio = chapter_num / max(total, 1)
+    if ratio <= 0.25:
+        phase = "opening"
+    elif ratio <= 0.75:
+        phase = "development"
+    elif ratio <= 0.90:
+        phase = "convergence"
+    else:
+        phase = "finale"
+
+    if is_zh:
+        table = {
+            "opening": (
+                "【叙事阶段：开篇】你在故事的起势阶段。展开世界观，引出主角动机"
+                "与核心冲突，为后续埋下伏笔。可以铺设线索，不必急于收束。"
+            ),
+            "development": (
+                "【叙事阶段：发展】你在故事的主体推进阶段。冲突升级、人物成长"
+                "加速，早期伏笔应在本阶段开始回收，新线索可继续铺设但需节制。"
+            ),
+            "convergence": (
+                "【叙事阶段：收束】故事进入高强度收束期。禁止开设新的伏笔或子"
+                "情节，全力填坑——逾期的伏笔必须在本章或下一章了结。保持张力，"
+                "为终局冲刺。"
+            ),
+            "finale": (
+                "【叙事阶段：终局】只剩最后几章。切断日常描写，专注核心对决与"
+                "人物结局。所有未收线索必须在本章内闭合。给读者一个有力的收束。"
+            ),
+        }
+    else:
+        table = {
+            "opening": (
+                "[STORY PHASE: OPENING] You are at the start. Introduce the world, "
+                "the protagonist's motivation, and the core conflict. Plant threads "
+                "freely — no pressure to resolve yet."
+            ),
+            "development": (
+                "[STORY PHASE: DEVELOPMENT] The bulk of the story. Escalate "
+                "conflicts, deepen characters, and begin paying off early threads. "
+                "New threads are still welcome but be judicious."
+            ),
+            "convergence": (
+                "[STORY PHASE: CONVERGENCE] High-pressure closing stretch. NO new "
+                "subplots. Resolve every loose end. Keep tension high."
+            ),
+            "finale": (
+                "[STORY PHASE: FINALE] Final chapters. Cut all daily-life padding; "
+                "focus on the climactic confrontation. Every thread must close."
+            ),
+        }
+    return table[phase]
+
+
 # ---------------------------------------------------------------------------
 # Novel writer
 # ---------------------------------------------------------------------------
@@ -249,6 +309,9 @@ class NovelWriter:
                 foreshadowing_block=render_foreshadowing_block(
                     options.foreshadowing_registry, spec.number, get_lang() == Lang.ZH
                 ),
+                phase_block=_render_phase_directive(
+                    spec.number, len(chapter_plan.chapters), get_lang() == Lang.ZH
+                ),
             )
 
             if options.enhance:
@@ -274,6 +337,7 @@ class NovelWriter:
         word_count_target: str,
         options: WritingOptions,
         foreshadowing_block: str = "",
+        phase_block: str = "",
     ) -> str:
         """Send a chapter prompt to the LLM and return the prose."""
         voice_label = options.narrative_voice.replace("_", " ")
@@ -312,6 +376,8 @@ class NovelWriter:
                 messages.append({"role": "system", "content": canon})
         if foreshadowing_block:
             messages.append({"role": "system", "content": foreshadowing_block})
+        if phase_block:
+            messages.append({"role": "system", "content": phase_block})
         messages.append({"role": "user", "content": user_prompt})
 
         raw = await self._llm.chat(messages)
