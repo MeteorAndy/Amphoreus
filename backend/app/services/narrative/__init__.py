@@ -15,6 +15,8 @@ from .novel_writer import NovelWriter
 from .screenplay_writer import ScreenplayWriter
 from .writer import NarrativeWriter
 from .canon_adjudicator import CanonAdjudicator
+from .cliche_scanner import scan, ClicheReport, ClicheHit
+from .canon_verifier import verify, CanonReport, Violation
 
 __all__ = [
     "WritingOptions", "WrittenOutput", "ChapterSpec", "ChapterPlan",
@@ -22,4 +24,6 @@ __all__ = [
     "TitleGenerator", "ChapterPlanner", "PostProcessor",
     "NovelWriter", "ScreenplayWriter", "NarrativeWriter",
     "CanonAdjudicator",
+    "scan", "ClicheReport", "ClicheHit",
+    "verify", "CanonReport", "Violation",
 ]

@@ -13,7 +13,9 @@ from app.services.memory import MemoryManager
 from app.services.plot_architect import PlotOutline, SceneSpec
 from app.services.scene_engine.resolution import SceneArchive
 
+from .canon_verifier import verify
 from .chapter_planner import ChapterPlanner
+from .cliche_scanner import scan
 from .novel_writer import NovelWriter, _flatten_scenes
 from .post_processor import PostProcessor
 from .screenplay_writer import ScreenplayWriter
@@ -133,7 +135,7 @@ class NarrativeWriter:
         # --- Step 5: Assemble ---
         content = self._assemble_novel(selected_title, chapter_plan, chapters)
 
-        return WrittenOutput(
+        result = WrittenOutput(
             content=content,
             format="novel",
             word_count=count_words(content),
@@ -142,6 +144,13 @@ class NarrativeWriter:
             title_candidates=title_candidates,
             export_formats=["md", "txt"],
         )
+        # --- Step 6: Post-generation diagnostics (zero-LLM, synchronous) ---
+        result.cliche_report = scan(result.content)
+        if options.canonical_facts is not None:
+            result.canon_report = verify(
+                result.content, options.canonical_facts, "novel"
+            )
+        return result
 
     async def _convert_screenplay(
         self,
@@ -176,6 +185,13 @@ class NarrativeWriter:
         # Post-process with screenplay-specific rules
         output.content = PostProcessor.normalize_screenplay(output.content, characters)
         output.word_count = count_words(output.content)
+
+        # Post-generation diagnostics (zero-LLM, synchronous)
+        output.cliche_report = scan(output.content)
+        if options.canonical_facts is not None:
+            output.canon_report = verify(
+                output.content, options.canonical_facts, "screenplay"
+            )
 
         return output
 

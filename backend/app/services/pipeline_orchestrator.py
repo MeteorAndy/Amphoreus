@@ -426,6 +426,12 @@ class PipelineOrchestrator:
                 "format": output.format,
                 "title_candidates": output.title_candidates,
                 "content": output.content,
+                "cliche_report": (
+                    output.cliche_report.to_dict() if output.cliche_report else {}
+                ),
+                "canon_report": (
+                    output.canon_report.to_dict() if output.canon_report else {}
+                ),
             },
             progress=1.0,
             session_id=session_id,

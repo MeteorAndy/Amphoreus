@@ -47,6 +47,11 @@ class WrittenOutput:
     title: str = ""
     title_candidates: list[str] = field(default_factory=list)
     export_formats: list[str] = field(default_factory=list)
+    # Post-generation diagnostics (PR1). Populated after content assembly by the
+    # writer (or explicitly by the CLI path, which bypasses NarrativeWriter.convert).
+    # String-annotated to avoid a types<->canon_verifier import cycle.
+    cliche_report: "ClicheReport | None" = None
+    canon_report: "CanonReport | None" = None
 
 
 @dataclass

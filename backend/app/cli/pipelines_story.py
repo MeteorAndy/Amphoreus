@@ -21,6 +21,7 @@ from app.services.memory import MemoryManager
 from app.services.narrative_writer import (
     NarrativeWriter, WritingOptions, WrittenOutput,
     TitleGenerator, ChapterPlanner, NovelWriter, PostProcessor,
+    scan,
 )
 from app.services.plot_architect import PlotOutline, SceneSpec
 from app.services.scene_engine.resolution import SceneArchive
@@ -227,6 +228,10 @@ async def _narrative_writing_pipeline(
         title_candidates=title_candidates,
         export_formats=["md", "txt"],
     )
+    # Post-generation diagnostics. The CLI builds WrittenOutput manually and
+    # never calls NarrativeWriter.convert(), so scan() must be invoked here
+    # explicitly or the report stays None and the table never renders.
+    output.cliche_report = scan(content)
 
     complete = "写作完成！" if lang == Lang.ZH else "Writing complete!"
     words_label = "字" if lang == Lang.ZH else "words"
@@ -235,6 +240,8 @@ async def _narrative_writing_pipeline(
         f"[green]{complete}[/] [dim]{output.word_count} {words_label}, "
         f"{output.scene_count} {scenes_label}[/]"
     )
+
+    _render_cliche_report(output.cliche_report, lang)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     safe_name = "".join(c if c.isalnum() or c in " _-" else "_" for c in selected_title)[:50]
@@ -257,6 +264,54 @@ async def _narrative_writing_pipeline(
         console.print(Panel(Markdown(preview), title=f"[bold]{preview_title}[/]", box=box.HEAVY))
 
     return str(output_path)
+
+
+def _render_cliche_report(report, lang: Lang) -> None:
+    """Render the post-generation cliche/AI-slop diagnostic as a Rich table.
+
+    Shows nothing when the prose is clean; otherwise a severity-coloured score
+    line plus one row per hit. The score reflects whole-document density, so
+    count-thresholded overuse rules accumulate across all chapters.
+    """
+    if report is None:
+        return
+    score = report.ai_flavor_score
+    if not report.hits and score <= 5:
+        clean = "文风诊断：未见明显套话。" if lang == Lang.ZH else "Prose scan: no notable cliches."
+        console.print(f"[green]{clean}[/]")
+        return
+
+    if score < 15:
+        colour = "green"
+    elif score <= 40:
+        colour = "yellow"
+    else:
+        colour = "red"
+
+    title = "文风诊断" if lang == Lang.ZH else "Prose Quality Scan"
+    score_label = "AI 腔评分" if lang == Lang.ZH else "AI-flavor score"
+    console.print(f"\n[bold {colour}]{title}[/] [dim]{score_label}: {score:.1f}/100[/]")
+
+    if not report.hits:
+        return
+
+    sev_label = "严重度" if lang == Lang.ZH else "Severity"
+    cat_label = "类别" if lang == Lang.ZH else "Category"
+    excerpt_label = "片段" if lang == Lang.ZH else "Excerpt"
+    hint_label = "建议" if lang == Lang.ZH else "Hint"
+    table = Table(box=box.SIMPLE, title=None)
+    table.add_column(sev_label, no_wrap=True)
+    table.add_column(cat_label, no_wrap=True)
+    table.add_column(excerpt_label)
+    table.add_column(hint_label)
+    sev_colour = {"critical": "red", "warning": "yellow", "info": "dim"}
+    for hit in report.hits:
+        c = sev_colour.get(hit.severity, "white")
+        table.add_row(
+            f"[{c}]{hit.severity}[/]", hit.category,
+            hit.span_excerpt, hit.replacement_hint,
+        )
+    console.print(table)
 
 
 async def _guardian_check(
