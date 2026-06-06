@@ -16,6 +16,7 @@ from app.services.plot_architect.prompts import (
     _get_plot_prompt,
     _get_refine_prompt,
 )
+from app.services.plot_architect.structure_planner import plan, format_structure_directive
 from app.services.plot_architect.types import (
     Act,
     NarrativeStructure,
@@ -51,9 +52,15 @@ class PlotArchitect:
         world: WorldState,
         characters: list[CharacterProfile],
         structure: NarrativeStructure = NarrativeStructure.THREE_ACT,
+        target_chapters: int = 0,
     ) -> PlotOutline:
-        """Generate a complete plot outline from world state and characters."""
-        prompt = self._build_generation_prompt(world, characters, structure)
+        """Generate a complete plot outline from world state and characters.
+
+        When *target_chapters* > 3, a deterministic structure constraint is
+        injected into the prompt so the LLM produces an outline at that scale.
+        """
+        prompt = self._build_generation_prompt(world, characters, structure,
+                                               target_chapters)
         result = await self._llm.chat_json(prompt)
         return self._parse_outline(result, structure)
 
@@ -131,6 +138,7 @@ class PlotArchitect:
         world: WorldState,
         characters: list[CharacterProfile],
         structure: NarrativeStructure,
+        target_chapters: int = 0,
     ) -> list[dict[str, str]]:
         world_desc = json.dumps(
             {
@@ -158,18 +166,25 @@ class PlotArchitect:
 
         template_desc = _STRUCTURE_TEMPLATES_EN.get(structure, "")
 
+        # Build the content string so we can optionally prepend a structure
+        # constraint (zero-LLM, deterministic — T1-③).
+        parts = [
+            f"Narrative structure: {structure.value}\n",
+            f"Template description:\n{template_desc}\n",
+        ]
+        if target_chapters > 3:
+            params = plan(target_chapters, structure)
+            zh = get_lang() == Lang.ZH
+            parts.append(f"{format_structure_directive(params, zh)}\n")
+        parts.extend([
+            f"World state:\n{world_desc}\n",
+            f"Characters:\n{char_json}\n",
+            f"Generate a complete plot outline using the {structure.value} structure.",
+        ])
+
         return [
             {"role": "system", "content": _get_plot_prompt()},
-            {
-                "role": "user",
-                "content": (
-                    f"Narrative structure: {structure.value}\n\n"
-                    f"Template description:\n{template_desc}\n\n"
-                    f"World state:\n{world_desc}\n\n"
-                    f"Characters:\n{char_json}\n\n"
-                    f"Generate a complete plot outline using the {structure.value} structure."
-                ),
-            },
+            {"role": "user", "content": "".join(parts)},
         ]
 
     def _build_refinement_prompt(
