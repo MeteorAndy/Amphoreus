@@ -7,8 +7,9 @@ from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 from enum import Enum
 
+from app.core.circuit_breaker import CircuitBreaker, BreakerState
 from app.core.i18n import set_lang, Lang
-from app.core.llm_client import LLMClient, LLMError
+from app.core.llm_client import LLMClient, LLMError, LLMErrorCode
 from app.models.character import CharacterProfile
 from app.services.character_manager import CharacterManager
 from app.services.memory import MemoryManager
@@ -65,6 +66,16 @@ _STRUCTURE_MAP: dict[str, NarrativeStructure] = {
     "qi_cheng_zhuan_he": NarrativeStructure.QI_CHENG_ZHUAN_HE,
 }
 
+_STAGE_SEVERITY: dict[PipelineStage, str] = {
+    PipelineStage.WORLD: "critical",
+    PipelineStage.CHARACTERS: "critical",
+    PipelineStage.RELATIONSHIPS: "critical",
+    PipelineStage.PLOT: "critical",
+    PipelineStage.SCENES: "critical",
+    PipelineStage.CANON: "optional",
+    PipelineStage.WRITING: "critical",
+}
+
 _AUTO_ANSWER_PROMPT_ZH = """\
 你是一个创意写作助手，正在帮助构建一个故事世界。
 根据以下种子创意，为世界构建问题提供一个富有创意、详细的回答。
@@ -93,6 +104,7 @@ class PipelineOrchestrator:
         self._canon_adjudicator = CanonAdjudicator(llm)
         self._fact_extractor = ProseFactExtractor(llm)
         self._triples_store = InferredTriplesStore(memory)
+        self._breaker = CircuitBreaker()
 
     def run(self, config: PipelineConfig) -> AsyncIterator[PipelineEvent]:
         """Execute the full pipeline, yielding events as progress is made."""
@@ -106,51 +118,82 @@ class PipelineOrchestrator:
         state = await self._load_state(session_id)
         self._hydrate_state(session_id, state)
 
+        stage_status: dict[str, str] = {}
         try:
-            if not state.get("world_done"):
-                async for event in self._stage_world(config, session_id, state):
-                    yield event
-
-            if not state.get("characters_done"):
-                async for event in self._stage_characters(config, session_id, state):
-                    yield event
-
-            if not state.get("relationships_done"):
-                async for event in self._stage_relationships(config, session_id, state):
-                    yield event
-
-            if not state.get("plot_done"):
-                async for event in self._stage_plot(config, session_id, state):
-                    yield event
-
-            if not state.get("scenes_done"):
-                async for event in self._stage_scenes(config, session_id, state):
-                    yield event
-
-            if config.adjudicate and not state.get("canon_done"):
-                async for event in self._stage_canon(config, session_id, state):
-                    yield event
-
-            if not state.get("writing_done"):
-                async for event in self._stage_writing(config, session_id, state):
-                    yield event
+            for stage, done_key in (
+                (PipelineStage.WORLD, "world_done"),
+                (PipelineStage.CHARACTERS, "characters_done"),
+                (PipelineStage.RELATIONSHIPS, "relationships_done"),
+                (PipelineStage.PLOT, "plot_done"),
+                (PipelineStage.SCENES, "scenes_done"),
+                (PipelineStage.CANON, "canon_done"),
+                (PipelineStage.WRITING, "writing_done"),
+            ):
+                if stage == PipelineStage.CANON and not config.adjudicate:
+                    continue
+                if state.get(done_key):
+                    stage_status[stage.value] = "skipped"
+                    continue
+                if _STAGE_SEVERITY[stage] == "optional":
+                    try:
+                        async for event in self._drive_stage(stage, config, session_id, state):
+                            yield event
+                        stage_status[stage.value] = "ok"
+                    except LLMError as exc:
+                        yield PipelineEvent(
+                            stage=stage, type="warning",
+                            data={"code": exc.code, "message": str(exc)},
+                            progress=state.get("progress", 0.0),
+                            session_id=session_id,
+                        )
+                        stage_status[stage.value] = f"degraded: {exc.code.value}"
+                else:
+                    async for event in self._drive_stage(stage, config, session_id, state):
+                        yield event
+                    stage_status[stage.value] = "ok"
 
             yield PipelineEvent(
                 stage=PipelineStage.DONE,
                 type="completed",
-                data={"session_id": session_id},
+                data={"session_id": session_id, "stage_status": stage_status},
                 progress=1.0,
                 session_id=session_id,
             )
 
         except LLMError as exc:
-            yield PipelineEvent(
-                stage=state.get("current_stage", PipelineStage.WORLD),
-                type="error",
-                data={"code": exc.code, "message": str(exc)},
-                progress=state.get("progress", 0.0),
-                session_id=session_id,
-            )
+            if exc.code == LLMErrorCode.BREAKER_OPEN:
+                yield PipelineEvent(
+                    stage=state.get("current_stage", PipelineStage.WORLD),
+                    type="error",
+                    data={"code": "BREAKER_OPEN", "message": "breaker tripped — resume later"},
+                    progress=state.get("progress", 0.0),
+                    session_id=session_id,
+                )
+            else:
+                yield PipelineEvent(
+                    stage=state.get("current_stage", PipelineStage.WORLD),
+                    type="error",
+                    data={"code": exc.code, "message": str(exc)},
+                    progress=state.get("progress", 0.0),
+                    session_id=session_id,
+                )
+
+    async def _drive_stage(
+        self, stage: PipelineStage, config: PipelineConfig,
+        session_id: str, state: dict[str, Any],
+    ) -> AsyncIterator[PipelineEvent]:
+        """Dispatch the correct stage method. Thin — just a switch."""
+        _stages = {
+            PipelineStage.WORLD: self._stage_world,
+            PipelineStage.CHARACTERS: self._stage_characters,
+            PipelineStage.RELATIONSHIPS: self._stage_relationships,
+            PipelineStage.PLOT: self._stage_plot,
+            PipelineStage.SCENES: self._stage_scenes,
+            PipelineStage.CANON: self._stage_canon,
+            PipelineStage.WRITING: self._stage_writing,
+        }
+        async for event in _stages[stage](config, session_id, state):
+            yield event
 
     async def _stage_world(
         self, config: PipelineConfig, session_id: str, state: dict[str, Any]
