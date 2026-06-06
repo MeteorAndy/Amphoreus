@@ -18,7 +18,7 @@ from .novel_writer import NovelWriter, _flatten_scenes
 from .post_processor import PostProcessor
 from .screenplay_writer import ScreenplayWriter
 from .title_generator import TitleGenerator
-from .types import ChapterPlan, ChapterSpec, WritingOptions, WrittenOutput
+from .types import ChapterPlan, ChapterSpec, WritingOptions, WrittenOutput, count_words
 
 
 class NarrativeWriter:
@@ -136,7 +136,7 @@ class NarrativeWriter:
         return WrittenOutput(
             content=content,
             format="novel",
-            word_count=len(content.split()),
+            word_count=count_words(content),
             scene_count=len(scene_archives),
             title=selected_title,
             title_candidates=title_candidates,
@@ -175,7 +175,7 @@ class NarrativeWriter:
 
         # Post-process with screenplay-specific rules
         output.content = PostProcessor.normalize_screenplay(output.content, characters)
-        output.word_count = len(output.content.split())
+        output.word_count = count_words(output.content)
 
         return output
 

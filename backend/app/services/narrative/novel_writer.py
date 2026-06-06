@@ -84,17 +84,105 @@ def _flatten_scenes(outline: PlotOutline) -> dict[str, SceneSpec]:
     return result
 
 
-def _extract_chapter_story(raw: str) -> str:
-    """Extract content between <story>...</story> tags from an LLM chapter response.
+_ANALYSIS_HDR = (
+    r"章节分析|分析|思考|写作策略|Chapter\s+Analysis|Analysis|Writing\s+Strategy"
+)
+_ANALYSIS_KW = re.compile(
+    r"章节分析|逻辑漏洞|节奏问题|改进方向|写作策略|Chapter\s+Analysis|"
+    r"Writing\s+Strategy|logical\s+gap|pacing\s+issue",
+    re.IGNORECASE,
+)
 
-    Falls back to the full response with any <thinking>/<思考> blocks removed.
+
+def _strip_leading_analysis(body: str) -> str:
+    """Drop a leading analysis section when prose follows it with no body-header
+    delimiter (the worst-case leak). Only engages when the first paragraph IS an
+    analysis header, then skips analysis-shaped paragraphs (headers, bold labels,
+    list items, analysis keywords) up to the first prose paragraph. Returns the
+    original body if that would remove everything."""
+    paras = re.split(r"\n\s*\n", body)
+    first = next((p for p in paras if p.strip()), "")
+    if not re.match(rf"^\s*#{{1,6}}\s*({_ANALYSIS_HDR})\s*$", first, re.IGNORECASE):
+        return body
+    kept: list[str] = []
+    started = False
+    for p in paras:
+        s = p.strip()
+        if not started:
+            if not s:
+                continue
+            analysis_like = (
+                s.startswith(("#", "**", "-", "*"))
+                or re.match(r"^\d+[.、)]", s)
+                or _ANALYSIS_KW.search(s)
+            )
+            if analysis_like:
+                continue
+            started = True
+        kept.append(p)
+    return "\n\n".join(kept).strip() or body
+
+
+def _extract_chapter_story(raw: str) -> str:
+    """Extract just the chapter prose from an LLM chapter response.
+
+    The model is asked to wrap prose in <story>...</story> after a
+    <思考>/<thinking> analysis block, but it does not always comply. This
+    strips every observed scaffolding variant so analysis/planning text never
+    leaks into the final novel:
+      1. Prefer the <story>...</story> block (closed or unclosed).
+      2. Else drop <思考>/<thinking> blocks.
+      3. Else cut everything up to a "章节正文 / Chapter Body" header.
+      4. Always remove any leftover analysis-header section and stray tags.
     """
-    story_match = re.search(r"<story>(.*?)</story>", raw, re.DOTALL)
-    if story_match:
-        return story_match.group(1).strip()
-    cleaned = re.sub(r"<thinking>.*?</thinking>", "", raw, flags=re.DOTALL)
-    cleaned = re.sub(r"<思考>.*?</思考>", "", cleaned, flags=re.DOTALL)
-    return cleaned.strip()
+    # 1. Preferred: explicit <story> tag (tolerate a missing close tag).
+    m = re.search(r"<story>(.*?)</story>", raw, re.DOTALL | re.IGNORECASE)
+    if m:
+        body = m.group(1)
+    elif re.search(r"<story>", raw, re.IGNORECASE):
+        body = raw[re.search(r"<story>", raw, re.IGNORECASE).end():]
+    else:
+        body = raw
+
+    # 2. Remove thinking/analysis tag blocks.
+    body = re.sub(r"<(思考|thinking)>.*?</\1>", "", body, flags=re.DOTALL | re.IGNORECASE)
+    body = re.sub(r"</?(story|思考|thinking)>", "", body, flags=re.IGNORECASE)
+
+    # 3. If a "chapter body" header is present, keep only what follows the LAST one.
+    body_hdr = list(re.finditer(
+        r"^#{1,6}\s*(章节正文|正文|Chapter\s+Body|Story)\s*$",
+        body, flags=re.MULTILINE | re.IGNORECASE,
+    ))
+    if body_hdr:
+        body = body[body_hdr[-1].end():]
+
+    # 4. Drop a leading analysis section. First try the bounded form (analysis
+    #    header followed by another header), then the unbounded form (analysis
+    #    header followed directly by prose) via paragraph-walking. Neither will
+    #    delete everything — _strip_leading_analysis returns the original body if
+    #    it would, so a non-empty response is never blanked out.
+    deanalyzed = re.sub(
+        rf"^#{{1,6}}\s*({_ANALYSIS_HDR})\s*$.*?(?=\n#{{1,6}}\s)",
+        "", body, count=1, flags=re.MULTILINE | re.DOTALL | re.IGNORECASE,
+    )
+    deanalyzed = _strip_leading_analysis(deanalyzed)
+
+    # 5. Strip a leading chapter heading the model emitted itself (e.g.
+    #    "# 第1章 …" / "## Chapter 1: …"). The assembler always prepends the
+    #    canonical heading, so prose beginning with its own heading produces a
+    #    duplicate (often with a mismatched subtitle). Only the leading run is
+    #    removed; headings deeper in the prose are left untouched.
+    deanalyzed = re.sub(
+        r"\A(?:\s*#{1,6}[^\n]*\n+)+", "", deanalyzed,
+    )
+
+    result = deanalyzed.strip()
+    # Safety: extraction must never blank out a non-empty response.
+    if not result:
+        result = re.sub(
+            r"</?(story|思考|thinking)>", "", body, flags=re.IGNORECASE
+        ).strip() or raw.strip()
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -124,6 +212,9 @@ class NovelWriter:
         char_by_id = {c.id: c for c in characters}
         archive_by_id = {a.scene_id: a for a in scene_archives}
         chapters: list[str] = []
+        canon_block = ""
+        if options.canonical_facts is not None:
+            canon_block = options.canonical_facts.render_block("novel", get_lang() == Lang.ZH)
 
         for i, spec in enumerate(chapter_plan.chapters):
             scene_logs = self._build_chapter_scene_logs(
@@ -153,7 +244,7 @@ class NovelWriter:
             )
 
             if options.enhance:
-                chapter_prose = await self._enhance_prose(chapter_prose)
+                chapter_prose = await self._enhance_prose(chapter_prose, canon_block)
 
             chapters.append(chapter_prose)
 
@@ -202,18 +293,24 @@ class NovelWriter:
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
         ]
+        if options.canonical_facts is not None:
+            canon = options.canonical_facts.render_block("novel", lang == Lang.ZH)
+            if canon:
+                messages.append({"role": "system", "content": canon})
+        messages.append({"role": "user", "content": user_prompt})
 
         raw = await self._llm.chat(messages)
         return _extract_chapter_story(raw)
 
-    async def _enhance_prose(self, prose: str) -> str:
+    async def _enhance_prose(self, prose: str, canon_block: str = "") -> str:
         """Second-pass LLM call for pacing, sensory depth, and dialogue polish."""
         messages: list[dict[str, str]] = [
             {"role": "system", "content": _get_novel_enhance_prompt()},
-            {"role": "user", "content": prose},
         ]
+        if canon_block:
+            messages.append({"role": "system", "content": canon_block})
+        messages.append({"role": "user", "content": prose})
         return await self._llm.chat(messages)
 
     # ------------------------------------------------------------------

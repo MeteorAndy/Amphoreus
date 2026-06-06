@@ -12,6 +12,9 @@ from app.models.character import CharacterProfile
 from app.services.character_manager import CharacterManager
 from app.services.memory import MemoryManager
 from app.services.narrative import NarrativeWriter, WritingOptions
+from app.services.narrative.canon_adjudicator import CanonAdjudicator
+from app.services.narrative.types import CanonicalFacts
+from app.services.narrative import canon_persistence as cp
 from app.services.plot_architect import NarrativeStructure, PlotArchitect, PlotOutline
 from app.services.relationship_builder import RelationshipBuilder
 from app.services.scene_engine import SceneEngine
@@ -25,6 +28,7 @@ class PipelineStage(str, Enum):
     RELATIONSHIPS = "relationships"
     PLOT = "plot"
     SCENES = "scenes"
+    CANON = "canon"
     WRITING = "writing"
     DONE = "done"
 
@@ -38,6 +42,7 @@ class PipelineConfig:
     output_format: str = "novel"
     max_rounds_per_scene: int = 15
     auto_refine: bool = True
+    adjudicate: bool = True  # run the CANON stage to lock cross-product facts
     session_id: str | None = None
 
 
@@ -82,6 +87,7 @@ class PipelineOrchestrator:
         self._plot_architect = PlotArchitect(llm, memory)
         self._scene_engine = SceneEngine(llm, memory)
         self._narrative_writer = NarrativeWriter(llm, memory)
+        self._canon_adjudicator = CanonAdjudicator(llm)
 
     def run(self, config: PipelineConfig) -> AsyncIterator[PipelineEvent]:
         """Execute the full pipeline, yielding events as progress is made."""
@@ -93,6 +99,7 @@ class PipelineOrchestrator:
 
         session_id = config.session_id or str(uuid.uuid4())
         state = await self._load_state(session_id)
+        self._hydrate_state(session_id, state)
 
         try:
             if not state.get("world_done"):
@@ -113,6 +120,10 @@ class PipelineOrchestrator:
 
             if not state.get("scenes_done"):
                 async for event in self._stage_scenes(config, session_id, state):
+                    yield event
+
+            if config.adjudicate and not state.get("canon_done"):
+                async for event in self._stage_canon(config, session_id, state):
                     yield event
 
             if not state.get("writing_done"):
@@ -169,6 +180,7 @@ class PipelineOrchestrator:
         state["world_state"] = world_state
         state["world_done"] = True
         state["progress"] = 0.15
+        self._persist_artifact(session_id, "world_state", cp.world_state_to_dict(world_state))
         await self._save_state(session_id, state)
 
         yield PipelineEvent(
@@ -207,6 +219,9 @@ class PipelineOrchestrator:
         state["characters"] = characters
         state["characters_done"] = True
         state["progress"] = 0.25
+        self._persist_artifact(
+            session_id, "characters", {"items": [cp.character_to_dict(c) for c in characters]}
+        )
         await self._save_state(session_id, state)
 
         yield PipelineEvent(
@@ -258,6 +273,7 @@ class PipelineOrchestrator:
         state["outline"] = outline
         state["plot_done"] = True
         state["progress"] = 0.40
+        self._persist_artifact(session_id, "outline", cp.outline_to_dict(outline))
         await self._save_state(session_id, state)
 
         scene_count = sum(len(act.scenes) for act in outline.acts)
@@ -315,6 +331,9 @@ class PipelineOrchestrator:
         state["archives"] = archives
         state["scenes_done"] = True
         state["progress"] = 0.75
+        self._persist_artifact(
+            session_id, "archives", {"items": [cp.archive_to_dict(a) for a in archives]}
+        )
         await self._save_state(session_id, state)
 
         yield PipelineEvent(
@@ -325,12 +344,52 @@ class PipelineOrchestrator:
             session_id=session_id,
         )
 
+    async def _stage_canon(
+        self, config: PipelineConfig, session_id: str, state: dict[str, Any]
+    ) -> AsyncIterator[PipelineEvent]:
+        """Adjudicate load-bearing facts the source leaves silent, so the novel
+        and screenplay runs (separate runs) share one locked truth."""
+        state["current_stage"] = PipelineStage.CANON
+        yield PipelineEvent(
+            stage=PipelineStage.CANON, type="started", progress=0.75, session_id=session_id
+        )
+
+        archives: list[SceneArchive] = state["archives"]
+        characters: list[CharacterProfile] = state["characters"]
+        outline: PlotOutline | None = state.get("outline")
+        world_state: WorldState = state["world_state"]
+
+        facts = await self._canon_adjudicator.adjudicate(
+            archives=archives,
+            outline=outline,
+            characters=characters,
+            world_summary=self._world_summary(world_state),
+            session_id=session_id,
+        )
+
+        state["canonical_facts"] = facts
+        state["canon_done"] = True
+        state["progress"] = 0.78
+        self._persist_artifact(session_id, "canonical_facts", facts.to_dict())
+        await self._save_state(session_id, state)
+
+        yield PipelineEvent(
+            stage=PipelineStage.CANON,
+            type="completed",
+            data={
+                "facts_locked": len(facts.facts),
+                "unresolved": len(facts.unresolved),
+            },
+            progress=0.78,
+            session_id=session_id,
+        )
+
     async def _stage_writing(
         self, config: PipelineConfig, session_id: str, state: dict[str, Any]
     ) -> AsyncIterator[PipelineEvent]:
         state["current_stage"] = PipelineStage.WRITING
         yield PipelineEvent(
-            stage=PipelineStage.WRITING, type="started", progress=0.75, session_id=session_id
+            stage=PipelineStage.WRITING, type="started", progress=0.78, session_id=session_id
         )
 
         archives: list[SceneArchive] = state["archives"]
@@ -339,7 +398,10 @@ class PipelineOrchestrator:
         world_state: WorldState = state["world_state"]
 
         world_summary = self._world_summary(world_state)
-        options = WritingOptions(format=config.output_format)
+        options = WritingOptions(
+            format=config.output_format,
+            canonical_facts=state.get("canonical_facts"),
+        )
 
         output: WrittenOutput = await self._narrative_writer.convert(
             scene_archives=archives,
@@ -405,7 +467,7 @@ class PipelineOrchestrator:
         serializable = {
             k: v for k, v in state.items()
             if k in ("world_done", "characters_done", "relationships_done",
-                     "plot_done", "scenes_done", "writing_done",
+                     "plot_done", "scenes_done", "canon_done", "writing_done",
                      "current_stage", "progress")
         }
         self._memory.openviking.write_entry(
@@ -414,3 +476,54 @@ class PipelineOrchestrator:
             l0="pipeline_state",
             l1=session_id,
         )
+
+    # --- Artifact persistence (data plane; survives cross-process resume) ---
+
+    def _persist_artifact(self, session_id: str, name: str, payload: dict) -> None:
+        self._memory.openviking.write_entry(
+            f"pipeline/sessions/{session_id}/{name}",
+            json.dumps(payload, ensure_ascii=False),
+            l0="pipeline_artifact",
+            l1=session_id,
+        )
+
+    def _load_artifact(self, session_id: str, name: str) -> dict | None:
+        try:
+            entry = self._memory.openviking.read_entry(
+                f"pipeline/sessions/{session_id}/{name}"
+            )
+            return json.loads(entry.l2)
+        except Exception:
+            return None
+
+    def _hydrate_state(self, session_id: str, state: dict[str, Any]) -> None:
+        """Rebuild in-memory data objects from persisted artifacts on resume.
+
+        _save_state persists only boolean flags, so a fresh process resuming at
+        CANON/WRITING would KeyError on archives/characters/outline/world_state.
+        Re-load whatever the completed stages should have produced.
+        """
+        if state.get("world_done") and "world_state" not in state:
+            d = self._load_artifact(session_id, "world_state")
+            if d is not None:
+                state["world_state"] = cp.world_state_from_dict(d)
+
+        if state.get("characters_done") and "characters" not in state:
+            d = self._load_artifact(session_id, "characters")
+            if d is not None:
+                state["characters"] = [cp.character_from_dict(c) for c in d.get("items", [])]
+
+        if state.get("plot_done") and "outline" not in state:
+            d = self._load_artifact(session_id, "outline")
+            if d is not None:
+                state["outline"] = cp.outline_from_dict(d)
+
+        if state.get("scenes_done") and "archives" not in state:
+            d = self._load_artifact(session_id, "archives")
+            if d is not None:
+                state["archives"] = [cp.archive_from_dict(a) for a in d.get("items", [])]
+
+        if state.get("canon_done") and "canonical_facts" not in state:
+            d = self._load_artifact(session_id, "canonical_facts")
+            if d is not None:
+                state["canonical_facts"] = CanonicalFacts.from_dict(d)

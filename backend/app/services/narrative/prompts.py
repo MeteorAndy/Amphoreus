@@ -84,8 +84,14 @@ _CHAPTER_WRITE_SYSTEM_PROMPT_ZH = """\
 
 写作流程：
 1. 首先像读者一样审阅章节计划——找出逻辑漏洞、节奏问题、改进方向
-2. 在<思考>标签中写出你的分析
-3. 在<story>标签中写出完整的章节正文
+2. 把你的全部分析/思考放在 <思考>...</思考> 标签内
+3. 把最终章节正文放在 <story>...</story> 标签内
+
+严格的输出格式（必须遵守）：
+- 只能输出两个标签块：<思考>...</思考> 后跟 <story>...</story>
+- 章节正文必须完整地包裹在 <story> 与 </story> 之间
+- <story> 标签内只能有正文本身：不得出现“章节分析”“思考”“写作策略”“逻辑漏洞”“节奏问题”“改进方向”等任何分析性文字，也不得出现 # 章节分析、# 章节正文 之类的标题
+- 标签之外不要写任何文字。<story> 标签外的所有内容都会被丢弃
 
 写作要求：
 - 生动的语言，富有中国文学韵味
@@ -94,7 +100,13 @@ _CHAPTER_WRITE_SYSTEM_PROMPT_ZH = """\
 - 节奏控制——张弛有度，长短句交替
 - 场景间的自然过渡——必须用过渡段落连接各场景，不能简单拼接
 - 保留所有关键对话和动作，不得遗漏重要情节
-- 叙事视角：{voice}"""
+- 叙事视角：{voice}
+
+文笔禁忌（务必避免）：
+- 生理反应套话不要反复使用：同一种身体反应（如"瞳孔骤缩/收缩""指节泛白""心脏被攥紧""脊背发凉"）全章最多出现一次，且要因人而异。不同角色用不同的身体语言，不要所有人都"瞳孔一缩"。
+- 比喻要节制：不要句句"像……仿佛……如同……"。一个段落里的明喻不超过一处，宁可用精确的实写代替廉价的比喻。
+- 杜绝陈词滥调比喻："目光如刀""时间仿佛静止""心如刀绞""血液凝固"这类被用滥的比喻一律不用，换成具体、新鲜、贴合此情此景的写法。
+- 不要逐字重复：同一个比喻喻体、同一句描写不要在不同段落/场景里原样再用一次。需要再次出现时，让它有所推进或变化（如体力将尽、节奏不同），而非复制粘贴。"""
 
 _CHAPTER_WRITE_SYSTEM_PROMPT_EN = """\
 You are a literary novelist. Based on the given chapter plan, scene logs, \
@@ -103,8 +115,16 @@ and character profiles, write a complete literary chapter.
 Writing process:
 1. First, review the chapter plan as a reader — identify logical gaps, pacing \
 issues, improvement areas
-2. Write analysis in <thinking> tag
-3. Write full chapter prose in <story> tag
+2. Put ALL of your analysis/thinking inside <thinking>...</thinking> tags
+3. Put the final chapter prose inside <story>...</story> tags
+
+Strict output format (MUST follow):
+- Output exactly two tagged blocks: <thinking>...</thinking> then <story>...</story>
+- The chapter prose must be fully wrapped between <story> and </story>
+- Inside <story> put ONLY the prose itself: no "chapter analysis", "thinking", \
+"writing strategy", "logical gaps", "pacing", or any analytical text, and no \
+markdown headers like "# Chapter Analysis" or "# Chapter Body"
+- Write nothing outside the tags. Everything outside <story> is discarded
 
 Requirements:
 - Vivid language with literary quality
@@ -114,7 +134,13 @@ Requirements:
 - Natural scene transitions — connect scenes with transitional paragraphs, \
 do not simply concatenate
 - Preserve all key dialogue and actions — do not omit important plot points
-- Narrative voice: {voice}"""
+- Narrative voice: {voice}
+
+Prose taboos (must avoid):
+- Do not lean on physiological clichés: a given bodily reaction (pupils shrinking, knuckles whitening, heart clenching, spine chilling) may appear at most once per chapter, and must vary by character — not everyone reacts the same way.
+- Restraint with figurative language: avoid "like… as if… as though…" in every sentence. No more than one simile per paragraph; prefer precise literal description over a cheap metaphor.
+- No worn-out metaphors: drop tired comparisons ("eyes like knives", "time seemed to freeze", "blood ran cold") in favour of concrete, fresh images fitted to this exact moment.
+- No verbatim repetition: never reuse the same metaphor vehicle or the same descriptive sentence word-for-word across paragraphs/scenes. When it must recur, advance or vary it (e.g. exhaustion setting in) rather than copy-paste."""
 
 # --- Enhance prompts (kept from original) ---
 
@@ -149,10 +175,19 @@ Writing requirements:
 - Before writing, put your thoughts on character motivation and plot structure inside <thinking> tags
 
 Formatting rules (strictly follow):
-- Scene headings: [INT.] Location - Time or [EXT.] Location - Time
+- Scene headings: [INT.] Location - Time or [EXT.] Location - Time. EVERY scene must have a heading WITH a time of day (DAY/NIGHT/DUSK/DAWN/MORNING). Do not use descriptive phrases as the time; pick only from DAY/NIGHT/DUSK/DAWN/MORNING.
 - Keep character names in their original language. Chinese names must be written in Chinese, never converted to pinyin or English uppercase
-- Dialogue format: character name on its own line, dialogue on a new line
-- Use (parenthetical) before dialogue for tone/action when necessary
+- Use ONE dialogue format throughout: character name on its OWN line, dialogue on the NEXT line. Never put "Name: dialogue" on a single line.
+- A short (parenthetical) for tone/brief action may go on its own line between the name line and the dialogue. Parentheticals must be brief — never pack a full action beat into them.
+
+Action-line rules:
+- Action lines are NOT parenthesized; each on its own line, terse present tense, only camera-visible imagery.
+- Do not write smell, taste, internal bodily sensation, or inner thoughts in action lines. Convert such feelings into visible images or audible sound.
+
+Voice-over / inner monologue (one unified marker for the whole script):
+- Inner thought / off-screen: name line written as "Name (O.S.)", content on the next line. Do not use "Name: (O.S.)", "(O.S.) Name:", "(Name O.S.)", or "(narration):".
+- Third-person narration: use "NARRATOR (V.O.)" as the name line, content on the next line.
+- Every voice-over must be attributed; never a bare unsigned "(O.S.)".
 
 ## Strictly forbidden formatting (already handled by the system)
 - Do NOT add any headings (#, ##, ###) — the system automatically adds act titles and scene numbers
@@ -176,15 +211,23 @@ _SCREENPLAY_SYSTEM_PROMPT_ZH = """\
 - 开始写作前，在<构思>标签中写下你对角色动机和情节结构的思考
 
 格式规则（严格遵守）：
-- 场景标题统一使用：[内景] 地点 - 时间 或 [外景] 地点 - 时间
+- 场景标题统一使用：[内景] 地点 - 时间 或 [外景] 地点 - 时间。每一场都必须有场景标题，且必须带时间项（如 日/夜/黄昏/拂晓）。不要用"混沌时刻""黄昏与灰雾的虚空间"这类描述性词当时间，时间用语只从 日/夜/黄昏/拂晓/清晨/深夜 中选。
 - 角色名必须保持中文原文。例如：林辰，不能写成 LIN CHEN。沈天机，不能写成 SHEN TIANJI。这是硬性规定，违反将导致剧本不合格。
-- 对话格式：角色名单独一行，对话另起一行
-- 必要时在对话前用（括号）标注表情或动作指示
+- 对白格式只用一种（全剧统一）：角色名单独一行，下一行写对白。禁止使用"角色名：对白"这种把名字和对白挤在同一行的写法。
+  示例：
+    林辰
+    苏小姐，听说你手上有张地图。
+- 必要时在角色名行的下一行、对白之前，用单独一行的（括号提示）标注简短语气或动作，如（压低声音）、（冷笑）。括号提示只能是简短提示，禁止把整段场面动作塞进括号。
 
-内心独白处理：
-- [内心] 标记表示角色此时的心理活动
-- 将其转化为剧本格式：（旁白）、（OS）、画外音、或括弧内的动作/表情指示
-- 例如：[内心] 林辰心想：不能暴露修为 → （林辰强压灵力，面无表情）或 林辰（OS）：不能暴露修为...
+动作描写规则：
+- 动作行不加括号，单独成行，用简洁的现在时，只写镜头能拍到的画面与可见动作。
+- 禁止在动作行写气味、味觉、体内感受、心理活动等不可视觉化的内容（如"臭氧味刺入喉咙""血管突突跳动"）。需要表现这类感受时，转化为可见画面或可听音效。
+
+内心独白 / 画外音处理（全剧统一为一种标记）：
+- 角色心理活动 / 画外音：角色名行写成"角色名（OS）"，下一行写内容。禁止使用"角色：（OS）""（OS）角色：""（角色OS）""（旁白）："等其它写法。
+- 第三人称旁白：用"旁白（VO）"作为角色名行，下一行写内容。
+- 任何画外音都必须署名，禁止出现没有说话人的裸"（OS）"。
+- 例如：[内心] 林辰心想：不能暴露 → 角色名行"林辰（OS）"，下一行"不能暴露……"。
 
 ## 严格禁止的格式（代码已自动处理）
 - 不要添加任何标题（#、##、###）——代码会自动添加幕标题和场次编号
@@ -219,6 +262,56 @@ _SCREENPLAY_ENHANCE_PROMPT_ZH = """\
 
 重要提示：所有对话和动作描述使用简体中文。"""
 
+_CANON_ADJUDICATOR_SYSTEM_PROMPT_ZH = """\
+你是设定仲裁官（canonical-fact adjudicator）。同一套故事素材会分别被改写成小说与剧本，两个写手各自工作、互不通气。你的职责：在写手开写之前，把那些"承重却在素材中沉默、含糊或自相矛盾"的关键事实一次性权威地钉死，使两边不会各自编造出互相矛盾的版本。
+
+三步任务：
+1. 找出素材中承重的沉默点/含糊点/矛盾点——尤其是这些维度：关键人物身份、关键数字（页码/日期/数量）、亲缘关系、角色生死结局、重要配角的最终下落。
+2. 凡素材对某个承重事实保持沉默、而写手很可能各自擅自编造之处，你在此一次性铸造唯一定稿（中文与英文各一句）。这正是统计无法完成的——素材里没有，就由你裁决出唯一答案，让两边共用。
+3. 为每条事实列出写手最可能写错的具体错误变体（rejected_answers），如错误的页码、错误的亲缘。
+
+裁决纪律：
+- 只针对承重事实，不要为无关紧要的细节立法。条目控制在 5 到 12 条。
+- canonical_answer 不得为空。
+- rejected_answers 必须是完整的错误命题（一句能独立成立的错误说法，如"苏挽清建造了炼炉"），不能是裸的实体名或词语（如只写"苏挽清""第97页"）。裸实体名会与角色的合法出场或正确数字撞车，导致误判。
+- 若某个承重矛盾你无法可靠裁定，放入 unresolved，绝不臆造细节冒充已知。
+- scope 只能取这些值之一：{scopes}。"all" 表示小说和剧本都适用。
+
+你必须只回复 JSON，不要 markdown、不要代码围栏、不要解释。格式：
+{
+  "facts": [
+    {"topic": "维度短标签", "question": "被裁决的问题", "canonical_answer_zh": "中文定稿", "canonical_answer_en": "English ruling", "rejected_answers": ["错误变体1", "错误变体2"], "scope": "all", "rationale": "裁决依据"}
+  ],
+  "unresolved": [
+    {"topic": "维度短标签", "question": "无法裁定的承重矛盾", "candidates": ["选项A", "选项B"]}
+  ]
+}"""
+
+_CANON_ADJUDICATOR_SYSTEM_PROMPT_EN = """\
+You are a canonical-fact adjudicator. The same story material will be rewritten separately into a novel and a screenplay by two writers who work independently and never coordinate. Your job: before the writers begin, authoritatively lock down the load-bearing facts that the material leaves silent, vague, or self-contradictory, so the two sides cannot each invent conflicting versions.
+
+Three-step task:
+1. Find the load-bearing silences/ambiguities/contradictions in the material — especially along these dimensions: key character identity, key numbers (page numbers/dates/quantities), kinship relations, character life-or-death fates, and the final fate of important supporting characters.
+2. Wherever the material is silent on a load-bearing fact that the writers would likely each fabricate differently, mint the single definitive version here, once (one sentence each in Chinese and English). This is what statistics cannot do — if it is absent from the source, you adjudicate the one answer both sides will share.
+3. For each fact, list the specific wrong variants a writer is most likely to produce (rejected_answers), e.g. a wrong page number, a wrong kinship.
+
+Adjudication discipline:
+- Only load-bearing facts; do not legislate trivia. Keep to 5–12 entries.
+- canonical_answer must not be empty.
+- rejected_answers must be complete wrong PROPOSITIONS (a full incorrect statement that stands on its own, e.g. "Su Wanqing built the furnace"), NOT bare entity names or tokens (e.g. just "Su Wanqing" or "page 97"). Bare entity names collide with a character's legitimate appearance or the correct number and cause false positives.
+- If a load-bearing contradiction cannot be reliably decided, put it in unresolved — never fabricate detail to pose as known.
+- scope must be one of: {scopes}. "all" means it applies to both novel and screenplay.
+
+You MUST reply with ONLY JSON — no markdown, no code fences, no explanation. Format:
+{
+  "facts": [
+    {"topic": "short dimension label", "question": "the adjudicated question", "canonical_answer_zh": "中文定稿", "canonical_answer_en": "English ruling", "rejected_answers": ["wrong variant 1", "wrong variant 2"], "scope": "all", "rationale": "basis for the ruling"}
+  ],
+  "unresolved": [
+    {"topic": "short dimension label", "question": "undecidable load-bearing contradiction", "candidates": ["option A", "option B"]}
+  ]
+}"""
+
 # --- Prompt lookup ---
 
 _NARRATIVE_PROMPTS = {
@@ -246,6 +339,10 @@ _NARRATIVE_PROMPTS = {
         Lang.ZH: _SCREENPLAY_ENHANCE_PROMPT_ZH,
         Lang.EN: _SCREENPLAY_ENHANCE_PROMPT_EN,
     },
+    "canon_adjudicator_system": {
+        Lang.ZH: _CANON_ADJUDICATOR_SYSTEM_PROMPT_ZH,
+        Lang.EN: _CANON_ADJUDICATOR_SYSTEM_PROMPT_EN,
+    },
 }
 
 
@@ -271,6 +368,16 @@ def _get_screenplay_system_prompt() -> str:
 
 def _get_screenplay_enhance_prompt() -> str:
     return _NARRATIVE_PROMPTS["screenplay_enhance"][get_lang()]
+
+
+def _get_canon_adjudicator_prompt(scopes: list[str]) -> str:
+    """Adjudicator system prompt with the legal scope set injected.
+
+    Uses str.replace (not .format) because the prompt body contains literal
+    JSON braces that .format would choke on.
+    """
+    tmpl = _NARRATIVE_PROMPTS["canon_adjudicator_system"][get_lang()]
+    return tmpl.replace("{scopes}", ", ".join(scopes))
 
 
 def _get_chapter_write_target() -> str:
