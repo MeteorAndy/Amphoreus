@@ -112,10 +112,11 @@ async def test_invalidate_chapter_uses_contains():
     store, mem = _store()
     mem.kuzu.query_cypher = MagicMock(return_value=[])
     await store.invalidate_chapter("s1")
-    # one DETACH DELETE per node label, all via CONTAINS on properties
+    # one edge deletion per edge label, via CONTAINS on edge.properties
+    # (edges are CREATE, never MERGE, so properties are per-chapter)
     assert mem.kuzu.query_cypher.call_count == 4
     for call in mem.kuzu.query_cypher.call_args_list:
-        assert "CONTAINS" in call.args[0] and "DETACH DELETE" in call.args[0]
+        assert "CONTAINS" in call.args[0] and "DELETE e" in call.args[0]
         assert "s1" in call.args[1]["frag"]
     mem.openviking.delete_entry.assert_called_once()
 
