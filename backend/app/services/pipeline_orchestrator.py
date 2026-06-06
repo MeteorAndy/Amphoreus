@@ -398,9 +398,17 @@ class PipelineOrchestrator:
         world_state: WorldState = state["world_state"]
 
         world_summary = self._world_summary(world_state)
+
+        # Rehydrate the foreshadowing registry from its artifact (empty if none
+        # persisted yet). Single from_dict — the writers apply TTL downgrade in
+        # place, so we persist the updated state back after writing.
+        reg_dict = self._load_artifact(session_id, "foreshadowing_registry")
+        registry = cp.registry_from_dict(reg_dict) if reg_dict else None
+
         options = WritingOptions(
             format=config.output_format,
             canonical_facts=state.get("canonical_facts"),
+            foreshadowing_registry=registry,
         )
 
         output: WrittenOutput = await self._narrative_writer.convert(
@@ -411,6 +419,11 @@ class PipelineOrchestrator:
             world_summary=world_summary,
             selected_title_index=0,
         )
+
+        if registry is not None:
+            self._persist_artifact(
+                session_id, "foreshadowing_registry", cp.registry_to_dict(registry)
+            )
 
         state["output"] = output
         state["writing_done"] = True

@@ -127,3 +127,14 @@ def outline_to_dict(outline) -> dict[str, Any]:
 def outline_from_dict(data: dict[str, Any]):
     from app.services.plot_architect.architect import PlotArchitect
     return PlotArchitect._dict_to_outline(data)
+
+
+# --- ForeshadowingRegistry ---
+
+def registry_to_dict(r) -> dict[str, Any]:
+    return r.to_dict()
+
+
+def registry_from_dict(data: dict[str, Any]):
+    from app.services.narrative.foreshadowing import ForeshadowingRegistry
+    return ForeshadowingRegistry.from_dict(data)

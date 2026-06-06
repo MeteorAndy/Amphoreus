@@ -34,6 +34,9 @@ class WritingOptions:
     enhance: bool = False
     chapter_title: str | None = None
     canonical_facts: "CanonicalFacts | None" = None
+    # Optional foreshadowing registry; when present the writers inject a
+    # per-chapter T0 block. String-annotated to avoid an import cycle.
+    foreshadowing_registry: "ForeshadowingRegistry | None" = None
 
 
 @dataclass

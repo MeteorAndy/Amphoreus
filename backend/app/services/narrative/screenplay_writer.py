@@ -13,6 +13,7 @@ from .prompts import (
     _get_screenplay_system_prompt,
     _get_screenplay_enhance_prompt,
 )
+from .foreshadowing import render_foreshadowing_block
 from .types import ChapterPlan, WritingOptions, WrittenOutput, count_words
 
 
@@ -46,12 +47,22 @@ class ScreenplayWriter:
         if options.canonical_facts is not None:
             canon_block = options.canonical_facts.render_block("screenplay", lang == Lang.ZH)
 
+        # Screenplay is generated per-scene in a single pass; act_spec.number is
+        # not in scope here, so the T0 block is computed once using the first
+        # planned act/chapter number as the representative reference point.
+        rep_chapter = act_plan.chapters[0].number if act_plan.chapters else 1
+        foreshadowing_block = render_foreshadowing_block(
+            options.foreshadowing_registry, rep_chapter, lang == Lang.ZH
+        )
+
         for archive in scene_archives:
             location = ""
             if scene_specs and archive.scene_id in scene_specs:
                 location = scene_specs[archive.scene_id].location
             scene_log = self._format_scene_log(archive, char_by_id, location)
-            formatted = await self._generate_screenplay(scene_log, char_names, canon_block)
+            formatted = await self._generate_screenplay(
+                scene_log, char_names, canon_block, foreshadowing_block
+            )
             formatted = self._strip_thinking_tags(formatted)
             if options.enhance:
                 formatted = await self._enhance_screenplay(formatted, canon_block)
@@ -79,7 +90,8 @@ class ScreenplayWriter:
     # ------------------------------------------------------------------
 
     async def _generate_screenplay(
-        self, scene_log: str, character_names: str = "", canon_block: str = ""
+        self, scene_log: str, character_names: str = "", canon_block: str = "",
+        foreshadowing_block: str = "",
     ) -> str:
         """Send a scene log to the LLM and return screenplay-format text."""
         from app.core.i18n import Lang, get_lang
@@ -88,6 +100,8 @@ class ScreenplayWriter:
         ]
         if canon_block:
             messages.append({"role": "system", "content": canon_block})
+        if foreshadowing_block:
+            messages.append({"role": "system", "content": foreshadowing_block})
         if get_lang() == Lang.ZH:
             name_rule = (
                 f"场景中的角色名称为：{character_names}。"

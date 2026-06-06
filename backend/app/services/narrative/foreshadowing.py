@@ -200,3 +200,50 @@ def visible_profile(char: CharacterProfile, current_chapter: int | None) -> str:
     if revealed and char.hidden_profile:
         return f"{base}\n{char.hidden_profile}".strip() if base else char.hidden_profile
     return base
+
+
+def render_foreshadowing_block(
+    registry: "ForeshadowingRegistry | None",
+    current_chapter: int,
+    is_zh: bool,
+    max_items: int = 6,
+) -> str:
+    """Render the T0 foreshadowing reminder block for a chapter's prompt.
+
+    Applies TTL downgrade (GC of stale low-stakes threads) then selects the
+    most urgent still-PLANTED threads via get_t0_eligible. Returns "" when there
+    is no registry or nothing eligible, so callers can inject unconditionally.
+
+    Each bullet shows the thread description, importance, and an urgency tag
+    (overdue / imminent / upcoming) relative to current_chapter.
+    """
+    if registry is None:
+        return ""
+    registry.apply_ttl_downgrade(current_chapter)
+    eligible = registry.get_t0_eligible(current_chapter, max_items)
+    if not eligible:
+        return ""
+
+    def _tag(item: Foreshadowing) -> str:
+        s = item.suggested_resolve_chapter
+        if s is None:
+            return "待处理" if is_zh else "open"
+        if s < current_chapter:
+            return "逾期" if is_zh else "overdue"
+        if s == current_chapter:
+            return "本章" if is_zh else "due now"
+        return "临近" if is_zh else "upcoming"
+
+    if is_zh:
+        header = "## 伏笔线索（需在本章或临近章节回收）\n"
+        lines = [
+            f"- 【{_tag(i)}·{i.importance}】{i.description}" for i in eligible
+        ]
+        footer = "\n请在本章自然地推进或回收上述线索，不要生硬提及。"
+    else:
+        header = "## Planted threads (resolve at or near this chapter)\n"
+        lines = [
+            f"- [{_tag(i)} · {i.importance}] {i.description}" for i in eligible
+        ]
+        footer = "\nAdvance or pay off these threads naturally; do not name them mechanically."
+    return header + "\n".join(lines) + footer

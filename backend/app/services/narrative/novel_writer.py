@@ -20,6 +20,7 @@ from .prompts import (
     _get_chapter_write_short_target,
     _get_novel_enhance_prompt,
 )
+from .foreshadowing import render_foreshadowing_block
 from .types import ChapterPlan, ChapterSpec, WritingOptions
 
 
@@ -241,6 +242,9 @@ class NovelWriter:
                 next_summary=next_summary,
                 word_count_target=word_count_target,
                 options=options,
+                foreshadowing_block=render_foreshadowing_block(
+                    options.foreshadowing_registry, spec.number, get_lang() == Lang.ZH
+                ),
             )
 
             if options.enhance:
@@ -262,6 +266,7 @@ class NovelWriter:
         next_summary: str,
         word_count_target: str,
         options: WritingOptions,
+        foreshadowing_block: str = "",
     ) -> str:
         """Send a chapter prompt to the LLM and return the prose."""
         voice_label = options.narrative_voice.replace("_", " ")
@@ -298,6 +303,8 @@ class NovelWriter:
             canon = options.canonical_facts.render_block("novel", lang == Lang.ZH)
             if canon:
                 messages.append({"role": "system", "content": canon})
+        if foreshadowing_block:
+            messages.append({"role": "system", "content": foreshadowing_block})
         messages.append({"role": "user", "content": user_prompt})
 
         raw = await self._llm.chat(messages)
