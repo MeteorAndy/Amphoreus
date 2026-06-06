@@ -4,9 +4,11 @@ import PlotTimeline from '../components/PlotTimeline.vue'
 import { usePlotArchitect } from '../composables/usePlotArchitect'
 import { useCharacters } from '../composables/useCharacters'
 import { useI18n } from '../i18n'
+import { useToast } from '../composables/useToast'
 import type { CreateSceneRequest, SceneSpec } from '../types/api'
 
 const { t } = useI18n()
+const toast = useToast()
 
 const {
   outlines,
@@ -17,6 +19,7 @@ const {
   createOutline,
   selectOutline,
   removeOutline,
+  updateOutline,
   refineOutline,
   checkConsistency,
   createScene,
@@ -166,6 +169,37 @@ async function handleCheckConsistency(sceneId: string): Promise<void> {
     checkingConsistency.value = false
   }
 }
+
+async function handleReorder(actId: string, sceneIds: string[]): Promise<void> {
+  if (!selectedOutline.value) return
+  const outline = selectedOutline.value
+
+  // Snapshot previous act scenes for rollback
+  const act = outline.acts.find((a) => a.id === actId)
+  if (!act) return
+  const previousScenes = [...act.scenes]
+
+  // Apply new order locally
+  const reordered = sceneIds
+    .map((id) => act.scenes.find((s) => s.id === id))
+    .filter((s): s is NonNullable<typeof s> => s !== undefined)
+    .map((s, i) => ({ ...s, order: i + 1 }))
+  act.scenes = reordered
+
+  try {
+    await updateOutline(outline.id, { acts: outline.acts })
+    if (!error.value) {
+      toast.success(t('plot.reorder_saved'))
+    } else {
+      // Revert on error
+      act.scenes = previousScenes
+      toast.error(t('general.error'))
+    }
+  } catch {
+    act.scenes = previousScenes
+    toast.error(t('general.error'))
+  }
+}
 </script>
 
 <template>
@@ -243,6 +277,7 @@ async function handleCheckConsistency(sceneId: string): Promise<void> {
           @add-scene="openAddScene"
           @edit-scene="openEditScene"
           @delete-scene="removeScene"
+          @reorder="handleReorder"
         />
       </div>
     </div>

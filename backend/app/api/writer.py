@@ -28,8 +28,8 @@ from app.services.narrative_writer import (
     NarrativeWriter,
     WritingOptions,
     WrittenOutput,
-    _load_scene_archive,
 )
+from app.services.narrative.novel_writer import _load_scene_archive
 
 router = APIRouter(prefix="/api/writer", tags=["writer"])
 

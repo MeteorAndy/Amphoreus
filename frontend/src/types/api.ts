@@ -326,3 +326,27 @@ export interface WorldBuildResponse {
 export interface TemplatesResponse {
   templates: Record<string, string>
 }
+
+// ---------------------------------------------------------------------------
+// Sandbox types
+// ---------------------------------------------------------------------------
+
+export interface SandboxEvent {
+  type: 'connected' | 'injected' | 'action' | 'environment' | 'thought' | 'round_end' | 'stopped'
+  character?: string
+  content?: string
+  event?: string
+  round?: number
+  rounds?: number
+}
+
+export interface SandboxStartRequest {
+  world_id: string
+  character_ids: string[]
+  location?: string
+}
+
+export interface SandboxStartResponse {
+  session_id: string
+  status: string
+}

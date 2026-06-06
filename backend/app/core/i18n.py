@@ -107,6 +107,22 @@ _T: dict[str, dict[Lang, str]] = {
         Lang.ZH: "世界构建完成！",
         Lang.EN: "World building complete!",
     },
+    "world.rules": {
+        Lang.ZH: "规则",
+        Lang.EN: "Rules",
+    },
+    "world.locations": {
+        Lang.ZH: "地点",
+        Lang.EN: "Locations",
+    },
+    "world.factions": {
+        Lang.ZH: "势力",
+        Lang.EN: "Factions",
+    },
+    "world.timeline": {
+        Lang.ZH: "时间线",
+        Lang.EN: "Timeline",
+    },
     # Characters
     "chars.title": {
         Lang.ZH: "👥 角色生成",
