@@ -26,6 +26,22 @@ class WorldBuilderSession:
     conversation_history: list[dict[str, str]] = field(default_factory=list)
     extracted_data: WorldState = field(default_factory=WorldState)
     next_question: str = ""
+    suggestions: list[str] = field(default_factory=list)
+
+
+AUTO_FILL_INSTRUCTION_ZH = (
+    "请你作为世界架构师，根据已有设定自行做出合理且有创意的决定，"
+    "直接补全当前阶段的内容并推进到下一阶段。无需再向我提问。"
+)
+AUTO_FILL_INSTRUCTION_EN = (
+    "As the world architect, make a sensible and creative decision yourself "
+    "based on the established setting. Fill in the current stage and advance to "
+    "the next stage directly. Do not ask me any further questions."
+)
+
+
+def _auto_fill_instruction() -> str:
+    return AUTO_FILL_INSTRUCTION_ZH if get_lang() == Lang.ZH else AUTO_FILL_INSTRUCTION_EN
 
 
 _SYSTEM_PROMPT_EN = """\
@@ -47,6 +63,7 @@ Respond in the following JSON format only:
 {
   "stage": "rules" | "locations" | "factions" | "timeline" | "done",
   "next_question": "your single focused question to the user",
+  "suggestions": ["3-4 concrete, diverse candidate answers to next_question, phrased in the user's voice"],
   "extracted": {
     "rules": [{"name": "...", "category": "...", "description": "...", "l0": "...", "l1": "..."}],
     "locations": [{"name": "...", "type": "...", "description": "...", "l0": "...", "l1": "..."}],
@@ -77,6 +94,7 @@ _SYSTEM_PROMPT_ZH = """\
 {
   "stage": "rules" | "locations" | "factions" | "timeline" | "done",
   "next_question": "你向用户提出的一个聚焦问题（使用中文）",
+  "suggestions": ["针对 next_question 的 3-4 个具体、各不相同的候选答案，以用户口吻表述（使用中文）"],
   "extracted": {
     "rules": [{"name": "...", "category": "...", "description": "...", "l0": "...", "l1": "..."}],
     "locations": [{"name": "...", "type": "...", "description": "...", "l0": "...", "l1": "..."}],
@@ -86,7 +104,7 @@ _SYSTEM_PROMPT_ZH = """\
   "completeness": 0.0–1.0
 }
 
-注意：JSON 字段名保持英文，但所有文本内容（next_question, name, description 等）必须使用简体中文。
+注意：JSON 字段名保持英文，但所有文本内容（next_question, suggestions, name, description 等）必须使用简体中文。
 """
 
 
@@ -127,6 +145,7 @@ class WorldBuilder:
         next_question = result.get("next_question", "")
         extracted_data = _parse_extracted(result.get("extracted", {}))
         extracted_data.completeness = result.get("completeness", 0.0)
+        suggestions = _parse_suggestions(result.get("suggestions", []))
 
         session = WorldBuilderSession(
             session_id=session_id,
@@ -134,6 +153,7 @@ class WorldBuilder:
             conversation_history=messages + [{"role": "assistant", "content": next_question}],
             extracted_data=extracted_data,
             next_question=next_question,
+            suggestions=suggestions,
         )
         self._save_session(session)
         return session
@@ -156,6 +176,7 @@ class WorldBuilder:
         session.stage = stage
         session.next_question = next_question
         session.extracted_data = merged
+        session.suggestions = _parse_suggestions(result.get("suggestions", []))
         session.conversation_history.append({"role": "assistant", "content": next_question})
 
         self._save_session(session)
@@ -169,6 +190,42 @@ class WorldBuilder:
         """Return the accumulated WorldState for a completed session."""
         session = self._load_session(session_id)
         return session.extracted_data
+
+    async def brainstorm_seed_ideas(self, count: int = 4) -> list[str]:
+        """Brainstorm diverse cross-genre one-sentence story premises.
+
+        Used for the seed-idea step, which has no prior context. Returns an
+        empty list on failure so the caller can fall back to free text.
+        """
+        if get_lang() == Lang.ZH:
+            sys_prompt = (
+                "你是一个富有想象力的故事点子生成器。生成多样、跨题材、各不相同的"
+                "一句话故事前提（玄幻、科幻、悬疑、历史、赛博朋克、奇幻等）。"
+                "每个前提应具体、有张力、引人入胜。只输出 JSON。"
+            )
+            user_prompt = (
+                f"生成 {count} 个互不相同的一句话故事 idea。"
+                '严格按此 JSON 格式返回：{"ideas": ["...", "..."]}'
+            )
+        else:
+            sys_prompt = (
+                "You are an imaginative story-idea generator. Produce diverse, "
+                "cross-genre, distinct one-sentence premises (fantasy, sci-fi, "
+                "mystery, historical, cyberpunk, etc.). Each premise should be "
+                "concrete, tense, and intriguing. Output JSON only."
+            )
+            user_prompt = (
+                f"Generate {count} distinct one-sentence story ideas. "
+                'Return strictly as JSON: {"ideas": ["...", "..."]}'
+            )
+        try:
+            result = await self._llm.chat_json([
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": user_prompt},
+            ])
+        except Exception:
+            return []
+        return _parse_suggestions(result.get("ideas", []), limit=count)
 
     # ---- persistence helpers ----
 
@@ -188,6 +245,7 @@ class WorldBuilder:
                 "completeness": session.extracted_data.completeness,
             },
             "next_question": session.next_question,
+            "suggestions": session.suggestions,
         }
         self._ov.write_entry(
             self._session_path(session.session_id),
@@ -212,6 +270,7 @@ class WorldBuilder:
                 completeness=extracted.get("completeness", 0.0),
             ),
             next_question=data.get("next_question", ""),
+            suggestions=data.get("suggestions", []),
         )
 
 
@@ -225,6 +284,18 @@ def _parse_extracted(extracted: dict[str, Any]) -> WorldState:
         factions=extracted.get("factions", []),
         timeline=extracted.get("timeline", []),
     )
+
+
+def _parse_suggestions(raw: Any, limit: int = 4) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    for item in raw:
+        if isinstance(item, str) and item.strip():
+            out.append(item.strip())
+        if len(out) >= limit:
+            break
+    return out
 
 
 def _merge_extracted(current: WorldState, new_data: dict[str, Any]) -> WorldState:

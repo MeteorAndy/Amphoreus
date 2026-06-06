@@ -14,6 +14,7 @@ from rich.text import Text
 from rich.tree import Tree
 
 from app.cli.console import console
+from app.cli.picker import select
 from app.core.api_keys import KeyManager
 from app.core.config import get_settings
 from app.core.i18n import Lang, get_lang, set_lang, t
@@ -93,18 +94,8 @@ def _show_language_selection() -> None:
     ))
     console.print()
 
-    while True:
-        choice = Prompt.ask(
-            "Select language / 选择语言",
-            default="1",
-        )
-        if choice == "1":
-            set_lang(Lang.ZH)
-            break
-        elif choice == "2":
-            set_lang(Lang.EN)
-            break
-        console.print("[red]Invalid / 无效选择[/]")
+    idx = select("Select language / 选择语言", ["简体中文", "English"], default_index=0)
+    set_lang(Lang.ZH if idx == 0 else Lang.EN)
 
 
 def _show_banner() -> None:
@@ -241,16 +232,6 @@ def _display_outline(outline: PlotOutline) -> None:
 
 def _select_mode() -> str:
     console.print()
-    console.print(f"[bold cyan]{t('mode.title')}:[/]")
-    console.print(f"  [bold]1.[/] {t('mode.1')}")
-    console.print(f"  [bold]2.[/] {t('mode.2')}")
-    console.print(f"  [bold]3.[/] {t('mode.3')}")
-    console.print(f"  [bold]q.[/] {t('mode.q')}")
-    console.print()
-
-    while True:
-        choice = Prompt.ask(f"[bold cyan]Mode / 模式[/]", default="1")
-        if choice in ("1", "2", "3", "q", "Q"):
-            return choice
-        invalid = "无效选择" if get_lang() == Lang.ZH else "Invalid choice"
-        console.print(f"[red]{invalid}[/]")
+    labels = [t('mode.1'), t('mode.2'), t('mode.3'), t('mode.q')]
+    idx = select(t('mode.title'), labels, default_index=0, divider_before=3)
+    return ("1", "2", "3", "q")[idx]

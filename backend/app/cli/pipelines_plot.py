@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from rich import box
-from rich.prompt import Prompt
 from rich.rule import Rule
 from rich.table import Table
 
 from app.cli.console import console
 from app.cli.display import _display_outline, _progress
+from app.cli.picker import select
 from app.cli.session import CliSession, _save_cli_session
 from app.core.i18n import Lang, get_lang, t
 from app.core.llm_client import LLMClient, LLMError, LLMErrorCode
@@ -56,17 +56,8 @@ async def _plot_architecture_pipeline(
     console.print(table)
 
     choose = "选择结构" if get_lang() == Lang.ZH else "Choose a structure"
-    while True:
-        choice = Prompt.ask(f"[bold cyan]{choose}[/]", default="1")
-        try:
-            idx = int(choice) - 1
-            if 0 <= idx < len(structures):
-                session.narrative_structure = structures[idx].value
-                break
-        except ValueError:
-            pass
-        invalid = "无效选择" if get_lang() == Lang.ZH else "Invalid choice"
-        console.print(f"[red]{invalid}[/]")
+    idx = select(choose, [STRUCTURE_LABELS.get(s, s.value) for s in structures], default_index=0)
+    session.narrative_structure = structures[idx].value
 
     console.print()
 
@@ -128,25 +119,9 @@ async def _scene_execution_pipeline(
     completed_archives: dict[str, SceneArchive] = {}
 
     run_which = "执行哪个场景？(编号, 'all'=全部, 回车=第一场)" if get_lang() == Lang.ZH else "Run which scene? (number, 'all', or Enter for first)"
-    choice = Prompt.ask(f"[bold cyan]{run_which}[/]", default="1")
-
-    if choice.lower() == "all":
-        scenes_to_run = all_scenes
-    elif choice.strip() == "":
-        scenes_to_run = [all_scenes[0]] if all_scenes else []
-    else:
-        try:
-            idx = int(choice) - 1
-            if 0 <= idx < len(all_scenes):
-                scenes_to_run = [all_scenes[idx]]
-            else:
-                invalid = "无效选择" if get_lang() == Lang.ZH else "Invalid choice"
-                console.print(f"[red]{invalid}[/]")
-                return {}
-        except ValueError:
-            invalid = "无效选择" if get_lang() == Lang.ZH else "Invalid choice"
-            console.print(f"[red]{invalid}[/]")
-            return {}
+    labels = [s.title for s in all_scenes] + ["▶ " + ("全部场景" if get_lang() == Lang.ZH else "Run all scenes")]
+    sel = select(run_which, labels, default_index=0, divider_before=len(all_scenes))
+    scenes_to_run = all_scenes if sel == len(all_scenes) else [all_scenes[sel]]
 
     for scene_spec in scenes_to_run:
         console.print()

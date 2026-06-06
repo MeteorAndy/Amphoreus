@@ -86,6 +86,39 @@ _T: dict[str, dict[Lang, str]] = {
         Lang.ZH: "API Key 已配置",
         Lang.EN: "API Keys configured",
     },
+    "apikey.invalid": {
+        Lang.ZH: "API Key 无效或已过期，鉴权失败（HTTP 401）。请检查后重新输入。",
+        Lang.EN: "API Key is invalid or expired — authentication failed (HTTP 401). Please re-enter it.",
+    },
+    "apikey.reenter_deepseek": {
+        Lang.ZH: "重新输入 DeepSeek API Key（回车跳过并退出）",
+        Lang.EN: "Re-enter DeepSeek API Key (Enter to skip and exit)",
+    },
+    "apikey.updated": {
+        Lang.ZH: "API Key 已更新，请重新运行以继续。",
+        Lang.EN: "API Key updated. Please re-run to continue.",
+    },
+    # LLM errors
+    "llm.error.auth": {
+        Lang.ZH: "LLM 鉴权失败：API Key 无效或已过期。请运行后重新配置 Key。",
+        Lang.EN: "LLM authentication failed: API key invalid or expired. Reconfigure your key.",
+    },
+    "llm.error.quota": {
+        Lang.ZH: "LLM 配额或余额不足。请到对应平台充值后重试。",
+        Lang.EN: "LLM quota or balance exhausted. Top up on the provider platform and retry.",
+    },
+    "llm.error.rate_limit": {
+        Lang.ZH: "LLM 请求过于频繁（限流）。请稍后重试。",
+        Lang.EN: "LLM rate limited. Please wait a moment and retry.",
+    },
+    "llm.error.network": {
+        Lang.ZH: "无法连接 LLM 服务，请检查网络后重试。",
+        Lang.EN: "Could not reach the LLM service. Check your network and retry.",
+    },
+    "llm.error.unknown": {
+        Lang.ZH: "LLM 调用失败：{detail}",
+        Lang.EN: "LLM request failed: {detail}",
+    },
     # World building
     "world.start": {
         Lang.ZH: "🌍 世界构建",
@@ -223,6 +256,10 @@ _T: dict[str, dict[Lang, str]] = {
     "general.error": {
         Lang.ZH: "错误",
         Lang.EN: "Error",
+    },
+    "general.invalid": {
+        Lang.ZH: "无效选择",
+        Lang.EN: "Invalid choice",
     },
     "general.retry": {
         Lang.ZH: "重试",
@@ -370,6 +407,58 @@ _T: dict[str, dict[Lang, str]] = {
     "writer.act_number": {
         Lang.ZH: "第{n}幕",
         Lang.EN: "Act {n}",
+    },
+    "picker.hint_arrows": {
+        Lang.ZH: "↑/↓ 选择，回车确认，或按数字键直接选",
+        Lang.EN: "↑/↓ to move, Enter to confirm, or press a number",
+    },
+    "picker.choose": {
+        Lang.ZH: "请选择（输入编号，或直接输入你的答案）",
+        Lang.EN: "Choose (enter a number, or type your own answer)",
+    },
+    "picker.choose_number": {
+        Lang.ZH: "请选择（输入编号）",
+        Lang.EN: "Choose (enter a number)",
+    },
+    "picker.custom": {
+        Lang.ZH: "✏️ 自己输入…",
+        Lang.EN: "✏️ Type your own…",
+    },
+    "picker.custom_prompt": {
+        Lang.ZH: "输入你的答案",
+        Lang.EN: "Enter your answer",
+    },
+    "picker.auto": {
+        Lang.ZH: "🤖 让 AI 替我决定",
+        Lang.EN: "🤖 Let AI decide",
+    },
+    "picker.auto_stage": {
+        Lang.ZH: "🤖 让 AI 决定（并自动补全后续所有阶段）",
+        Lang.EN: "🤖 Let AI decide (and auto-fill all remaining stages)",
+    },
+    "picker.yes": {
+        Lang.ZH: "是",
+        Lang.EN: "Yes",
+    },
+    "picker.no": {
+        Lang.ZH: "否",
+        Lang.EN: "No",
+    },
+    "seed.brainstorming": {
+        Lang.ZH: "正在头脑风暴故事 idea...",
+        Lang.EN: "Brainstorming story ideas...",
+    },
+    "seed.choose": {
+        Lang.ZH: "选择一个故事 idea，或自己输入",
+        Lang.EN: "Pick a story idea, or type your own",
+    },
+    "seed.brainstorm_more": {
+        Lang.ZH: "✨ 让 AI 帮我想几个点子",
+        Lang.EN: "✨ Let AI brainstorm some ideas",
+    },
+    "world.autofilling": {
+        Lang.ZH: "AI 正在自动补全剩余阶段...",
+        Lang.EN: "AI is auto-filling the remaining stages...",
     },
 }
 

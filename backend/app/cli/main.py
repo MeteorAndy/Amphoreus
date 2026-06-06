@@ -19,13 +19,15 @@ from app.cli.display import (
 from app.cli.pipelines_plot import _plot_architecture_pipeline, _scene_execution_pipeline
 from app.cli.pipelines_story import _narrative_writing_pipeline
 from app.cli.pipelines_world import (
-    _character_generation_pipeline, _relationship_pipeline,
+    _character_generation_pipeline, _choose_seed_idea, _relationship_pipeline,
     _upload_document_pipeline, _world_building_pipeline,
 )
+from app.cli.picker import select
 from app.cli.session import CliSession, _list_saved_sessions, _save_cli_session
+from app.core.api_keys import KeyManager
 from app.core.config import get_settings
 from app.core.i18n import Lang, get_lang, t
-from app.core.llm_client import LLMClient
+from app.core.llm_client import LLMClient, LLMError, LLMErrorCode
 from app.models.character import CharacterProfile
 from app.services.character_manager import CharacterManager
 from app.services.memory import MemoryManager
@@ -59,8 +61,7 @@ async def async_main() -> None:
     # ── Mode 1: World building ────────────────────────────────────
     if mode == "1":
         console.print()
-        idea_prompt = "输入你的故事 idea（一句话）" if get_lang() == Lang.ZH else "Enter your story idea (one sentence)"
-        seed_idea = Prompt.ask(f"[bold cyan]{idea_prompt}[/]")
+        seed_idea = await _choose_seed_idea(llm, memory)
         cli_session.seed_idea = seed_idea
         _save_cli_session(cli_session)
         world = await _world_building_pipeline(llm, memory, cli_session, seed_idea)
@@ -72,8 +73,7 @@ async def async_main() -> None:
         except Exception:
             fallback = "回退到基于 idea 的世界构建。" if get_lang() == Lang.ZH else "Falling back to idea-based world building."
             console.print(f"[yellow]{fallback}[/]")
-            idea_prompt = "输入你的故事 idea（一句话）" if get_lang() == Lang.ZH else "Enter your story idea (one sentence)"
-            seed_idea = Prompt.ask(f"[bold cyan]{idea_prompt}[/]")
+            seed_idea = await _choose_seed_idea(llm, memory)
             cli_session.seed_idea = seed_idea
             _save_cli_session(cli_session)
             world = await _world_building_pipeline(llm, memory, cli_session, seed_idea)
@@ -84,44 +84,36 @@ async def async_main() -> None:
         if not saved:
             no_sessions = "没有可恢复的会话，开始新建。" if get_lang() == Lang.ZH else "No saved sessions. Starting new."
             console.print(f"[yellow]{no_sessions}[/]")
-            idea_prompt = "输入你的故事 idea（一句话）" if get_lang() == Lang.ZH else "Enter your story idea (one sentence)"
-            seed_idea = Prompt.ask(f"[bold cyan]{idea_prompt}[/]")
+            seed_idea = await _choose_seed_idea(llm, memory)
             cli_session.seed_idea = seed_idea
             _save_cli_session(cli_session)
             world = await _world_building_pipeline(llm, memory, cli_session, seed_idea)
         else:
             saved_sessions = "已保存的会话" if get_lang() == Lang.ZH else "Saved sessions"
             console.print(f"[bold cyan]{saved_sessions}:[/]")
-            for i, s in enumerate(saved, 1):
-                idea = s.seed_idea[:60] or "Unknown"
-                console.print(f"  {i}. {idea} [dim]({s.updated_at[:19]})[/]")
             console.print()
 
-            pick = "选择一个会话（编号，或 'n' 新建）" if get_lang() == Lang.ZH else "Pick a session (number, or 'n' for new)"
-            choice = Prompt.ask(f"[bold cyan]{pick}[/]", default="1")
-            if choice.lower() == "n":
-                idea_prompt = "输入你的故事 idea（一句话）" if get_lang() == Lang.ZH else "Enter your story idea (one sentence)"
-                seed_idea = Prompt.ask(f"[bold cyan]{idea_prompt}[/]")
+            pick_prompt = "选择一个会话（编号，或 'n' 新建）" if get_lang() == Lang.ZH else "Pick a session (number, or 'n' for new)"
+            labels = [
+                (s.seed_idea[:60] or "Unknown") + f"  ({s.updated_at[:19]})" for s in saved
+            ] + ["✨ " + ("新建" if get_lang() == Lang.ZH else "New project")]
+            sel = select(pick_prompt, labels, default_index=0, divider_before=len(saved))
+            if sel == len(saved):
+                seed_idea = await _choose_seed_idea(llm, memory)
                 cli_session.seed_idea = seed_idea
                 _save_cli_session(cli_session)
                 world = await _world_building_pipeline(llm, memory, cli_session, seed_idea)
             else:
-                try:
-                    idx = int(choice) - 1
-                    if 0 <= idx < len(saved):
-                        cli_session = saved[idx]
-                        builder = WorldBuilder(llm, memory)
-                        if cli_session.world_session_id:
-                            world = await builder.finalize_world(cli_session.world_session_id)
-                            char_mgr = CharacterManager(llm, memory)
-                            for cid in cli_session.character_ids:
-                                c = await char_mgr.get_character(cid)
-                                if c is not None:
-                                    characters.append(c)
-                except ValueError:
-                    invalid = "无效选择" if get_lang() == Lang.ZH else "Invalid choice"
-                    console.print(f"[red]{invalid}[/]")
-                    return
+                idx = sel
+                cli_session = saved[idx]
+                builder = WorldBuilder(llm, memory)
+                if cli_session.world_session_id:
+                    world = await builder.finalize_world(cli_session.world_session_id)
+                    char_mgr = CharacterManager(llm, memory)
+                    for cid in cli_session.character_ids:
+                        c = await char_mgr.get_character(cid)
+                        if c is not None:
+                            characters.append(c)
 
     if world is None:
         no_world = "世界状态为空，无法继续。" if get_lang() == Lang.ZH else "World state is empty. Cannot proceed."
@@ -191,6 +183,39 @@ async def async_main() -> None:
     await memory.close()
 
 
+_LLM_ERROR_KEYS: dict[LLMErrorCode, str] = {
+    LLMErrorCode.AUTH_ERROR: "llm.error.auth",
+    LLMErrorCode.QUOTA_EXHAUSTED: "llm.error.quota",
+    LLMErrorCode.RATE_LIMITED: "llm.error.rate_limit",
+    LLMErrorCode.NETWORK_ERROR: "llm.error.network",
+}
+
+
+def _reconfigure_deepseek_key() -> bool:
+    """Prompt the user to re-enter the DeepSeek key after an auth failure.
+
+    Returns True if a new key was stored, False if the user skipped.
+    """
+    settings = get_settings()
+    key_manager = KeyManager(settings)
+    console.print(f"[yellow]{t('apikey.invalid')}[/]")
+    key = Prompt.ask(t("apikey.reenter_deepseek"), password=True, default="")
+    if key.strip():
+        key_manager.set_deepseek_key(key.strip())
+        settings.save_user_config()
+        console.print(f"[green]{t('apikey.updated')}[/]")
+        return True
+    return False
+
+
+def _report_llm_error(exc: LLMError) -> None:
+    key = _LLM_ERROR_KEYS.get(exc.code)
+    if key is not None:
+        console.print(f"\n[red bold]{t('general.error')}:[/] {t(key)}")
+    else:
+        console.print(f"\n[red bold]{t('general.error')}:[/] {t('llm.error.unknown', detail=str(exc))}")
+
+
 def main() -> None:
     try:
         asyncio.run(async_main())
@@ -198,8 +223,14 @@ def main() -> None:
         interrupted = "用户中断。再见！" if get_lang() == Lang.ZH else "Interrupted by user. Goodbye!"
         console.print(f"\n[yellow]{interrupted}[/]")
         sys.exit(0)
+    except LLMError as exc:
+        _report_llm_error(exc)
+        if exc.code == LLMErrorCode.AUTH_ERROR:
+            _reconfigure_deepseek_key()
+        sys.exit(1)
     except Exception as exc:
-        console.print(f"\n[red bold]Error:[/] {exc}")
-        import traceback
-        console.print(traceback.format_exc())
+        console.print(f"\n[red bold]{t('general.error')}:[/] {exc}")
+        if get_settings().debug:
+            import traceback
+            console.print(traceback.format_exc())
         sys.exit(1)

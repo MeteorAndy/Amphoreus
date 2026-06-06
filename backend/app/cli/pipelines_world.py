@@ -13,6 +13,7 @@ from rich.table import Table
 
 from app.cli.console import console
 from app.cli.display import _display_characters, _edit_character, _progress, _stage_progress
+from app.cli.picker import pick, select
 from app.cli.session import CliSession, _save_cli_session
 from app.core.i18n import Lang, get_lang, t
 from app.core.llm_client import LLMClient
@@ -21,11 +22,12 @@ from app.services.character_manager import CharacterManager
 from app.services.document_parser import DocumentParser, ParsedDocument
 from app.services.memory import MemoryManager
 from app.services.relationship_builder import Relationship, RelationshipBuilder
-from app.services.world_builder import WorldBuilder, WorldState
+from app.services.world_builder import WorldBuilder, WorldState, _auto_fill_instruction
 
 
 async def _world_building_pipeline(
-    llm: LLMClient, memory: MemoryManager, session: CliSession, seed_idea: str
+    llm: LLMClient, memory: MemoryManager, session: CliSession,
+    seed_idea: str, auto: bool = False,
 ) -> WorldState:
     console.print(Rule(f"[bold cyan]{t('world.start')}[/]"))
     builder = WorldBuilder(llm, memory)
@@ -46,6 +48,7 @@ async def _world_building_pipeline(
         "done": "Done" if get_lang() == Lang.EN else "完成",
     }
 
+    auto_iterations = 0
     while wb_session.stage != "done":
         stage_name = stage_names.get(wb_session.stage, wb_session.stage)
         stage_num = stage_map.get(wb_session.stage, 0)
@@ -58,8 +61,25 @@ async def _world_building_pipeline(
         md = Markdown(wb_session.next_question)
         console.print(Panel(md, box=box.ROUNDED, title=f"[bold]{question_panel_title}[/]"))
 
-        answer_label = "你的回答" if get_lang() == Lang.ZH else "Your answer"
-        user_input = Prompt.ask(f"[bold cyan]{answer_label}[/]")
+        if auto:
+            user_input = _auto_fill_instruction()
+            auto_iterations += 1
+            if auto_iterations > 12:
+                break
+            console.print(f"[dim]{t('world.autofilling')}[/]")
+        else:
+            res = pick(
+                "",
+                wb_session.suggestions,
+                allow_auto=True,
+                auto_label=t("picker.auto_stage"),
+            )
+            if res.kind == "auto":
+                auto = True
+                user_input = _auto_fill_instruction()
+                console.print(f"[dim]{t('world.autofilling')}[/]")
+            else:
+                user_input = res.value
 
         with _progress() as p:
             p.add_task(description=f"[yellow]{t('general.loading')}[/]")
@@ -77,6 +97,24 @@ async def _world_building_pipeline(
     console.print()
 
     return await builder.finalize_world(wb_session.session_id)
+
+
+async def _choose_seed_idea(llm: LLMClient, memory: MemoryManager) -> str:
+    """Brainstorm seed ideas and let the user pick, type their own, or skip."""
+    builder = WorldBuilder(llm, memory)
+    panel_title = "故事灵感" if get_lang() == Lang.ZH else "Story Spark"
+    question = "你想写一个什么样的故事？" if get_lang() == Lang.ZH else "What kind of story do you want to write?"
+
+    with _progress() as p:
+        p.add_task(description=f"[yellow]{t('seed.brainstorming')}[/]")
+        try:
+            ideas = await builder.brainstorm_seed_ideas(count=5)
+        except Exception:
+            ideas = []
+
+    console.print(Panel(Markdown(question), box=box.ROUNDED, title=f"[bold]{panel_title}[/]"))
+    res = pick(t("seed.choose"), ideas, allow_custom=True, allow_auto=False)
+    return res.value
 
 
 async def _upload_document_pipeline(llm: LLMClient) -> WorldState:
@@ -154,22 +192,12 @@ async def _character_generation_pipeline(
     while True:
         console.print()
         edit_prompt = "编辑角色？(输入编号编辑，回车继续)" if get_lang() == Lang.ZH else "Edit any character? (number to edit, Enter to continue)"
-        edit_choice = Prompt.ask(f"[bold cyan]{edit_prompt}[/]", default="")
-        if not edit_choice.strip():
+        labels = [c.name for c in characters] + ["✓ " + ("完成" if get_lang() == Lang.ZH else "Done")]
+        sel = select(edit_prompt, labels, default_index=len(characters), divider_before=len(characters))
+        if sel == len(characters):
             break
 
-        try:
-            idx = int(edit_choice) - 1
-            if idx < 0 or idx >= len(characters):
-                invalid = "无效选择" if get_lang() == Lang.ZH else "Invalid choice"
-                console.print(f"[red]{invalid}[/]")
-                continue
-        except ValueError:
-            invalid = "无效选择" if get_lang() == Lang.ZH else "Invalid choice"
-            console.print(f"[red]{invalid}[/]")
-            continue
-
-        await _edit_character(char_mgr, characters[idx])
+        await _edit_character(char_mgr, characters[sel])
 
         characters = []
         for cid in session.character_ids:

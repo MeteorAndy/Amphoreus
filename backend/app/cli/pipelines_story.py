@@ -7,12 +7,12 @@ from pathlib import Path
 from rich import box
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.prompt import Confirm, Prompt
 from rich.rule import Rule
 from rich.table import Table
 
 from app.cli.console import console
 from app.cli.display import _chapter_word_count_target, _format_world_summary, _progress
+from app.cli.picker import confirm, select
 from app.cli.session import CliSession, _save_cli_session
 from app.core.i18n import Lang, get_lang, t
 from app.core.llm_client import LLMClient
@@ -74,19 +74,8 @@ async def _narrative_writing_pipeline(
     console.print(title_table)
     console.print()
 
-    while True:
-        choice = Prompt.ask(
-            f"[bold cyan]{t('writer.select_title')}[/]", default="1"
-        )
-        try:
-            idx = int(choice) - 1
-            if 0 <= idx < len(title_candidates):
-                selected_title = title_candidates[idx]
-                break
-        except ValueError:
-            pass
-        invalid = "无效选择" if lang == Lang.ZH else "Invalid choice"
-        console.print(f"[red]{invalid}[/]")
+    idx = select(t('writer.select_title'), title_candidates, default_index=0)
+    selected_title = title_candidates[idx]
 
     selected_label = "已选择" if lang == Lang.ZH else "Selected"
     console.print(f"[green]✓ {selected_label}: {selected_title}[/]")
@@ -261,7 +250,7 @@ async def _narrative_writing_pipeline(
     console.print(f"[green]{saved_to}: {output_path}[/]")
 
     view_label = "查看输出？" if lang == Lang.ZH else "View output?"
-    view = Confirm.ask(f"[bold cyan]{view_label}[/]", default=False)
+    view = confirm(view_label, default=False)
     if view:
         preview = output.content[:2000] + ("..." if len(output.content) > 2000 else "")
         preview_title = "章节预览" if lang == Lang.ZH else "Chapter Preview"
@@ -322,12 +311,12 @@ async def _guardian_check(
         console.print(f"[red bold]{rejected}[/]")
         if result.can_override:
             override_label = "强制继续？" if get_lang() == Lang.ZH else "Override and proceed anyway?"
-            return Confirm.ask(f"[bold yellow]{override_label}[/]", default=False)
+            return confirm(override_label, default=False)
         return False
 
     if result.verdict == Verdict.WARNING:
         warning_label = "提案有警告。继续？" if get_lang() == Lang.ZH else "Proposal has warnings. Proceed?"
         console.print("[yellow]⚠[/]")
-        return Confirm.ask(f"[bold yellow]{warning_label}[/]", default=True)
+        return confirm(warning_label, default=True)
 
     return True

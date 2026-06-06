@@ -53,6 +53,16 @@ class Settings(BaseSettings):
         default="https://api.deepseek.com/v1",
     )
     deepseek_model: str = Field(default="deepseek-v4-flash")
+    deepseek_timeout: float = Field(
+        default=120.0,
+        description="Per-request timeout in seconds for DeepSeek calls "
+        "(also the max idle gap between streaming chunks).",
+    )
+    deepseek_max_retries: int = Field(
+        default=3,
+        description="Number of attempts for a retryable DeepSeek failure "
+        "(timeout / 5xx / network). Owned by LLMClient; SDK retries are disabled.",
+    )
 
     # ── LLM: Volcengine (OpenViking VLM + Embedding) ────────────
     volcengine_api_key: str = Field(

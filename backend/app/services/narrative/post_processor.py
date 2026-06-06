@@ -23,6 +23,28 @@ class PostProcessor:
         return PostProcessor._process_en(text)
 
     @staticmethod
+    def find_repeated_fragments(text: str, min_len: int = 8) -> list[tuple[str, int]]:
+        """Surface verbatim-repeated clauses/sentences across the whole text.
+
+        The review found copy-pasted descriptive *clauses* recurring across
+        chapters (e.g. "像干涸的血迹", "像一头锁定猎物的瘦狼") — embedded inside
+        larger sentences, so splitting on sentence terminators alone misses them.
+        This splits on clause boundaries (commas, semicolons, enumeration commas)
+        as well as sentence terminators, and returns (fragment, count) for every
+        clause of >= min_len chars appearing more than once, most-repeated first.
+        Diagnostic only — not auto-applied to content; callers log/inspect it.
+        """
+        frags = re.split(r"[。！？!?，、；;,\n]+", text)
+        counts: dict[str, int] = {}
+        for f in frags:
+            s = f.strip().strip("“”\"'…—— ")
+            if len(s) >= min_len:
+                counts[s] = counts.get(s, 0) + 1
+        repeats = [(s, n) for s, n in counts.items() if n > 1]
+        repeats.sort(key=lambda x: (-x[1], -len(x[0])))
+        return repeats
+
+    @staticmethod
     def _process_zh(text: str) -> str:
         text = re.sub(r"\.{3,}", "……", text)
         text = re.sub(r"。{3,}", "……", text)
@@ -92,6 +114,7 @@ class PostProcessor:
         if get_lang() == Lang.ZH:
             text = PostProcessor._normalize_scene_headings_zh(text)
             text = PostProcessor._normalize_character_names(text, characters)
+            text = PostProcessor._normalize_dialogue_zh(text, characters)
         else:
             text = PostProcessor._normalize_scene_headings_en(text)
         return text
@@ -141,3 +164,62 @@ class PostProcessor:
                 text,
             )
         return text
+
+    @staticmethod
+    def _normalize_dialogue_zh(
+        text: str, characters: list[CharacterProfile]
+    ) -> str:
+        """Unify ZH screenplay dialogue + voice-over markup into one system.
+
+        - Inline "角色：对白" (known character) -> name line + dialogue line.
+        - All OS variants (角色：（OS）/ 角色（OS）：/（OS）角色：/（角色OS）)
+          -> "角色（OS）" name line + content line.
+        - "（旁白）…" -> "旁白（VO）" name line + content line.
+        Conservative: only splits cues whose prefix is a known character name,
+        so action lines containing colons are left untouched. Idempotent.
+        """
+        names = sorted((c.name for c in characters if c.name), key=len, reverse=True)
+        if not names:
+            return text
+        nm = "(" + "|".join(re.escape(n) for n in names) + ")"
+        co = r"[：:]"
+        os_ = r"(?:O\.?S\.?|画外音)"
+        lp, rp = r"[（(]", r"[）)]"
+        out: list[str] = []
+
+        def emit(name: str, content: str) -> None:
+            out.append(name)
+            if content.strip():
+                out.append(content.strip())
+
+        for raw in text.split("\n"):
+            s = raw.strip()
+            if not s:
+                out.append(raw)
+                continue
+            # （OS）角色：内容  ->  角色（OS） + 内容
+            m = re.match(rf'^{lp}\s*{os_}\s*{rp}\s*{nm}\s*{co}?\s*(.*)$', s, re.I)
+            if m:
+                emit(f"{m.group(1)}（OS）", m.group(2)); continue
+            # 角色（OS）：内容  (also matches bare "角色（OS）" -> empty content)
+            m = re.match(rf'^{nm}\s*{lp}\s*{os_}\s*{rp}\s*{co}?\s*(.*)$', s, re.I)
+            if m:
+                emit(f"{m.group(1)}（OS）", m.group(2)); continue
+            # 角色：（OS）内容
+            m = re.match(rf'^{nm}\s*{co}\s*{lp}\s*{os_}\s*{rp}\s*(.*)$', s, re.I)
+            if m:
+                emit(f"{m.group(1)}（OS）", m.group(2)); continue
+            # （角色OS）内容  (name inside the parens)
+            m = re.match(rf'^{lp}\s*{nm}\s*{os_}\s*{rp}\s*(.*)$', s, re.I)
+            if m:
+                emit(f"{m.group(1)}（OS）", m.group(2)); continue
+            # （旁白）内容  ->  旁白（VO） + 内容
+            m = re.match(rf'^{lp}\s*旁白\s*{rp}\s*{co}?\s*(.*)$', s)
+            if m:
+                emit("旁白（VO）", m.group(1)); continue
+            # inline 角色：对白  ->  角色 + 对白 (bare "角色" line won't match: colon required)
+            m = re.match(rf'^{nm}\s*{co}\s*(.+)$', s)
+            if m:
+                emit(m.group(1), m.group(2)); continue
+            out.append(raw)
+        return "\n".join(out)

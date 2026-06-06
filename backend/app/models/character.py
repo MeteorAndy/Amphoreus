@@ -30,5 +30,8 @@ class CharacterProfile(BaseModel):
     secrets: list[str] = Field(default_factory=list)
     knowledge_scope: list[str] = Field(default_factory=list)
     arc_stage: str = "introduction"
+    public_profile: str = ""
+    hidden_profile: str = ""
+    reveal_chapter: int | None = None
     created_at: str = ""
     updated_at: str = ""
