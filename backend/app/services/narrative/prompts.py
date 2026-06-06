@@ -312,6 +312,42 @@ You MUST reply with ONLY JSON — no markdown, no code fences, no explanation. F
   ]
 }"""
 
+_PROSE_FACT_EXTRACT_PROMPT_ZH = """\
+你是一个故事知识抽取器。读完给定的小说/剧本正文后，抽取其中**明确陈述**的事实，表示为主语-谓语-宾语三元组，用于构建知识图谱。
+
+只抽取文本明确写出的事实，不要推断、不要脑补。每个三元组标注主语与宾语的类型，谓语必须从下列固定集合中选择：
+- RELATES_TO（角色↔角色，主语类型 Character，宾语类型 Character）
+- BELONGS_TO（角色属于某阵营，主语 Character，宾语 Faction）
+- LOCATED_AT（角色身处某地点，主语 Character，宾语 Location）
+- CAUSED_BY（事件由另一事件引起，主语 Event，宾语 Event）
+
+实体类型只能是 Character / Location / Faction / Event 之一。谓语与主宾类型不匹配的三元组会被丢弃，所以请确保配对正确。
+
+只输出 JSON，不要 markdown、不要代码围栏、不要解释。格式：
+{
+  "triples": [
+    {"subject": "林辰", "predicate": "LOCATED_AT", "object": "回响之井", "subject_type": "Character", "object_type": "Location", "confidence": 0.9}
+  ]
+}"""
+
+_PROSE_FACT_EXTRACT_PROMPT_EN = """\
+You are a story knowledge extractor. After reading the given novel/screenplay prose, extract facts that are **explicitly stated**, expressed as subject-predicate-object triples for a knowledge graph.
+
+Extract only facts the text states outright — do not infer or invent. Tag the type of each subject and object. The predicate MUST come from this fixed set:
+- RELATES_TO (Character to Character; subject_type Character, object_type Character)
+- BELONGS_TO (Character belongs to a Faction; subject Character, object Faction)
+- LOCATED_AT (Character is at a Location; subject Character, object Location)
+- CAUSED_BY (Event caused by another Event; subject Event, object Event)
+
+Entity types must be one of Character / Location / Faction / Event. Triples whose predicate does not match their subject/object types are discarded, so pair them correctly.
+
+Output ONLY JSON — no markdown, no code fences, no explanation. Format:
+{
+  "triples": [
+    {"subject": "Lin Chen", "predicate": "LOCATED_AT", "object": "Well of Echoes", "subject_type": "Character", "object_type": "Location", "confidence": 0.9}
+  ]
+}"""
+
 # --- Prompt lookup ---
 
 _NARRATIVE_PROMPTS = {
@@ -342,6 +378,10 @@ _NARRATIVE_PROMPTS = {
     "canon_adjudicator_system": {
         Lang.ZH: _CANON_ADJUDICATOR_SYSTEM_PROMPT_ZH,
         Lang.EN: _CANON_ADJUDICATOR_SYSTEM_PROMPT_EN,
+    },
+    "prose_fact_extract": {
+        Lang.ZH: _PROSE_FACT_EXTRACT_PROMPT_ZH,
+        Lang.EN: _PROSE_FACT_EXTRACT_PROMPT_EN,
     },
 }
 
@@ -378,6 +418,11 @@ def _get_canon_adjudicator_prompt(scopes: list[str]) -> str:
     """
     tmpl = _NARRATIVE_PROMPTS["canon_adjudicator_system"][get_lang()]
     return tmpl.replace("{scopes}", ", ".join(scopes))
+
+
+def _get_prose_fact_extractor_prompt() -> str:
+    """System prompt for post-write S/P/O triple extraction from prose."""
+    return _NARRATIVE_PROMPTS["prose_fact_extract"][get_lang()]
 
 
 def _get_chapter_write_target() -> str:

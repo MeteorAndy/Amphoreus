@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from dataclasses import dataclass, field
@@ -13,6 +14,8 @@ from app.services.character_manager import CharacterManager
 from app.services.memory import MemoryManager
 from app.services.narrative import NarrativeWriter, WritingOptions
 from app.services.narrative.canon_adjudicator import CanonAdjudicator
+from app.services.narrative.inferred_triples_store import InferredTriplesStore
+from app.services.narrative.prose_fact_extractor import ProseFactExtractor
 from app.services.narrative.types import CanonicalFacts
 from app.services.narrative import canon_persistence as cp
 from app.services.plot_architect import NarrativeStructure, PlotArchitect, PlotOutline
@@ -88,6 +91,8 @@ class PipelineOrchestrator:
         self._scene_engine = SceneEngine(llm, memory)
         self._narrative_writer = NarrativeWriter(llm, memory)
         self._canon_adjudicator = CanonAdjudicator(llm)
+        self._fact_extractor = ProseFactExtractor(llm)
+        self._triples_store = InferredTriplesStore(memory)
 
     def run(self, config: PipelineConfig) -> AsyncIterator[PipelineEvent]:
         """Execute the full pipeline, yielding events as progress is made."""
@@ -430,6 +435,15 @@ class PipelineOrchestrator:
         state["progress"] = 1.0
         await self._save_state(session_id, state)
 
+        # Fire-and-forget: extract S/P/O facts from the finished prose and
+        # persist them to the knowledge graph. This is a SEPARATE channel from
+        # the synchronous cliche/canon diagnostics (which ride the event below)
+        # — it must not block or delay the completed event. chapter_id = the
+        # session_id for the single-output MVP.
+        asyncio.create_task(
+            self._post_write_background(session_id, output.content)
+        )
+
         yield PipelineEvent(
             stage=PipelineStage.WRITING,
             type="completed",
@@ -449,6 +463,20 @@ class PipelineOrchestrator:
             progress=1.0,
             session_id=session_id,
         )
+
+    async def _post_write_background(self, session_id: str, content: str) -> None:
+        """Extract S/P/O facts from finished prose and persist to the graph.
+
+        Best-effort and fully isolated: any failure is swallowed so a background
+        task can never crash the event loop or surface to the user. chapter_id is
+        the session_id for the single-output MVP.
+        """
+        try:
+            triples = await self._fact_extractor.extract(content, session_id)
+            if triples:
+                await self._triples_store.persist(triples, session_id)
+        except Exception:
+            pass
 
     async def _auto_answer(self, seed_idea: str, question: str, lang: str) -> str:
         system_prompt = _AUTO_ANSWER_PROMPT_ZH if lang == "zh" else _AUTO_ANSWER_PROMPT_EN
