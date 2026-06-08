@@ -345,9 +345,28 @@ class PipelineOrchestrator:
         characters: list[CharacterProfile] = state["characters"]
         all_scenes = [scene for act in outline.acts for scene in act.scenes]
         total = len(all_scenes)
-        archives: list[SceneArchive] = []
+
+        # Resume support (T2-②): reload scenes already archived by a prior run
+        # that crashed mid-stage. Scenes run sequentially, so the persisted list
+        # is always a contiguous prefix — resume = skip the first len(done).
+        # Keyed by POSITION, not scene_id: SceneSpec.id is LLM-generated and not
+        # guaranteed unique, so an id-keyed dict could drop or mis-skip a scene.
+        done: list[SceneArchive] = self._load_partial_archives(session_id)
+        resume_from = len(done)
 
         for idx, scene_spec in enumerate(all_scenes):
+            if idx < resume_from:
+                # Already produced in an earlier (crashed) run — don't re-run.
+                yield PipelineEvent(
+                    stage=PipelineStage.SCENES,
+                    type="progress",
+                    data={"scene_id": scene_spec.id, "title": scene_spec.title,
+                          "index": idx, "total": total, "cached": True},
+                    progress=0.40 + (0.35 * (idx + 1) / max(total, 1)),
+                    session_id=session_id,
+                )
+                continue
+
             scene_progress_start = 0.40 + (0.35 * idx / max(total, 1))
             yield PipelineEvent(
                 stage=PipelineStage.SCENES,
@@ -361,7 +380,10 @@ class PipelineOrchestrator:
             archive = await self._scene_engine.run_scene(
                 scene_spec, cast_chars, config.max_rounds_per_scene
             )
-            archives.append(archive)
+            done.append(archive)
+            # Persist incrementally so a crash on a later scene never discards
+            # work already done. The list is the canonical prefix run so far.
+            self._persist_archives_list(session_id, done)
             yield PipelineEvent(
                 stage=PipelineStage.SCENES,
                 type="progress",
@@ -376,12 +398,10 @@ class PipelineOrchestrator:
                 session_id=session_id,
             )
 
-        state["archives"] = archives
+        state["archives"] = done
         state["scenes_done"] = True
         state["progress"] = 0.75
-        self._persist_artifact(
-            session_id, "archives", {"items": [cp.archive_to_dict(a) for a in archives]}
-        )
+        self._persist_archives_list(session_id, done)
         await self._save_state(session_id, state)
 
         yield PipelineEvent(
@@ -585,6 +605,39 @@ class PipelineOrchestrator:
             return json.loads(entry.l2)
         except Exception:
             return None
+
+    def _load_partial_archives(self, session_id: str) -> list[SceneArchive]:
+        """Reload scene archives a prior (crashed) run persisted, in order.
+
+        Scenes run sequentially and are persisted as a growing prefix, so the
+        returned list is exactly the scenes completed before the crash. Returns
+        [] on a fresh run. Used by _stage_scenes (T2-②) to resume by skipping
+        the first len() scenes. A corrupt trailing item truncates the prefix
+        (rather than dropping a middle scene) so resume stays contiguous."""
+        d = self._load_artifact(session_id, "archives")
+        if not d:
+            return []
+        result: list[SceneArchive] = []
+        for item in d.get("items", []):
+            try:
+                result.append(cp.archive_from_dict(item))
+            except Exception:
+                # Stop at the first undecodable item: the prefix up to here is
+                # trustworthy; anything after re-runs (safe, at worst redundant).
+                break
+        return result
+
+    def _persist_archives_list(
+        self, session_id: str, archives: list[SceneArchive]
+    ) -> None:
+        """Persist the archives completed so far as an ordered prefix.
+
+        Written after every scene so a later crash never discards completed
+        work. Same {"items": [...]} shape _hydrate_state already expects."""
+        self._persist_artifact(
+            session_id, "archives",
+            {"items": [cp.archive_to_dict(a) for a in archives]},
+        )
 
     def _hydrate_state(self, session_id: str, state: dict[str, Any]) -> None:
         """Rebuild in-memory data objects from persisted artifacts on resume.
