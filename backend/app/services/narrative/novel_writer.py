@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-import json
 import re
-from typing import Any
 
 from app.core.i18n import get_lang, Lang
 from app.core.llm_client import LLMClient
 from app.models.character import CharacterProfile
-from app.services.memory import MemoryManager
-from app.services.plot_architect import PlotOutline, SceneSpec
+from app.services.plot_architect import SceneSpec
 from app.services.scene_engine.resolution import SceneArchive
-from app.services.scene_engine.types import EnvironmentUpdate, Reaction, RoundEntry
 
 from .prompts import (
     _get_chapter_write_system_prompt,
@@ -25,70 +21,19 @@ from .cliche_scanner import scan
 from .foreshadowing import render_foreshadowing_block
 from .post_processor import PostProcessor
 from .reviser import build_revise_directive
+from .scene_archive_io import flatten_scenes, load_scene_archive, parse_archive_json
 from .tension_scorer import phase_for_chapter
+from .token_budget import ChapterBudget, measure_chapter_sections
 from .types import ChapterPlan, ChapterSpec, WritingOptions
 
 
 # ---------------------------------------------------------------------------
-# Archive parsing helpers
+# Archive parsing helpers (moved to scene_archive_io; re-exported for callers)
 # ---------------------------------------------------------------------------
 
-
-def _parse_archive_json(l2_content: str) -> SceneArchive:
-    """Reconstruct a SceneArchive dataclass from stored JSON."""
-    data: dict[str, Any] = json.loads(l2_content)
-
-    rounds: list[RoundEntry] = [
-        RoundEntry(
-            round_num=r["round_num"],
-            actor_id=r["actor_id"],
-            actor_name=r["actor_name"],
-            dialogue=r.get("dialogue", ""),
-            action=r.get("action", ""),
-            inner_thought=r.get("inner_thought", ""),
-            emotion=r.get("emotion", ""),
-            reactions=[
-                Reaction(
-                    reactor_id=rx["reactor_id"],
-                    reactor_name=rx["reactor_name"],
-                    visible_reaction=rx.get("visible_reaction", ""),
-                    inner_thought=rx.get("inner_thought", ""),
-                )
-                for rx in r.get("reactions", [])
-            ],
-        )
-        for r in data.get("rounds", [])
-    ]
-
-    fe_data = data.get("final_environment", {})
-    final_environment = EnvironmentUpdate(
-        atmosphere=fe_data.get("atmosphere", ""),
-        changes=fe_data.get("changes", []),
-        background_activity=fe_data.get("background_activity", ""),
-    )
-
-    return SceneArchive(
-        scene_id=data["scene_id"],
-        rounds=rounds,
-        final_environment=final_environment,
-        character_changes=data.get("character_changes", {}),
-    )
-
-
-def _load_scene_archive(memory: MemoryManager, scene_id: str) -> SceneArchive:
-    """Load a single scene archive from OpenViking and return a SceneArchive."""
-    entry = memory.openviking.read_entry(f"story/scenes/{scene_id}")
-    return _parse_archive_json(entry.l2)
-
-
-def _flatten_scenes(outline: PlotOutline) -> dict[str, SceneSpec]:
-    """Flatten all SceneSpecs from a PlotOutline into a scene_id -> SceneSpec map."""
-    result: dict[str, SceneSpec] = {}
-    for act in outline.acts:
-        for scene in act.scenes:
-            result[scene.id] = scene
-    return result
-
+_parse_archive_json = parse_archive_json
+_load_scene_archive = load_scene_archive
+_flatten_scenes = flatten_scenes
 
 _ANALYSIS_HDR = (
     r"章节分析|分析|思考|写作策略|Chapter\s+Analysis|Analysis|Writing\s+Strategy"
@@ -265,8 +210,13 @@ class NovelWriter:
         characters: list[CharacterProfile],
         options: WritingOptions,
         scene_specs: dict[str, SceneSpec] | None = None,
+        budget_acc: list[ChapterBudget] | None = None,
     ) -> list[str]:
-        """Write each chapter as prose.  Returns one string per chapter."""
+        """Write each chapter as prose.  Returns one string per chapter.
+
+        `budget_acc`, when given and options.token_budget is enabled, collects one
+        advisory ChapterBudget per chapter (measure-only T2-④; never alters prose).
+        """
         char_by_id = {c.id: c for c in characters}
         archive_by_id = {a.scene_id: a for a in scene_archives}
         chapters: list[str] = []
@@ -305,6 +255,7 @@ class NovelWriter:
                 phase_block=_render_phase_directive(
                     spec.number, len(chapter_plan.chapters), get_lang() == Lang.ZH
                 ),
+                budget_acc=budget_acc,
             )
 
             if options.enhance:
@@ -331,6 +282,7 @@ class NovelWriter:
         options: WritingOptions,
         foreshadowing_block: str = "",
         phase_block: str = "",
+        budget_acc: list[ChapterBudget] | None = None,
     ) -> str:
         """Send a chapter prompt to the LLM and return the prose."""
         voice_label = options.narrative_voice.replace("_", " ")
@@ -363,6 +315,7 @@ class NovelWriter:
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},
         ]
+        canon = ""
         if options.canonical_facts is not None:
             canon = options.canonical_facts.render_block("novel", lang == Lang.ZH)
             if canon:
@@ -372,6 +325,21 @@ class NovelWriter:
         if phase_block:
             messages.append({"role": "system", "content": phase_block})
         messages.append({"role": "user", "content": user_prompt})
+
+        # T2-④ measure-only: estimate token cost of the SAME strings just sent
+        # (cannot diverge from the real prompt); never mutates messages.
+        cfg = options.token_budget
+        if budget_acc is not None and cfg is not None and cfg.enabled:
+            parts = {
+                "system": system_prompt, "canon": canon,
+                "foreshadowing": foreshadowing_block, "phase": phase_block,
+                "prev_summary": prev_summary, "next_summary": next_summary,
+                "scene_logs": scene_logs,
+            }
+            budget_acc.append(measure_chapter_sections(
+                spec.number, is_zh=lang == Lang.ZH,
+                budget_tokens=cfg.budget_tokens, parts=parts,
+            ))
 
         raw = await self._llm.chat(messages)
         return _extract_chapter_story(raw)

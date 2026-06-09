@@ -392,6 +392,9 @@ class _StagesMixin:
                     if output.reader_sim_report
                     else {}
                 ),
+                "budget_report": (
+                    output.budget_report.to_dict() if output.budget_report else {}
+                ),
             },
             progress=1.0,
             session_id=session_id,

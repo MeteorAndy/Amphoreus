@@ -54,6 +54,11 @@ class WritingOptions:
     # post-write LLM pass and attaches a ReaderSimReport (confusion points,
     # dangling threads, engagement curve, retention). Off by default; novel-only.
     simulate_reader: bool = False
+    # Optional token-budget accounting (T2-④, measure-only phase): when present
+    # and enabled, the novel writer estimates per-section prompt token cost and
+    # attaches an advisory BudgetReport. It NEVER mutates prompts — output is
+    # unchanged. Off by default; novel-only. String-annotated to avoid a cycle.
+    token_budget: "TokenBudgetConfig | None" = None
 
 
 @dataclass(frozen=True)
@@ -108,6 +113,10 @@ class WrittenOutput:
     # Reader-simulation diagnostics (T2-⑥). Populated by the novel writer when
     # WritingOptions.simulate_reader is set. String-annotated to avoid a cycle.
     reader_sim_report: "ReaderSimReport | None" = None
+    # Token-budget accounting (T2-④, measure-only). Populated by the novel writer
+    # when WritingOptions.token_budget is enabled. Advisory; never affects the
+    # prose. String-annotated to avoid a cycle.
+    budget_report: "BudgetReport | None" = None
 
 
 @dataclass

@@ -21,6 +21,7 @@ from .post_processor import PostProcessor
 from .screenplay_writer import ScreenplayWriter
 from .prop_lifecycle import build_prop_lifecycle_report
 from .reader_sim import build_reader_sim_report
+from .token_budget import BudgetReport
 from .tension_scorer import build_tension_report
 from .title_generator import TitleGenerator
 from .types import ChapterPlan, ChapterSpec, WritingOptions, WrittenOutput, count_words
@@ -124,12 +125,14 @@ class NarrativeWriter:
             chapter_plan = self._fallback_chapter_plan(scene_archives)
 
         # --- Step 3: Write chapters ---
+        budget_acc: list = []
         chapters = await self._novel_writer.write_chapters(
             chapter_plan=chapter_plan,
             scene_archives=scene_archives,
             characters=characters,
             options=options,
             scene_specs=scene_specs if scene_specs else None,
+            budget_acc=budget_acc,
         )
 
         # --- Step 4: Post-process each chapter ---
@@ -162,6 +165,12 @@ class NarrativeWriter:
         if options.simulate_reader:
             result.reader_sim_report = await build_reader_sim_report(
                 self._llm, result.content, chapter_plan
+            )
+        if budget_acc:
+            result.budget_report = BudgetReport(
+                per_chapter=budget_acc,
+                any_over=any(cb.over_by > 0 for cb in budget_acc),
+                total_tokens=sum(cb.total_tokens for cb in budget_acc),
             )
         return result
 
