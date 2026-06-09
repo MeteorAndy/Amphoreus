@@ -19,6 +19,7 @@ from .cliche_scanner import scan
 from .novel_writer import NovelWriter, _flatten_scenes
 from .post_processor import PostProcessor
 from .screenplay_writer import ScreenplayWriter
+from .prop_lifecycle import build_prop_lifecycle_report
 from .tension_scorer import build_tension_report
 from .title_generator import TitleGenerator
 from .types import ChapterPlan, ChapterSpec, WritingOptions, WrittenOutput, count_words
@@ -153,6 +154,10 @@ class NarrativeWriter:
             )
         if options.score_tension:
             result.tension_report = build_tension_report(scene_archives, chapter_plan)
+        if options.extract_props:
+            result.prop_lifecycle_report = await build_prop_lifecycle_report(
+                self._llm, result.content
+            )
         return result
 
     async def _convert_screenplay(

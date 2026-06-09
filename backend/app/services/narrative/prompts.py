@@ -348,6 +348,42 @@ Output ONLY JSON — no markdown, no code fences, no explanation. Format:
   ]
 }"""
 
+_PROP_EXTRACT_PROMPT_ZH = """\
+你是一个叙事道具追踪器。读完给定的小说正文后，找出其中出现的**具体物件/道具**（如钥匙、信件、武器、戒指、伤疤等具象之物），并追踪每次出现时它处于什么生命周期阶段。
+
+正文已用「## 第N章」之类的标题分章，请据此判断每条记录所在的章号。谓语必须从下列固定集合中选择：
+- INTRODUCE（该物件首次登场/被引入）
+- USE（该物件被使用、动用或再次起作用）
+- RESOLVE（该物件完成其叙事使命，如被销毁、归还、揭示真相）
+- ABANDON（作者明确地、有意地弃置该物件，例如它原是红鲱鱼/障眼法）
+
+只追踪具象物件，不要追踪抽象概念、情绪或事件。同一物件多次出现就输出多条记录。
+
+只输出 JSON，不要 markdown、不要代码围栏、不要解释。格式：
+{
+  "mentions": [
+    {"object_name": "银钥匙", "predicate": "INTRODUCE", "chapter": 2, "evidence": "她从抽屉里取出一把银钥匙"}
+  ]
+}"""
+
+_PROP_EXTRACT_PROMPT_EN = """\
+You are a narrative-prop tracker. After reading the given novel prose, find the **concrete objects / props** that appear (keys, letters, weapons, rings, scars — tangible things) and track which lifecycle stage each mention represents.
+
+The prose is already split into chapters by headings like "## Chapter N"; infer each record's chapter from them. The predicate MUST come from this fixed set:
+- INTRODUCE (the object first appears / is brought in)
+- USE (the object is used, wielded, or comes into play again)
+- RESOLVE (the object fulfills its narrative purpose — destroyed, returned, reveals a truth)
+- ABANDON (the author deliberately and explicitly drops the object, e.g. it was a red herring)
+
+Track only tangible objects — not abstract concepts, emotions, or events. Emit one record per mention.
+
+Output ONLY JSON — no markdown, no code fences, no explanation. Format:
+{
+  "mentions": [
+    {"object_name": "silver key", "predicate": "INTRODUCE", "chapter": 2, "evidence": "she drew a silver key from the drawer"}
+  ]
+}"""
+
 # --- Prompt lookup ---
 
 _NARRATIVE_PROMPTS = {
@@ -382,6 +418,10 @@ _NARRATIVE_PROMPTS = {
     "prose_fact_extract": {
         Lang.ZH: _PROSE_FACT_EXTRACT_PROMPT_ZH,
         Lang.EN: _PROSE_FACT_EXTRACT_PROMPT_EN,
+    },
+    "prop_extract": {
+        Lang.ZH: _PROP_EXTRACT_PROMPT_ZH,
+        Lang.EN: _PROP_EXTRACT_PROMPT_EN,
     },
 }
 
@@ -423,6 +463,11 @@ def _get_canon_adjudicator_prompt(scopes: list[str]) -> str:
 def _get_prose_fact_extractor_prompt() -> str:
     """System prompt for post-write S/P/O triple extraction from prose."""
     return _NARRATIVE_PROMPTS["prose_fact_extract"][get_lang()]
+
+
+def _get_prop_extractor_prompt() -> str:
+    """System prompt for post-write prop-lifecycle mention extraction (T2-⑦)."""
+    return _NARRATIVE_PROMPTS["prop_extract"][get_lang()]
 
 
 def _get_chapter_write_target() -> str:

@@ -332,6 +332,7 @@ class _StagesMixin:
             canonical_facts=state.get("canonical_facts"),
             foreshadowing_registry=registry,
             score_tension=True,
+            extract_props=True,
         )
 
         output: WrittenOutput = await self._narrative_writer.convert(
@@ -379,6 +380,11 @@ class _StagesMixin:
                 ),
                 "tension_report": (
                     output.tension_report.to_dict() if output.tension_report else {}
+                ),
+                "prop_lifecycle_report": (
+                    output.prop_lifecycle_report.to_dict()
+                    if output.prop_lifecycle_report
+                    else {}
                 ),
             },
             progress=1.0,

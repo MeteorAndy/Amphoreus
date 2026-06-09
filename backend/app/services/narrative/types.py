@@ -46,6 +46,10 @@ class WritingOptions:
     # attaches a zero-LLM TensionReport to the output. Off by default, so
     # existing callers are unchanged. Novel-only for v1.
     score_tension: bool = False
+    # Optional prop-lifecycle / Chekhov-gun tracking (T2-⑦): when True, the
+    # novel writer runs one post-write LLM pass and attaches a
+    # PropLifecycleReport. Off by default; novel-only for v1.
+    extract_props: bool = False
 
 
 @dataclass(frozen=True)
@@ -94,6 +98,9 @@ class WrittenOutput:
     # Dramatic-tension diagnostics (T2-⑤). Populated by the novel writer when
     # WritingOptions.score_tension is set. String-annotated to avoid a cycle.
     tension_report: "TensionReport | None" = None
+    # Prop-lifecycle diagnostics (T2-⑦). Populated by the novel writer when
+    # WritingOptions.extract_props is set. String-annotated to avoid a cycle.
+    prop_lifecycle_report: "PropLifecycleReport | None" = None
 
 
 @dataclass
