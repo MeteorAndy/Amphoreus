@@ -25,3 +25,6 @@ env/
 # Editor / OS
 .DS_Store
 *.swp
+
+# Generated code index (codegraph daemon)
+.codegraph/
