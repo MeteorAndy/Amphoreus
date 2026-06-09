@@ -42,6 +42,10 @@ class WritingOptions:
     # Off by default, so existing callers are unchanged. NOTE: currently wired
     # into the novel pipeline only (NovelWriter); the screenplay path ignores it.
     revise: "ReviseConfig | None" = None
+    # Optional dramatic-tension scoring (T2-⑤): when True, the novel writer
+    # attaches a zero-LLM TensionReport to the output. Off by default, so
+    # existing callers are unchanged. Novel-only for v1.
+    score_tension: bool = False
 
 
 @dataclass(frozen=True)
@@ -87,6 +91,9 @@ class WrittenOutput:
     # String-annotated to avoid a types<->canon_verifier import cycle.
     cliche_report: "ClicheReport | None" = None
     canon_report: "CanonReport | None" = None
+    # Dramatic-tension diagnostics (T2-⑤). Populated by the novel writer when
+    # WritingOptions.score_tension is set. String-annotated to avoid a cycle.
+    tension_report: "TensionReport | None" = None
 
 
 @dataclass

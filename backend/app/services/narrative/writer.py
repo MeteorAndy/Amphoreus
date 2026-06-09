@@ -19,6 +19,7 @@ from .cliche_scanner import scan
 from .novel_writer import NovelWriter, _flatten_scenes
 from .post_processor import PostProcessor
 from .screenplay_writer import ScreenplayWriter
+from .tension_scorer import build_tension_report
 from .title_generator import TitleGenerator
 from .types import ChapterPlan, ChapterSpec, WritingOptions, WrittenOutput, count_words
 
@@ -150,6 +151,8 @@ class NarrativeWriter:
             result.canon_report = verify(
                 result.content, options.canonical_facts, "novel"
             )
+        if options.score_tension:
+            result.tension_report = build_tension_report(scene_archives, chapter_plan)
         return result
 
     async def _convert_screenplay(

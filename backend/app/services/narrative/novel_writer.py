@@ -25,6 +25,7 @@ from .cliche_scanner import scan
 from .foreshadowing import render_foreshadowing_block
 from .post_processor import PostProcessor
 from .reviser import build_revise_directive
+from .tension_scorer import phase_for_chapter
 from .types import ChapterPlan, ChapterSpec, WritingOptions
 
 
@@ -196,15 +197,7 @@ def _render_phase_directive(
     """Return a compact phase-awareness directive, or '' if too few chapters."""
     if total < 3:
         return ""
-    ratio = chapter_num / max(total, 1)
-    if ratio <= 0.25:
-        phase = "opening"
-    elif ratio <= 0.75:
-        phase = "development"
-    elif ratio <= 0.90:
-        phase = "convergence"
-    else:
-        phase = "finale"
+    phase = phase_for_chapter(chapter_num, total)
 
     if is_zh:
         table = {
