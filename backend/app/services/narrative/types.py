@@ -50,6 +50,10 @@ class WritingOptions:
     # novel writer runs one post-write LLM pass and attaches a
     # PropLifecycleReport. Off by default; novel-only for v1.
     extract_props: bool = False
+    # Optional reader simulation (T2-⑥): when True, the novel writer runs one
+    # post-write LLM pass and attaches a ReaderSimReport (confusion points,
+    # dangling threads, engagement curve, retention). Off by default; novel-only.
+    simulate_reader: bool = False
 
 
 @dataclass(frozen=True)
@@ -101,6 +105,9 @@ class WrittenOutput:
     # Prop-lifecycle diagnostics (T2-⑦). Populated by the novel writer when
     # WritingOptions.extract_props is set. String-annotated to avoid a cycle.
     prop_lifecycle_report: "PropLifecycleReport | None" = None
+    # Reader-simulation diagnostics (T2-⑥). Populated by the novel writer when
+    # WritingOptions.simulate_reader is set. String-annotated to avoid a cycle.
+    reader_sim_report: "ReaderSimReport | None" = None
 
 
 @dataclass

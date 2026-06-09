@@ -20,6 +20,7 @@ from .novel_writer import NovelWriter, _flatten_scenes
 from .post_processor import PostProcessor
 from .screenplay_writer import ScreenplayWriter
 from .prop_lifecycle import build_prop_lifecycle_report
+from .reader_sim import build_reader_sim_report
 from .tension_scorer import build_tension_report
 from .title_generator import TitleGenerator
 from .types import ChapterPlan, ChapterSpec, WritingOptions, WrittenOutput, count_words
@@ -157,6 +158,10 @@ class NarrativeWriter:
         if options.extract_props:
             result.prop_lifecycle_report = await build_prop_lifecycle_report(
                 self._llm, result.content
+            )
+        if options.simulate_reader:
+            result.reader_sim_report = await build_reader_sim_report(
+                self._llm, result.content, chapter_plan
             )
         return result
 

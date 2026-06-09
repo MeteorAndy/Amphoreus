@@ -333,6 +333,7 @@ class _StagesMixin:
             foreshadowing_registry=registry,
             score_tension=True,
             extract_props=True,
+            simulate_reader=True,
         )
 
         output: WrittenOutput = await self._narrative_writer.convert(
@@ -384,6 +385,11 @@ class _StagesMixin:
                 "prop_lifecycle_report": (
                     output.prop_lifecycle_report.to_dict()
                     if output.prop_lifecycle_report
+                    else {}
+                ),
+                "reader_sim_report": (
+                    output.reader_sim_report.to_dict()
+                    if output.reader_sim_report
                     else {}
                 ),
             },

@@ -384,6 +384,46 @@ Output ONLY JSON — no markdown, no code fences, no explanation. Format:
   ]
 }"""
 
+_READER_SIM_PROMPT_ZH = """\
+你是一位敏锐的首次读者。读完给定的小说正文，模拟一个第一次读到它的读者的真实体验，给出诊断。
+
+用户消息开头会附上一段客观信号（章节数、各章问句密度、长度异常），请把它当作事实依据，结合正文做出判断，不要臆测正文之外的内容。
+
+需要诊断四件事：
+1. confusion_points：哪些段落会让初次读者困惑（信息缺失、指代不清、时间线跳跃等）。
+2. dangling_threads：读者读完后仍未得到解答的问题/悬而未决的线索。
+3. engagement_curve：逐章的投入度/势能曲线，每章一个点，momentum 取 0.0-1.0。
+4. predicted_retention：综合预测的读者留存/读完意愿，0.0-1.0。
+
+severity 只能取 low / medium / high。只输出 JSON，不要 markdown、不要代码围栏、不要解释。格式：
+{
+  "confusion_points": [{"chapter": 2, "description": "时间线跳跃未交代", "severity": "high"}],
+  "dangling_threads": [{"question": "凶手到底是谁？", "introduced_chapter": 1, "severity": "high"}],
+  "engagement_curve": [{"chapter": 1, "momentum": 0.7, "note": "开篇有力"}],
+  "predicted_retention": 0.68,
+  "summary": "一句话总体评价。"
+}"""
+
+_READER_SIM_PROMPT_EN = """\
+You are a perceptive first-time reader. After reading the given novel prose, simulate the genuine experience of someone reading it for the first time and return a diagnosis.
+
+The user message begins with a block of objective signals (chapter count, per-chapter question density, length outliers). Treat those as factual anchors and reason over the prose — do not invent anything not in the text.
+
+Diagnose four things:
+1. confusion_points: passages a first-time reader would find unclear (missing info, vague pronouns, timeline jumps).
+2. dangling_threads: questions / unresolved threads the reader is still left holding at the end.
+3. engagement_curve: a per-chapter engagement/momentum curve, ONE point per chapter, momentum in 0.0-1.0.
+4. predicted_retention: an overall predicted retention / finish-the-book likelihood, 0.0-1.0.
+
+severity must be one of low / medium / high. Output ONLY JSON — no markdown, no code fences, no explanation. Format:
+{
+  "confusion_points": [{"chapter": 2, "description": "timeline jump unexplained", "severity": "high"}],
+  "dangling_threads": [{"question": "Who is the real killer?", "introduced_chapter": 1, "severity": "high"}],
+  "engagement_curve": [{"chapter": 1, "momentum": 0.7, "note": "strong open"}],
+  "predicted_retention": 0.68,
+  "summary": "One-line overall verdict."
+}"""
+
 # --- Prompt lookup ---
 
 _NARRATIVE_PROMPTS = {
@@ -422,6 +462,10 @@ _NARRATIVE_PROMPTS = {
     "prop_extract": {
         Lang.ZH: _PROP_EXTRACT_PROMPT_ZH,
         Lang.EN: _PROP_EXTRACT_PROMPT_EN,
+    },
+    "reader_sim": {
+        Lang.ZH: _READER_SIM_PROMPT_ZH,
+        Lang.EN: _READER_SIM_PROMPT_EN,
     },
 }
 
@@ -468,6 +512,11 @@ def _get_prose_fact_extractor_prompt() -> str:
 def _get_prop_extractor_prompt() -> str:
     """System prompt for post-write prop-lifecycle mention extraction (T2-⑦)."""
     return _NARRATIVE_PROMPTS["prop_extract"][get_lang()]
+
+
+def _get_reader_sim_prompt() -> str:
+    """System prompt for post-write reader-simulation diagnosis (T2-⑥)."""
+    return _NARRATIVE_PROMPTS["reader_sim"][get_lang()]
 
 
 def _get_chapter_write_target() -> str:
