@@ -26,6 +26,9 @@ MBTI type, 3-5 core traits, and emotional pattern
 - voice_sample: a ~200 character example of their dialogue showing their voice
 - secrets: 1-3 things only they know
 - knowledge_scope: list of world knowledge topics or IDs they have access to
+- public_profile: what can be safely shown before any reveal
+- hidden_profile: spoiler/private identity material gated by reveal_chapter
+- reveal_chapter: first chapter where hidden_profile may be shown, or null
 - arc_stage: current stage in their character arc (e.g. "introduction", \
 "rising_action", "climax", "resolution")
 
@@ -46,6 +49,9 @@ _GENERATION_SYSTEM_PROMPT_ZH = """\
 - voice_sample: 约 200 字的对话示例，展现角色说话风格（使用中文）
 - secrets: 只有角色自己知道的 1-3 件事（使用中文）
 - knowledge_scope: 角色能接触到的世界知识主题或 ID 列表
+- public_profile: 揭示前可以公开展示的角色档案（使用中文）
+- hidden_profile: 需要到 reveal_chapter 才能揭示的隐藏身份或秘密（使用中文）
+- reveal_chapter: hidden_profile 首次可被展示的章节编号，或 null
 - arc_stage: 角色弧光的当前阶段（如 "introduction", "rising_action", "climax", "resolution"）
 
 重要提示：
@@ -81,6 +87,16 @@ def _get_generation_prompt() -> str:
 
 def _get_refinement_prompt() -> str:
     return _REFINEMENT_SYSTEM_PROMPT_ZH if get_lang() == Lang.ZH else _REFINEMENT_SYSTEM_PROMPT_EN
+
+
+def _coerce_reveal_chapter(value: object) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        chapter = int(value)
+    except (TypeError, ValueError):
+        return None
+    return chapter if chapter > 0 else None
 
 
 class CharacterManager:
@@ -219,6 +235,7 @@ class CharacterManager:
         if isinstance(personality_data, str):
             personality_data = {}
         big5_data: dict[str, Any] = personality_data.get("big5", {})
+        reveal_chapter = _coerce_reveal_chapter(raw.get("reveal_chapter"))
 
         return CharacterProfile(
             id=raw.get("id", ""),
@@ -243,6 +260,9 @@ class CharacterManager:
             secrets=raw.get("secrets", []),
             knowledge_scope=raw.get("knowledge_scope", []),
             arc_stage=raw.get("arc_stage", "introduction"),
+            public_profile=raw.get("public_profile", ""),
+            hidden_profile=raw.get("hidden_profile", ""),
+            reveal_chapter=reveal_chapter,
             created_at=timestamp,
             updated_at=timestamp,
         )

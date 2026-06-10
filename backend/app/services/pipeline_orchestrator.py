@@ -17,9 +17,8 @@ from app.core.llm_client import LLMClient, LLMError, LLMErrorCode
 from app.services.character_manager import CharacterManager
 from app.services.memory import MemoryManager
 from app.services.narrative import NarrativeWriter
+from app.services.narrative.aftermath_pipeline import ChapterAftermathPipeline
 from app.services.narrative.canon_adjudicator import CanonAdjudicator
-from app.services.narrative.inferred_triples_store import InferredTriplesStore
-from app.services.narrative.prose_fact_extractor import ProseFactExtractor
 from app.services.plot_architect import PlotArchitect
 from app.services.relationship_builder import RelationshipBuilder
 from app.services.scene_engine import SceneEngine
@@ -58,8 +57,7 @@ class PipelineOrchestrator(_StagesMixin, _PersistenceMixin):
         self._scene_engine = SceneEngine(llm, memory)
         self._narrative_writer = NarrativeWriter(llm, memory)
         self._canon_adjudicator = CanonAdjudicator(llm)
-        self._fact_extractor = ProseFactExtractor(llm)
-        self._triples_store = InferredTriplesStore(memory)
+        self._aftermath = ChapterAftermathPipeline(llm, memory=memory)
         self._breaker = CircuitBreaker()
 
     def run(self, config: PipelineConfig) -> AsyncIterator[PipelineEvent]:

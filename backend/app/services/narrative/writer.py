@@ -13,16 +13,11 @@ from app.services.memory import MemoryManager
 from app.services.plot_architect import PlotOutline, SceneSpec
 from app.services.scene_engine.resolution import SceneArchive
 
-from .canon_verifier import verify
+from .aftermath_pipeline import ChapterAftermathPipeline
 from .chapter_planner import ChapterPlanner
-from .cliche_scanner import scan
 from .novel_writer import NovelWriter, _flatten_scenes
 from .post_processor import PostProcessor
 from .screenplay_writer import ScreenplayWriter
-from .prop_lifecycle import build_prop_lifecycle_report
-from .reader_sim import build_reader_sim_report
-from .token_budget import BudgetReport
-from .tension_scorer import build_tension_report
 from .title_generator import TitleGenerator
 from .types import ChapterPlan, ChapterSpec, WritingOptions, WrittenOutput, count_words
 
@@ -46,6 +41,7 @@ class NarrativeWriter:
         self._planner = ChapterPlanner(llm)
         self._novel_writer = NovelWriter(llm)
         self._screenplay_writer = ScreenplayWriter(llm)
+        self._aftermath = ChapterAftermathPipeline(llm)
         self._post_processor = PostProcessor()
 
     async def convert(
@@ -150,29 +146,14 @@ class NarrativeWriter:
             title_candidates=title_candidates,
             export_formats=["md", "txt"],
         )
-        # --- Step 6: Post-generation diagnostics (zero-LLM, synchronous) ---
-        result.cliche_report = scan(result.content)
-        if options.canonical_facts is not None:
-            result.canon_report = verify(
-                result.content, options.canonical_facts, "novel"
-            )
-        if options.score_tension:
-            result.tension_report = build_tension_report(scene_archives, chapter_plan)
-        if options.extract_props:
-            result.prop_lifecycle_report = await build_prop_lifecycle_report(
-                self._llm, result.content
-            )
-        if options.simulate_reader:
-            result.reader_sim_report = await build_reader_sim_report(
-                self._llm, result.content, chapter_plan
-            )
-        if budget_acc:
-            result.budget_report = BudgetReport(
-                per_chapter=budget_acc,
-                any_over=any(cb.over_by > 0 for cb in budget_acc),
-                total_tokens=sum(cb.total_tokens for cb in budget_acc),
-            )
-        return result
+        # --- Step 6: Post-generation aftermath ---
+        return await self._aftermath.attach_novel_reports(
+            result,
+            scene_archives=scene_archives,
+            chapter_plan=chapter_plan,
+            options=options,
+            budget_acc=budget_acc,
+        )
 
     async def _convert_screenplay(
         self,
@@ -208,14 +189,8 @@ class NarrativeWriter:
         output.content = PostProcessor.normalize_screenplay(output.content, characters)
         output.word_count = count_words(output.content)
 
-        # Post-generation diagnostics (zero-LLM, synchronous)
-        output.cliche_report = scan(output.content)
-        if options.canonical_facts is not None:
-            output.canon_report = verify(
-                output.content, options.canonical_facts, "screenplay"
-            )
-
-        return output
+        # Post-generation aftermath
+        return self._aftermath.attach_screenplay_reports(output, options=options)
 
     # ------------------------------------------------------------------
     # Fallback: no plot outline

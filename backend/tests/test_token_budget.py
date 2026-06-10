@@ -19,6 +19,7 @@ from app.services.narrative.token_budget import (
     BudgetReport,
     TokenBudgetConfig,
     PRIORITY_TIERS,
+    allocate_chapter_sections,
     estimate_tokens,
     account_prompt,
 )
@@ -130,3 +131,60 @@ def test_config_defaults_are_noop():
     cfg = TokenBudgetConfig()
     assert cfg.enabled is False
     assert cfg.budget_tokens == 0
+    assert cfg.apply_trimming is False
+
+
+def test_allocate_no_budget_returns_original_parts():
+    parts = {
+        "system": "system", "canon": "canon", "foreshadowing": "foreshadow",
+        "phase": "phase", "prev_summary": "prev", "next_summary": "next",
+        "scene_logs": "scene",
+    }
+    allocated, report = allocate_chapter_sections(
+        1, is_zh=False, budget_tokens=0, parts=parts
+    )
+    assert allocated == parts
+    assert report.applied_trim == []
+    assert report.final_tokens == report.total_tokens
+
+
+def test_allocate_drops_low_value_sections_before_critical():
+    parts = {
+        "system": "system " * 20,
+        "canon": "CANON " * 20,
+        "foreshadowing": "FORESHADOW " * 20,
+        "phase": "PHASE " * 80,
+        "prev_summary": "PREV " * 80,
+        "next_summary": "NEXT " * 80,
+        "scene_logs": "SCENE " * 80,
+    }
+    allocated, report = allocate_chapter_sections(
+        1, is_zh=False, budget_tokens=260, parts=parts
+    )
+    assert allocated["canon"] == parts["canon"]
+    assert allocated["foreshadowing"] == parts["foreshadowing"]
+    assert {"prev_summary", "next_summary"} & set(report.applied_trim)
+    assert report.final_tokens is not None
+    assert report.final_tokens < report.total_tokens
+
+
+def test_allocate_truncates_scene_logs_only_after_droppable_context():
+    parts = {
+        "system": "system " * 5,
+        "canon": "canon " * 5,
+        "foreshadowing": "foreshadow " * 5,
+        "phase": "phase " * 100,
+        "prev_summary": "prev " * 100,
+        "next_summary": "next " * 100,
+        "scene_logs": "A " * 400 + "MIDDLE " * 400 + "Z " * 400,
+    }
+    allocated, report = allocate_chapter_sections(
+        1, is_zh=False, budget_tokens=220, parts=parts
+    )
+    assert allocated["phase"] == ""
+    assert allocated["prev_summary"] == ""
+    assert allocated["next_summary"] == ""
+    assert "scene_logs" in report.applied_trim
+    assert "Context budget trim" in allocated["scene_logs"]
+    assert "A " in allocated["scene_logs"]
+    assert "Z " in allocated["scene_logs"]

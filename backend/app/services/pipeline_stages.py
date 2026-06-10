@@ -14,6 +14,10 @@ from typing import Any, AsyncIterator
 from app.models.character import CharacterProfile
 from app.services.narrative import WritingOptions
 from app.services.narrative import canon_persistence as cp
+from app.services.narrative.narrative_debt import (
+    NarrativeDebtLedger,
+    build_narrative_debt_ledger,
+)
 from app.services.plot_architect import NarrativeStructure, PlotOutline
 from app.services.scene_engine.resolution import SceneArchive
 from app.services.world_builder import WorldBuilderSession, WorldState
@@ -349,6 +353,22 @@ class _StagesMixin:
             self._persist_artifact(
                 session_id, "foreshadowing_registry", cp.registry_to_dict(registry)
             )
+        if output.narrative_debt_ledger is not None:
+            prior_debt = self._load_artifact(session_id, "narrative_debt_ledger")
+            if prior_debt is not None:
+                try:
+                    output.narrative_debt_ledger = build_narrative_debt_ledger(
+                        output,
+                        prior=NarrativeDebtLedger.from_dict(prior_debt),
+                        foreshadowing_registry=registry,
+                    )
+                except Exception:
+                    pass
+            self._persist_artifact(
+                session_id,
+                "narrative_debt_ledger",
+                output.narrative_debt_ledger.to_dict(),
+            )
 
         state["output"] = output
         state["writing_done"] = True
@@ -395,6 +415,11 @@ class _StagesMixin:
                 "budget_report": (
                     output.budget_report.to_dict() if output.budget_report else {}
                 ),
+                "narrative_debt_ledger": (
+                    output.narrative_debt_ledger.to_dict()
+                    if output.narrative_debt_ledger
+                    else {}
+                ),
             },
             progress=1.0,
             session_id=session_id,
@@ -407,12 +432,7 @@ class _StagesMixin:
         task can never crash the event loop or surface to the user. chapter_id is
         the session_id for the single-output MVP.
         """
-        try:
-            triples = await self._fact_extractor.extract(content, session_id)
-            if triples:
-                await self._triples_store.persist(triples, session_id)
-        except Exception:
-            pass
+        await self._aftermath.persist_inferred_facts(session_id, content)
 
     async def _auto_answer(self, seed_idea: str, question: str, lang: str) -> str:
         system_prompt = _AUTO_ANSWER_PROMPT_ZH if lang == "zh" else _AUTO_ANSWER_PROMPT_EN

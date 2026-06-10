@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.models.character import CharacterProfile
+from app.services.character_manager import CharacterManager
 from app.services.narrative.foreshadowing import visible_profile
+from app.services.narrative.novel_writer import NovelWriter
+from app.services.narrative.token_budget import TokenBudgetConfig
+from app.services.narrative.types import ChapterPlan, ChapterSpec, WritingOptions
 
 
 def _char(**kw) -> CharacterProfile:
@@ -57,3 +63,110 @@ def test_character_does_not_self_filter():
     c = _char(public_profile="public", hidden_profile="SECRET", reveal_chapter=5)
     assert c.hidden_profile == "SECRET"
     assert "SECRET" not in visible_profile(c, current_chapter=1)
+
+
+def test_character_manager_parses_pov_firewall_fields():
+    manager = object.__new__(CharacterManager)
+    profile = manager._parse_character(
+        {
+            "id": "c1",
+            "name": "Aglaea",
+            "public_profile": "court musician",
+            "hidden_profile": "exiled heir",
+            "reveal_chapter": 4,
+        },
+        "now",
+    )
+
+    assert profile.public_profile == "court musician"
+    assert profile.hidden_profile == "exiled heir"
+    assert profile.reveal_chapter == 4
+
+
+class _SpyLLM:
+    def __init__(self) -> None:
+        self.calls: list[list[dict[str, str]]] = []
+
+    async def chat(self, messages, **kwargs):
+        self.calls.append(messages)
+        return "chapter prose"
+
+
+def _single_chapter(number: int) -> ChapterPlan:
+    return ChapterPlan(
+        chapters=[
+            ChapterSpec(
+                number=number,
+                title="Open",
+                scene_ids=[],
+                summary="summary",
+            )
+        ]
+    )
+
+
+@pytest.mark.asyncio
+async def test_novel_prompt_uses_visible_profile_before_reveal():
+    llm = _SpyLLM()
+    writer = NovelWriter(llm)
+    char = _char(
+        name="Aglaea",
+        public_profile="court musician",
+        hidden_profile="exiled heir",
+        reveal_chapter=4,
+    )
+
+    await writer.write_chapters(
+        _single_chapter(2),
+        [],
+        [char],
+        WritingOptions(format="novel"),
+    )
+
+    user_prompt = llm.calls[0][-1]["content"]
+    assert "court musician" in user_prompt
+    assert "exiled heir" not in user_prompt
+
+
+@pytest.mark.asyncio
+async def test_novel_prompt_reveals_hidden_profile_at_reveal_chapter():
+    llm = _SpyLLM()
+    writer = NovelWriter(llm)
+    char = _char(
+        name="Aglaea",
+        public_profile="court musician",
+        hidden_profile="exiled heir",
+        reveal_chapter=4,
+    )
+
+    await writer.write_chapters(
+        _single_chapter(4),
+        [],
+        [char],
+        WritingOptions(format="novel"),
+    )
+
+    user_prompt = llm.calls[0][-1]["content"]
+    assert "court musician" in user_prompt
+    assert "exiled heir" in user_prompt
+
+
+@pytest.mark.asyncio
+async def test_token_budget_accounts_visible_character_context():
+    llm = _SpyLLM()
+    writer = NovelWriter(llm)
+    acc = []
+    char = _char(name="Aglaea", public_profile="court musician")
+
+    await writer.write_chapters(
+        _single_chapter(1),
+        [],
+        [char],
+        WritingOptions(
+            format="novel",
+            token_budget=TokenBudgetConfig(enabled=True, budget_tokens=8000),
+        ),
+        budget_acc=acc,
+    )
+
+    assert any(section.name == "character_context" for section in acc[0].sections)

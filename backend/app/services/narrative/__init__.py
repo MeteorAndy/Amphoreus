@@ -17,6 +17,7 @@ from .writer import NarrativeWriter
 from .canon_adjudicator import CanonAdjudicator
 from .cliche_scanner import scan, ClicheReport, ClicheHit
 from .canon_verifier import verify, CanonReport, Violation
+from .narrative_debt import NarrativeDebtItem, NarrativeDebtLedger
 
 __all__ = [
     "WritingOptions", "WrittenOutput", "ChapterSpec", "ChapterPlan",
@@ -26,4 +27,5 @@ __all__ = [
     "CanonAdjudicator",
     "scan", "ClicheReport", "ClicheHit",
     "verify", "CanonReport", "Violation",
+    "NarrativeDebtItem", "NarrativeDebtLedger",
 ]

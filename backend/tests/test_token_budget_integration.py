@@ -86,3 +86,32 @@ async def test_budget_acc_none_when_disabled_config():
         budget_acc=acc,
     )
     assert acc == []
+
+
+@pytest.mark.asyncio
+async def test_budget_apply_trimming_changes_prompt_and_reports_applied_trim():
+    writer, captured = _writer_with_capture()
+    acc: list = []
+    cfg = TokenBudgetConfig(
+        enabled=True, budget_tokens=220, apply_trimming=True,
+    )
+    await writer._generate_chapter(
+        ChapterSpec(number=1, title="Start", scene_ids=[], summary="summary"),
+        scene_logs="A " * 500 + "MIDDLE " * 500 + "Z " * 500,
+        prev_summary="PREV " * 120,
+        next_summary="NEXT " * 120,
+        word_count_target="2500 words",
+        options=WritingOptions(format="novel", token_budget=cfg),
+        phase_block="PHASE " * 120,
+        budget_acc=acc,
+    )
+
+    assert len(captured) == 1
+    sent_user = captured[0][-1]["content"]
+    assert "PREV " not in sent_user
+    assert "NEXT " not in sent_user
+    assert "Context budget trim" in sent_user or "[context trimmed]" in sent_user
+    assert acc
+    assert {"prev_summary", "next_summary", "scene_logs"} <= set(acc[0].applied_trim)
+    assert acc[0].final_tokens is not None
+    assert acc[0].final_tokens < acc[0].total_tokens

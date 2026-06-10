@@ -18,12 +18,16 @@ from .prompts import (
 )
 from .canon_verifier import verify
 from .cliche_scanner import scan
-from .foreshadowing import render_foreshadowing_block
+from .foreshadowing import render_foreshadowing_block, visible_profile
 from .post_processor import PostProcessor
 from .reviser import build_revise_directive
 from .scene_archive_io import flatten_scenes, load_scene_archive, parse_archive_json
 from .tension_scorer import phase_for_chapter
-from .token_budget import ChapterBudget, measure_chapter_sections
+from .token_budget import (
+    ChapterBudget,
+    allocate_chapter_sections,
+    measure_chapter_sections,
+)
 from .types import ChapterPlan, ChapterSpec, WritingOptions
 
 
@@ -134,6 +138,31 @@ def _extract_chapter_story(raw: str) -> str:
             r"</?(story|思考|thinking)>", "", body, flags=re.IGNORECASE
         ).strip() or raw.strip()
     return result
+
+
+def _replace_once(prompt: str, old: str, new: str) -> str:
+    if not old or old == new:
+        return prompt
+    replacement = new if new else "[context trimmed]"
+    return prompt.replace(old, replacement, 1)
+
+
+def _render_character_context(
+    characters: list[CharacterProfile],
+    current_chapter: int,
+    is_zh: bool,
+) -> str:
+    lines: list[str] = []
+    for char in characters:
+        profile = visible_profile(char, current_chapter).strip()
+        if not profile:
+            continue
+        role = f" ({char.role})" if char.role else ""
+        lines.append(f"- {char.name}{role}: {profile}")
+    if not lines:
+        return ""
+    header = "## 可见角色档案" if is_zh else "## Visible Character Context"
+    return f"{header}\n\n" + "\n".join(lines)
 
 
 def _render_phase_directive(
@@ -249,6 +278,9 @@ class NovelWriter:
                 next_summary=next_summary,
                 word_count_target=word_count_target,
                 options=options,
+                character_context=_render_character_context(
+                    characters, spec.number, get_lang() == Lang.ZH
+                ),
                 foreshadowing_block=render_foreshadowing_block(
                     options.foreshadowing_registry, spec.number, get_lang() == Lang.ZH
                 ),
@@ -280,6 +312,7 @@ class NovelWriter:
         next_summary: str,
         word_count_target: str,
         options: WritingOptions,
+        character_context: str = "",
         foreshadowing_block: str = "",
         phase_block: str = "",
         budget_acc: list[ChapterBudget] | None = None,
@@ -289,6 +322,7 @@ class NovelWriter:
         system_prompt = _get_chapter_write_system_prompt().format(voice=voice_label)
 
         lang = get_lang()
+        character_section = f"{character_context}\n\n" if character_context else ""
         if lang == Lang.ZH:
             user_prompt = (
                 f"## 章节信息\n\n"
@@ -297,6 +331,7 @@ class NovelWriter:
                 f"目标字数：{word_count_target}\n\n"
                 f"上一章概述：{prev_summary if prev_summary else '（无）'}\n"
                 f"下一章概述：{next_summary if next_summary else '（无）'}\n\n"
+                f"{character_section}"
                 f"## 场景日志\n\n{scene_logs}\n\n"
                 f"请写出完整的章节正文。"
             )
@@ -308,38 +343,59 @@ class NovelWriter:
                 f"Target word count: {word_count_target}\n\n"
                 f"Previous chapter summary: {prev_summary if prev_summary else '(none)'}\n"
                 f"Next chapter summary: {next_summary if next_summary else '(none)'}\n\n"
+                f"{character_section}"
                 f"## Scene Logs\n\n{scene_logs}\n\n"
                 f"Write the complete chapter."
             )
 
-        messages: list[dict[str, str]] = [
-            {"role": "system", "content": system_prompt},
-        ]
         canon = ""
         if options.canonical_facts is not None:
             canon = options.canonical_facts.render_block("novel", lang == Lang.ZH)
-            if canon:
-                messages.append({"role": "system", "content": canon})
+
+        cfg = options.token_budget
+        if cfg is not None and cfg.enabled:
+            parts = {
+                "system": system_prompt, "canon": canon,
+                "foreshadowing": foreshadowing_block, "phase": phase_block,
+                "character_context": character_context,
+                "prev_summary": prev_summary, "next_summary": next_summary,
+                "scene_logs": scene_logs,
+            }
+            if cfg.apply_trimming:
+                allocated, budget = allocate_chapter_sections(
+                    spec.number, is_zh=lang == Lang.ZH,
+                    budget_tokens=cfg.budget_tokens, parts=parts,
+                )
+                user_prompt = _replace_once(
+                    user_prompt, prev_summary, allocated["prev_summary"]
+                )
+                user_prompt = _replace_once(
+                    user_prompt, next_summary, allocated["next_summary"]
+                )
+                user_prompt = _replace_once(
+                    user_prompt, scene_logs, allocated["scene_logs"]
+                )
+                canon = allocated["canon"]
+                foreshadowing_block = allocated["foreshadowing"]
+                phase_block = allocated["phase"]
+            else:
+                budget = measure_chapter_sections(
+                    spec.number, is_zh=lang == Lang.ZH,
+                    budget_tokens=cfg.budget_tokens, parts=parts,
+                )
+            if budget_acc is not None:
+                budget_acc.append(budget)
+
+        messages: list[dict[str, str]] = [
+            {"role": "system", "content": system_prompt},
+        ]
+        if canon:
+            messages.append({"role": "system", "content": canon})
         if foreshadowing_block:
             messages.append({"role": "system", "content": foreshadowing_block})
         if phase_block:
             messages.append({"role": "system", "content": phase_block})
         messages.append({"role": "user", "content": user_prompt})
-
-        # T2-④ measure-only: estimate token cost of the SAME strings just sent
-        # (cannot diverge from the real prompt); never mutates messages.
-        cfg = options.token_budget
-        if budget_acc is not None and cfg is not None and cfg.enabled:
-            parts = {
-                "system": system_prompt, "canon": canon,
-                "foreshadowing": foreshadowing_block, "phase": phase_block,
-                "prev_summary": prev_summary, "next_summary": next_summary,
-                "scene_logs": scene_logs,
-            }
-            budget_acc.append(measure_chapter_sections(
-                spec.number, is_zh=lang == Lang.ZH,
-                budget_tokens=cfg.budget_tokens, parts=parts,
-            ))
 
         raw = await self._llm.chat(messages)
         return _extract_chapter_story(raw)
