@@ -451,7 +451,9 @@ class CharacterInteractor:
         )
 
     @staticmethod
-    def _truncate(text: str, max_chars: int) -> str:
+    def _truncate(text: str | None, max_chars: int) -> str:
+        if not text:
+            return ""
         if len(text) <= max_chars:
             return text
         return textwrap.shorten(text, width=max_chars, placeholder="...")

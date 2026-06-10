@@ -216,6 +216,8 @@ class CharacterManager:
 
     def _parse_character(self, raw: dict[str, Any], timestamp: str) -> CharacterProfile:
         personality_data: dict[str, Any] = raw.get("personality", {})
+        if isinstance(personality_data, str):
+            personality_data = {}
         big5_data: dict[str, Any] = personality_data.get("big5", {})
 
         return CharacterProfile(
