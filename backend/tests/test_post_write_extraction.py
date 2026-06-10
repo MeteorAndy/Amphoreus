@@ -66,6 +66,7 @@ async def test_extract_empty_prose_no_call():
 def _store():
     mem = MagicMock()
     mem.kuzu = MagicMock()
+    mem.kuzu.query_cypher = MagicMock(return_value=[])
     mem.openviking = MagicMock()
     return InferredTriplesStore(mem), mem
 
@@ -112,11 +113,21 @@ async def test_invalidate_chapter_uses_contains():
     store, mem = _store()
     mem.kuzu.query_cypher = MagicMock(return_value=[])
     await store.invalidate_chapter("s1")
-    # one edge deletion per edge label, via CONTAINS on edge.properties
-    # (edges are CREATE, never MERGE, so properties are per-chapter)
-    assert mem.kuzu.query_cypher.call_count == 4
+    # one endpoint-collection query + one edge deletion per edge label,
+    # both via gated CONTAINS fragments on edge.properties.
+    assert mem.kuzu.query_cypher.call_count == 8
+    collects = []
+    deletes = []
     for call in mem.kuzu.query_cypher.call_args_list:
-        assert "CONTAINS" in call.args[0] and "DELETE e" in call.args[0]
-        assert "s1" in call.args[1]["frag"]
+        cypher, params = call.args
+        assert "CONTAINS $ch" in cypher
+        assert "CONTAINS $src" in cypher
+        assert "s1" in params["ch"]
+        assert "chapter_inferred" in params["src"]
+        if "RETURN DISTINCT" in cypher:
+            collects.append(cypher)
+        if "DELETE e" in cypher:
+            deletes.append(cypher)
+    assert len(collects) == 4
+    assert len(deletes) == 4
     mem.openviking.delete_entry.assert_called_once()
-

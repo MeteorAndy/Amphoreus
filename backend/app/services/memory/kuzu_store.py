@@ -26,6 +26,25 @@ _EDGE_SCHEMA: dict[str, tuple[str, str]] = {
     "CAUSED_BY": ("Event", "Event"),
 }
 
+# Properties are stored as ONE serialized-JSON string column. Substring
+# matching against that column (e.g. chapter invalidation) only works if the
+# serializer and the fragment builder agree byte-for-byte, so both live here:
+# create_node/create_edge serialize with _PROPS_SEPARATORS pinned (identical to
+# json.dumps defaults today, but now explicit and auditable), and
+# props_fragment() builds match fragments with the SAME separators + encoding.
+_PROPS_SEPARATORS = (", ", ": ")
+
+
+def props_fragment(key: str, value: str) -> str:
+    """A substring guaranteed to appear in a properties column that was
+    serialized by this module with {key: value}. The trailing quote from
+    json.dumps(value) doubles as a delimiter, so "s1" never matches "s10"."""
+    return (
+        json.dumps(key, ensure_ascii=False)
+        + ": "
+        + json.dumps(value, ensure_ascii=False)
+    )
+
 
 @dataclass
 class PathResult:
@@ -75,7 +94,8 @@ class KuzuStore:
             msg = f"'name' is required in properties for label '{label}'"
             raise ValueError(msg)
 
-        props_json = json.dumps(properties, ensure_ascii=False)
+        props_json = json.dumps(properties, ensure_ascii=False,
+                                separators=_PROPS_SEPARATORS)
         self._execute(
             f"MERGE (n:{label} {{name: $name}}) "
             f"ON CREATE SET n.properties = $props "
@@ -86,7 +106,8 @@ class KuzuStore:
 
     def update_node(self, node_id: str, label: str, properties: dict[str, Any]) -> None:
         """Update a node's properties by name."""
-        props_json = json.dumps(properties, ensure_ascii=False)
+        props_json = json.dumps(properties, ensure_ascii=False,
+                                separators=_PROPS_SEPARATORS)
         self._execute(
             f"MATCH (n:{label}) WHERE n.name = $name "
             f"SET n.properties = $props",
@@ -135,7 +156,8 @@ class KuzuStore:
 
         src_label, dst_label = _EDGE_SCHEMA[rel_type]
         props = properties or {}
-        props_json = json.dumps(props, ensure_ascii=False)
+        props_json = json.dumps(props, ensure_ascii=False,
+                                separators=_PROPS_SEPARATORS)
 
         self._execute(
             f"MATCH (a:{src_label}), (b:{dst_label}) "
