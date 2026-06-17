@@ -6,36 +6,36 @@ defineProps<{ event: SandboxEvent }>()
 
 <template>
   <div v-if="event.type === 'round_end'" class="flex items-center gap-2 my-2">
-    <div class="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-    <span class="text-xs text-gray-400 dark:text-gray-500 px-2">Round {{ event.round }}</span>
-    <div class="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+    <div class="flex-1 h-px bg-ink-elevated dark:bg-ink-elevated" />
+    <span class="text-xs text-parchment-dim dark:text-muted px-2">Round {{ event.round }}</span>
+    <div class="flex-1 h-px bg-ink-elevated dark:bg-ink-elevated" />
   </div>
 
-  <div v-else-if="event.type === 'stopped'" class="text-center py-2 text-sm text-gray-500 dark:text-gray-400">
+  <div v-else-if="event.type === 'stopped'" class="text-center py-2 text-sm text-muted dark:text-parchment-dim">
     ✅ Stopped after {{ event.rounds }} rounds
   </div>
 
-  <div v-else-if="event.type === 'connected'" class="text-xs text-gray-400 dark:text-gray-500 italic">
+  <div v-else-if="event.type === 'connected'" class="text-xs text-parchment-dim dark:text-muted italic">
     Connected
   </div>
 
   <div v-else-if="event.type === 'action'" class="flex gap-2 py-1">
     <span class="text-base leading-5 mt-0.5">🧑</span>
-    <div class="text-sm text-gray-800 dark:text-gray-200">
+    <div class="text-sm text-parchment dark:text-parchment">
       <span class="font-semibold">{{ event.character }}</span>: {{ event.content }}
     </div>
   </div>
 
   <div v-else-if="event.type === 'thought'" class="flex gap-2 py-1">
     <span class="text-base leading-5 mt-0.5">💭</span>
-    <div class="text-sm text-gray-500 dark:text-gray-400 italic">
-      <span class="font-semibold not-italic text-gray-600 dark:text-gray-300">{{ event.character }}</span> thinks: {{ event.content }}
+    <div class="text-sm text-muted dark:text-parchment-dim italic">
+      <span class="font-semibold not-italic text-muted dark:text-parchment-dim">{{ event.character }}</span> thinks: {{ event.content }}
     </div>
   </div>
 
   <div v-else-if="event.type === 'environment'" class="flex gap-2 py-1">
     <span class="text-base leading-5 mt-0.5">🌍</span>
-    <div class="text-sm text-gray-600 dark:text-gray-300">{{ event.content }}</div>
+    <div class="text-sm text-muted dark:text-parchment-dim">{{ event.content }}</div>
   </div>
 
   <div v-else-if="event.type === 'injected'" class="flex gap-2 py-1">

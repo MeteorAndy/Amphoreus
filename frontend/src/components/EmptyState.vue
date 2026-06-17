@@ -29,17 +29,17 @@ const { t } = useI18n()
       class="text-5xl mb-4 opacity-40"
       aria-hidden="true"
     >{{ icon }}</div>
-    <h3 class="text-lg font-medium text-gray-400 mb-2">
+    <h3 class="text-lg font-medium text-parchment-dim mb-2">
       {{ title || t('empty.default_title') }}
     </h3>
     <p
       v-if="description"
-      class="text-sm text-gray-500 max-w-xs mb-6"
+      class="text-sm text-muted max-w-xs mb-6"
     >{{ description }}</p>
     <button
       v-if="actionLabel"
       @click="emit('action')"
-      class="mt-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
+      class="mt-2 px-4 py-2 rounded-lg bg-chop hover:bg-chop text-white text-sm font-medium transition-colors"
     >{{ actionLabel }}</button>
   </div>
 </template>

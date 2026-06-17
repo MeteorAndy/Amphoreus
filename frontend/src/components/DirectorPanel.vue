@@ -50,7 +50,7 @@ function getStatusColor(): string {
     case 'running': return 'text-green-400'
     case 'completed': return 'text-blue-400'
     case 'error': return 'text-red-400'
-    default: return 'text-gray-400'
+    default: return 'text-parchment-dim'
   }
 }
 
@@ -81,10 +81,10 @@ function doEndScene(): void {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+  <div class="flex flex-col h-full bg-ink-panel rounded-lg border border-ink-edge overflow-hidden">
     <!-- Header -->
-    <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between shrink-0">
-      <h3 class="text-sm font-semibold text-gray-200">{{ t('scene.director_panel') }}</h3>
+    <div class="px-4 py-3 border-b border-ink-edge flex items-center justify-between shrink-0">
+      <h3 class="text-sm font-semibold text-parchment">{{ t('scene.director_panel') }}</h3>
       <span class="text-xs font-medium" :class="getStatusColor()">
         {{ props.status.status === 'running'
           ? `Round ${props.status.current_round}`
@@ -94,28 +94,28 @@ function doEndScene(): void {
 
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
       <!-- Status block -->
-      <div class="bg-gray-800/50 rounded-lg p-3 space-y-1.5">
+      <div class="bg-ink-elevated/50 rounded-lg p-3 space-y-1.5">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-gray-500">Status</span>
+          <span class="text-xs text-muted">Status</span>
           <span class="text-xs font-medium" :class="getStatusColor()">{{ props.status.status }}</span>
         </div>
         <div v-if="activeCharacters.length > 0" class="flex items-start justify-between gap-2">
-          <span class="text-xs text-gray-500 shrink-0">Characters</span>
+          <span class="text-xs text-muted shrink-0">Characters</span>
           <div class="flex flex-wrap gap-1 justify-end">
             <span
               v-for="char in activeCharacters"
               :key="char"
-              class="text-xs text-indigo-400 bg-indigo-900/30 px-1.5 py-0.5 rounded"
+              class="text-xs text-chop bg-chop/20/30 px-1.5 py-0.5 rounded"
             >{{ char }}</span>
           </div>
         </div>
         <div v-if="sceneId" class="flex items-center justify-between">
-          <span class="text-xs text-gray-500">Scene ID</span>
-          <span class="text-xs text-gray-400 font-mono">{{ sceneId.slice(0, 8) }}…</span>
+          <span class="text-xs text-muted">Scene ID</span>
+          <span class="text-xs text-parchment-dim font-mono">{{ sceneId.slice(0, 8) }}…</span>
         </div>
         <div class="flex items-center justify-between">
-          <span class="text-xs text-gray-500">WS</span>
-          <span class="text-xs" :class="connected ? 'text-green-400' : 'text-gray-500'">
+          <span class="text-xs text-muted">WS</span>
+          <span class="text-xs" :class="connected ? 'text-green-400' : 'text-muted'">
             {{ connected ? 'Connected' : 'Disconnected' }}
           </span>
         </div>
@@ -126,14 +126,14 @@ function doEndScene(): void {
         <button
           v-if="status.status === 'idle'"
           @click="emit('startScene')"
-          class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 transition-colors"
+          class="w-full px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop transition-colors"
         >
           {{ t('scene.run') }}
         </button>
         <button
           v-else
           @click="emit('reset')"
-          class="w-full px-4 py-2 bg-gray-700 text-gray-200 rounded-lg text-sm font-medium hover:bg-gray-600 transition-colors"
+          class="w-full px-4 py-2 bg-ink-elevated text-parchment rounded-lg text-sm font-medium hover:bg-ink-elevated transition-colors"
         >
           Reset
         </button>
@@ -143,13 +143,13 @@ function doEndScene(): void {
       <template v-if="isRunning">
         <!-- Quick Actions -->
         <div class="space-y-2">
-          <p class="text-xs text-gray-500">Quick Actions</p>
+          <p class="text-xs text-muted">Quick Actions</p>
           <div class="grid grid-cols-2 gap-1.5">
             <button
               v-for="action in quickActions"
               :key="action.key"
               @click="handleQuickAction(action.label)"
-              class="px-2 py-1.5 bg-gray-800 border border-gray-700 rounded text-xs text-gray-300 hover:bg-gray-700 hover:border-indigo-600 transition-colors text-left truncate"
+              class="px-2 py-1.5 bg-ink-elevated border border-ink-edge rounded text-xs text-parchment-dim hover:bg-ink-elevated hover:border-chop transition-colors text-left truncate"
             >
               {{ action.label }}
             </button>
@@ -158,17 +158,17 @@ function doEndScene(): void {
 
         <!-- Custom inject -->
         <div class="space-y-2">
-          <label class="block text-xs text-gray-500">{{ t('scene.inject_event') }}</label>
+          <label class="block text-xs text-muted">{{ t('scene.inject_event') }}</label>
           <textarea
             v-model="intervention"
             :placeholder="t('scene.inject_placeholder')"
             rows="3"
-            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment placeholder-muted focus:outline-none focus:border-chop transition-colors resize-none"
           />
           <button
             @click="handleIntervene"
             :disabled="!intervention.trim()"
-            class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="w-full px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {{ t('scene.inject_event') }}
           </button>
@@ -194,7 +194,7 @@ function doEndScene(): void {
               </button>
               <button
                 @click="showEndConfirm = false"
-                class="flex-1 px-3 py-1.5 bg-gray-700 text-gray-300 rounded text-xs font-medium hover:bg-gray-600 transition-colors"
+                class="flex-1 px-3 py-1.5 bg-ink-elevated text-parchment-dim rounded text-xs font-medium hover:bg-ink-elevated transition-colors"
               >
                 {{ t('general.cancel') }}
               </button>
@@ -205,15 +205,15 @@ function doEndScene(): void {
 
       <!-- Director Log -->
       <div v-if="directorLog.length > 0" class="space-y-2">
-        <p class="text-xs text-gray-500">Director Log</p>
+        <p class="text-xs text-muted">Director Log</p>
         <div class="space-y-1 max-h-40 overflow-y-auto">
           <div
             v-for="(entry, i) in directorLog"
             :key="i"
-            class="bg-gray-800/50 rounded px-2 py-1.5"
+            class="bg-ink-elevated/50 rounded px-2 py-1.5"
           >
-            <p class="text-xs text-gray-300 leading-snug">{{ entry.text }}</p>
-            <p class="text-xs text-gray-600 mt-0.5">{{ entry.ts }}</p>
+            <p class="text-xs text-parchment-dim leading-snug">{{ entry.text }}</p>
+            <p class="text-xs text-muted mt-0.5">{{ entry.ts }}</p>
           </div>
         </div>
       </div>

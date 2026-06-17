@@ -39,40 +39,40 @@ const stages = ['world', 'characters', 'relationships', 'plot', 'scenes', 'writi
   <div class="max-w-4xl mx-auto p-6 space-y-6">
     <!-- Header -->
     <div class="text-center">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+      <h1 class="text-3xl font-bold text-parchment dark:text-white">
         {{ t('pipeline.title') }}
       </h1>
-      <p class="mt-2 text-gray-500 dark:text-gray-400">
+      <p class="mt-2 text-muted dark:text-parchment-dim">
         {{ t('pipeline.subtitle') }}
       </p>
     </div>
 
     <!-- Config Form (shown when idle) -->
-    <div v-if="pipeline.status.value === 'idle'" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-4">
+    <div v-if="pipeline.status.value === 'idle'" class="bg-white dark:bg-ink-elevated rounded-xl shadow-sm border border-ink-edge dark:border-ink-edge p-6 space-y-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('pipeline.idea') }}</label>
-        <textarea v-model="seedIdea" :placeholder="t('pipeline.idea_placeholder')" rows="3" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+        <label class="block text-sm font-medium text-parchment-dim dark:text-parchment-dim mb-1">{{ t('pipeline.idea') }}</label>
+        <textarea v-model="seedIdea" :placeholder="t('pipeline.idea_placeholder')" rows="3" class="w-full rounded-lg border border-ink-edge dark:border-ink-edge bg-white dark:bg-ink-elevated px-4 py-2 text-parchment dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('pipeline.format') }}</label>
-          <select v-model="outputFormat" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white">
+          <label class="block text-sm font-medium text-parchment-dim dark:text-parchment-dim mb-1">{{ t('pipeline.format') }}</label>
+          <select v-model="outputFormat" class="w-full rounded-lg border border-ink-edge dark:border-ink-edge bg-white dark:bg-ink-elevated px-3 py-2 text-parchment dark:text-white">
             <option value="novel">{{ t('pipeline.novel') }}</option>
             <option value="screenplay">{{ t('pipeline.screenplay') }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('pipeline.structure') }}</label>
-          <select v-model="structure" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white">
+          <label class="block text-sm font-medium text-parchment-dim dark:text-parchment-dim mb-1">{{ t('pipeline.structure') }}</label>
+          <select v-model="structure" class="w-full rounded-lg border border-ink-edge dark:border-ink-edge bg-white dark:bg-ink-elevated px-3 py-2 text-parchment dark:text-white">
             <option v-for="s in structures" :key="s.value" :value="s.value">{{ s.label.zh }}</option>
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{ t('pipeline.characters_count') }}</label>
-          <input v-model.number="characterCount" type="number" min="1" max="20" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white" />
+          <label class="block text-sm font-medium text-parchment-dim dark:text-parchment-dim mb-1">{{ t('pipeline.characters_count') }}</label>
+          <input v-model.number="characterCount" type="number" min="1" max="20" class="w-full rounded-lg border border-ink-edge dark:border-ink-edge bg-white dark:bg-ink-elevated px-3 py-2 text-parchment dark:text-white" />
         </div>
       </div>
-      <button @click="handleStart" :disabled="!seedIdea.trim()" class="w-full py-3 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium transition-colors">
+      <button @click="handleStart" :disabled="!seedIdea.trim()" class="w-full py-3 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-muted text-white font-medium transition-colors">
         {{ t('pipeline.start') }}
       </button>
     </div>
@@ -80,12 +80,12 @@ const stages = ['world', 'characters', 'relationships', 'plot', 'scenes', 'writi
     <!-- Progress (shown when running/completed) -->
     <div v-if="pipeline.status.value !== 'idle'" class="space-y-4">
       <!-- Progress Bar -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+      <div class="bg-white dark:bg-ink-elevated rounded-xl shadow-sm border border-ink-edge dark:border-ink-edge p-6">
         <div class="flex justify-between items-center mb-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('pipeline.progress') }}</span>
-          <span class="text-sm text-gray-500">{{ Math.round(pipeline.progress.value * 100) }}%</span>
+          <span class="text-sm font-medium text-parchment-dim dark:text-parchment-dim">{{ t('pipeline.progress') }}</span>
+          <span class="text-sm text-muted">{{ Math.round(pipeline.progress.value * 100) }}%</span>
         </div>
-        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+        <div class="w-full bg-ink-elevated dark:bg-ink-elevated rounded-full h-3">
           <div class="bg-blue-600 h-3 rounded-full transition-all duration-500" :style="{ width: `${pipeline.progress.value * 100}%` }" />
         </div>
         <!-- Stage Indicators -->
@@ -95,11 +95,11 @@ const stages = ['world', 'characters', 'relationships', 'plot', 'scenes', 'writi
               'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold',
               pipeline.currentStage.value === stage ? 'bg-blue-600 text-white animate-pulse' :
               stages.indexOf(stage) < stages.indexOf(pipeline.currentStage.value) ? 'bg-green-500 text-white' :
-              'bg-gray-200 dark:bg-gray-700 text-gray-500'
+              'bg-ink-elevated dark:bg-ink-elevated text-muted'
             ]">
               {{ stages.indexOf(stage) < stages.indexOf(pipeline.currentStage.value) ? '✓' : stages.indexOf(stage) + 1 }}
             </div>
-            <span class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t(`pipeline.stage.${stage}`) }}</span>
+            <span class="mt-1 text-xs text-muted dark:text-parchment-dim">{{ t(`pipeline.stage.${stage}`) }}</span>
           </div>
         </div>
       </div>
@@ -121,12 +121,12 @@ const stages = ['world', 'characters', 'relationships', 'plot', 'scenes', 'writi
       </button>
 
       <!-- Output -->
-      <div v-if="pipeline.outputText.value" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <pre class="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200 max-h-96 overflow-y-auto">{{ pipeline.outputText.value }}</pre>
+      <div v-if="pipeline.outputText.value" class="bg-white dark:bg-ink-elevated rounded-xl shadow-sm border border-ink-edge dark:border-ink-edge p-6">
+        <pre class="whitespace-pre-wrap text-sm text-parchment dark:text-parchment max-h-96 overflow-y-auto">{{ pipeline.outputText.value }}</pre>
       </div>
 
       <!-- Reset -->
-      <button v-if="!pipeline.isRunning.value" @click="pipeline.reset()" class="w-full py-2 px-4 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-colors">
+      <button v-if="!pipeline.isRunning.value" @click="pipeline.reset()" class="w-full py-2 px-4 rounded-lg border border-ink-edge dark:border-ink-edge text-parchment-dim dark:text-parchment-dim hover:bg-ink-elevated dark:hover:bg-ink-elevated font-medium transition-colors">
         {{ t('pipeline.start') }}
       </button>
     </div>

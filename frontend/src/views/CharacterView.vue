@@ -128,12 +128,12 @@ function goToPlot(): void {
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-gray-100">{{ t('chars.title') }}</h1>
+      <h1 class="text-xl font-bold text-parchment">{{ t('chars.title') }}</h1>
       <div class="flex gap-2">
         <button
           @click="handleGenerate"
           :disabled="generating || loading"
-          class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+          class="px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 transition-colors"
         >
           {{ generating ? t('general.loading') : t('chars.generate') }}
         </button>
@@ -146,16 +146,16 @@ function goToPlot(): void {
     </div>
 
     <!-- Loading -->
-    <div v-if="loading && characters.length === 0" class="flex items-center justify-center h-32 text-gray-500 text-sm">
+    <div v-if="loading && characters.length === 0" class="flex items-center justify-center h-32 text-muted text-sm">
       {{ t('chars.loading') }}
     </div>
 
     <!-- Selected character actions -->
-    <div v-if="selectedCharacter" class="bg-gray-900 rounded-lg border border-gray-800 p-4">
+    <div v-if="selectedCharacter" class="bg-ink-panel rounded-lg border border-ink-edge p-4">
       <div class="flex items-center gap-3 mb-3">
         <button
           @click="openRefine"
-          class="px-3 py-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-800 rounded-lg text-xs font-medium hover:bg-indigo-600/30 transition-colors"
+          class="px-3 py-1.5 bg-chop/20 text-chop border border-oxblood rounded-lg text-xs font-medium hover:bg-chop/30 transition-colors"
         >
           Refine
         </button>
@@ -165,13 +165,13 @@ function goToPlot(): void {
     <!-- Relationships section with List / Graph toggle -->
     <div>
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-lg font-semibold text-gray-200">{{ t('chars.relationships') }}</h2>
-        <div class="flex rounded-lg overflow-hidden border border-gray-700 text-xs font-medium">
+        <h2 class="text-lg font-semibold text-parchment">{{ t('chars.relationships') }}</h2>
+        <div class="flex rounded-lg overflow-hidden border border-ink-edge text-xs font-medium">
           <button
             @click="viewMode = 'list'"
             :class="viewMode === 'list'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-700'"
+              ? 'bg-chop text-white'
+              : 'bg-ink-elevated text-parchment-dim hover:text-parchment hover:bg-ink-elevated'"
             class="px-3 py-1.5 transition-colors"
           >
             {{ t('chars.view_list') }}
@@ -179,8 +179,8 @@ function goToPlot(): void {
           <button
             @click="switchToGraph"
             :class="viewMode === 'graph'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-700'"
+              ? 'bg-chop text-white'
+              : 'bg-ink-elevated text-parchment-dim hover:text-parchment hover:bg-ink-elevated'"
             class="px-3 py-1.5 transition-colors"
           >
             {{ t('chars.view_graph') }}
@@ -201,14 +201,14 @@ function goToPlot(): void {
             @delete="deleteCharacterById"
           />
         </div>
-        <div v-if="characters.length === 0 && !loading" class="text-center py-12 text-gray-600 text-sm">
+        <div v-if="characters.length === 0 && !loading" class="text-center py-12 text-muted text-sm">
           {{ t('chars.empty') }}
         </div>
       </template>
 
       <!-- Graph view: d3-force relationship graph -->
       <template v-else>
-        <div v-if="relationshipsLoading" class="flex items-center justify-center h-32 text-gray-500 text-sm">
+        <div v-if="relationshipsLoading" class="flex items-center justify-center h-32 text-muted text-sm">
           {{ t('general.loading') }}
         </div>
         <RelationshipGraph

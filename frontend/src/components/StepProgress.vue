@@ -13,8 +13,8 @@ defineProps<{
           class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all"
           :class="{
             'bg-green-600 text-white': idx + 1 < current,
-            'bg-indigo-500 text-white ring-2 ring-indigo-400 ring-offset-2 ring-offset-gray-950 animate-pulse': idx + 1 === current,
-            'bg-gray-800 text-gray-500': idx + 1 > current,
+            'bg-chop text-white ring-2 ring-chop ring-offset-2 ring-offset-ink-bg animate-pulse': idx + 1 === current,
+            'bg-ink-elevated text-muted': idx + 1 > current,
           }"
         >
           <span v-if="idx + 1 < current">&#10003;</span>
@@ -24,8 +24,8 @@ defineProps<{
           class="mt-1 text-xs whitespace-nowrap"
           :class="{
             'text-green-400': idx + 1 < current,
-            'text-indigo-300 font-medium': idx + 1 === current,
-            'text-gray-600': idx + 1 > current,
+            'text-chop font-medium': idx + 1 === current,
+            'text-muted': idx + 1 > current,
           }"
         >
           {{ step }}
@@ -34,7 +34,7 @@ defineProps<{
       <div
         v-if="idx < steps.length - 1"
         class="flex-1 h-px mx-2 mt-[-12px] transition-colors"
-        :class="idx + 1 < current ? 'bg-green-600' : 'bg-gray-800'"
+        :class="idx + 1 < current ? 'bg-green-600' : 'bg-ink-elevated'"
       />
     </template>
   </div>

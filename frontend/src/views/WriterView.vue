@@ -82,7 +82,7 @@ function handleSelectTitle(title: string): void {
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-gray-100">{{ t('writer.title') }}</h1>
+      <h1 class="text-xl font-bold text-parchment">{{ t('writer.title') }}</h1>
     </div>
 
     <!-- Error banner -->
@@ -91,13 +91,13 @@ function handleSelectTitle(title: string): void {
     </div>
 
     <!-- Selection + Generate bar -->
-    <div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
+    <div class="bg-ink-panel rounded-lg border border-ink-edge p-4">
       <div class="flex items-end gap-4">
         <div class="flex-1">
-          <label class="block text-xs text-gray-500 mb-1">{{ t('writer.plot_outline') }}</label>
+          <label class="block text-xs text-muted mb-1">{{ t('writer.plot_outline') }}</label>
           <select
             v-model="selectedPlotId"
-            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
           >
             <option value="" disabled>{{ t('writer.select_outline') }}</option>
             <option
@@ -112,7 +112,7 @@ function handleSelectTitle(title: string): void {
         <button
           @click="handleGenerate"
           :disabled="!selectedPlotId || loading"
-          class="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          class="px-6 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {{ loading ? t('writer.generating') : t('writer.convert') }}
         </button>
@@ -120,21 +120,21 @@ function handleSelectTitle(title: string): void {
     </div>
 
     <!-- Title candidates -->
-    <div v-if="titleCandidates.length > 0" class="bg-gray-900 rounded-lg border border-gray-800 p-4">
-      <h3 class="text-sm font-semibold text-gray-200 mb-3">{{ t('writer.title_candidates') }}</h3>
+    <div v-if="titleCandidates.length > 0" class="bg-ink-panel rounded-lg border border-ink-edge p-4">
+      <h3 class="text-sm font-semibold text-parchment mb-3">{{ t('writer.title_candidates') }}</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         <button
           v-for="candidate in titleCandidates"
           :key="candidate.title"
           @click="handleSelectTitle(candidate.title)"
-          class="text-left bg-gray-800 rounded-lg p-3 hover:border-indigo-500 border border-gray-700 transition-colors"
-          :class="output?.title === candidate.title ? 'border-indigo-500' : ''"
+          class="text-left bg-ink-elevated rounded-lg p-3 hover:border-chop border border-ink-edge transition-colors"
+          :class="output?.title === candidate.title ? 'border-chop' : ''"
         >
-          <p class="text-sm font-medium text-gray-200">{{ candidate.title }}</p>
+          <p class="text-sm font-medium text-parchment">{{ candidate.title }}</p>
           <div class="flex items-center gap-2 mt-1">
-            <span class="text-xs text-indigo-400">{{ t('writer.score') }}: {{ candidate.score }}</span>
+            <span class="text-xs text-chop">{{ t('writer.score') }}: {{ candidate.score }}</span>
           </div>
-          <p class="text-xs text-gray-500 mt-1 line-clamp-2">{{ candidate.reason }}</p>
+          <p class="text-xs text-muted mt-1 line-clamp-2">{{ candidate.reason }}</p>
         </button>
       </div>
     </div>

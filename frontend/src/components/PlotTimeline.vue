@@ -76,46 +76,46 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-if="outline" class="space-y-6">
-    <div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
+    <div class="bg-ink-panel rounded-lg border border-ink-edge p-4">
       <div class="flex items-center justify-between mb-2">
-        <h2 class="text-lg font-semibold text-gray-100">{{ outline.title }}</h2>
-        <span class="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded-full">
+        <h2 class="text-lg font-semibold text-parchment">{{ outline.title }}</h2>
+        <span class="text-xs text-muted bg-ink-elevated px-2 py-1 rounded-full">
           {{ outline.structure }}
         </span>
       </div>
-      <p class="text-sm text-gray-400">{{ outline.description }}</p>
+      <p class="text-sm text-parchment-dim">{{ outline.description }}</p>
     </div>
     <div v-for="act in outline.acts" :key="act.id" class="relative">
       <div class="flex items-center gap-3 mb-3">
-        <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold text-white">
+        <div class="w-8 h-8 rounded-full bg-chop flex items-center justify-center text-sm font-bold text-white">
           {{ act.number }}
         </div>
         <div>
-          <h3 class="text-sm font-semibold text-gray-200">{{ act.title }}</h3>
-          <p v-if="act.summary" class="text-xs text-gray-500">{{ act.summary }}</p>
+          <h3 class="text-sm font-semibold text-parchment">{{ act.title }}</h3>
+          <p v-if="act.summary" class="text-xs text-muted">{{ act.summary }}</p>
         </div>
         <button
           @click="emit('addScene', act.id)"
-          class="ml-auto text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+          class="ml-auto text-xs text-chop hover:text-chop transition-colors"
         >
           + Add Scene
         </button>
       </div>
       <div
-        class="ml-4 pl-6 border-l-2 border-gray-800 space-y-3"
+        class="ml-4 pl-6 border-l-2 border-ink-edge space-y-3"
         :ref="(el) => setActContainerRef(act.id, el as HTMLElement | null)"
       >
         <div
           v-for="scene in act.scenes"
           :key="scene.id"
           :data-scene-id="scene.id"
-          class="bg-gray-900 border border-gray-800 rounded-lg p-3 hover:border-gray-700 transition-colors cursor-pointer [&.sortable-chosen]:cursor-grabbing"
+          class="bg-ink-panel border border-ink-edge rounded-lg p-3 hover:border-ink-edge transition-colors cursor-pointer [&.sortable-chosen]:cursor-grabbing"
           @click="emit('selectScene', scene)"
         >
           <div class="flex items-start gap-2">
             <!-- Drag handle -->
             <div
-              class="drag-handle flex-shrink-0 flex flex-col gap-0.5 pt-1 cursor-grab text-gray-600 hover:text-gray-400 transition-colors select-none"
+              class="drag-handle flex-shrink-0 flex flex-col gap-0.5 pt-1 cursor-grab text-muted hover:text-parchment-dim transition-colors select-none"
               @click.stop
               :title="t('plot.drag_hint')"
             >
@@ -126,21 +126,21 @@ onBeforeUnmount(() => {
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs text-gray-500">#{{ scene.order }}</span>
-                <h4 class="text-sm font-medium text-gray-200 truncate">{{ scene.title }}</h4>
+                <span class="text-xs text-muted">#{{ scene.order }}</span>
+                <h4 class="text-sm font-medium text-parchment truncate">{{ scene.title }}</h4>
               </div>
-              <p class="text-xs text-gray-500 line-clamp-2">{{ scene.description }}</p>
+              <p class="text-xs text-muted line-clamp-2">{{ scene.description }}</p>
               <div class="mt-2 flex flex-wrap gap-1">
                 <span
                   v-for="char in scene.characters?.slice(0, 3)"
                   :key="char"
-                  class="text-xs text-indigo-400 bg-indigo-900/30 px-1.5 py-0.5 rounded"
+                  class="text-xs text-chop bg-chop/20/30 px-1.5 py-0.5 rounded"
                 >
                   {{ char }}
                 </span>
                 <span
                   v-if="scene.characters && scene.characters.length > 3"
-                  class="text-xs text-gray-500"
+                  class="text-xs text-muted"
                 >
                   +{{ scene.characters.length - 3 }}
                 </span>
@@ -149,7 +149,7 @@ onBeforeUnmount(() => {
             <div class="flex items-center gap-1 flex-shrink-0">
               <button
                 @click.stop="emit('editScene', scene)"
-                class="text-xs text-gray-500 hover:text-indigo-400 transition-colors px-1"
+                class="text-xs text-muted hover:text-chop transition-colors px-1"
               >
                 Edit
               </button>
@@ -162,13 +162,13 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </div>
-        <div v-if="act.scenes.length === 0" class="text-center py-6 text-gray-600 text-sm">
+        <div v-if="act.scenes.length === 0" class="text-center py-6 text-muted text-sm">
           No scenes yet. Click "+ Add Scene" to create one.
         </div>
       </div>
     </div>
   </div>
-  <div v-else class="flex items-center justify-center h-64 text-gray-500 text-sm">
+  <div v-else class="flex items-center justify-center h-64 text-muted text-sm">
     Select or create a plot outline to view the timeline
   </div>
 </template>

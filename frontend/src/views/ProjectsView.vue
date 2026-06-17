@@ -74,7 +74,7 @@ function formatDate(iso: string): string {
   <AppLayout>
     <!-- Header -->
     <div class="flex items-center justify-between mb-8">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('projects.title') }}</h1>
+      <h1 class="text-2xl font-bold text-parchment dark:text-white">{{ t('projects.title') }}</h1>
       <button
         @click="openCreateDialog"
         class="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 transition-colors"
@@ -96,11 +96,11 @@ function formatDate(iso: string): string {
       <div
         v-for="n in 6"
         :key="n"
-        class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 animate-pulse"
+        class="bg-white dark:bg-ink-elevated rounded-xl shadow-sm border border-ink-edge dark:border-ink-edge p-6 animate-pulse"
       >
-        <div class="h-5 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3" />
-        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2" />
-        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+        <div class="h-5 bg-ink-elevated dark:bg-ink-elevated rounded w-3/4 mb-3" />
+        <div class="h-4 bg-ink-elevated dark:bg-ink-elevated rounded w-1/2 mb-2" />
+        <div class="h-4 bg-ink-elevated dark:bg-ink-elevated rounded w-1/3" />
       </div>
     </div>
 
@@ -110,7 +110,7 @@ function formatDate(iso: string): string {
       class="flex flex-col items-center justify-center py-24 text-center"
     >
       <span class="text-5xl mb-4">📁</span>
-      <p class="text-gray-500 dark:text-gray-400 text-lg mb-6">{{ t('projects.empty') }}</p>
+      <p class="text-muted dark:text-parchment-dim text-lg mb-6">{{ t('projects.empty') }}</p>
       <button
         @click="openCreateDialog"
         class="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 transition-colors"
@@ -124,31 +124,31 @@ function formatDate(iso: string): string {
       <div
         v-for="project in projects"
         :key="project.id"
-        class="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all relative"
+        class="group bg-white dark:bg-ink-elevated rounded-xl shadow-sm border border-ink-edge dark:border-ink-edge p-6 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all relative"
         @click="openProject(project.id)"
       >
         <!-- Delete button -->
         <button
-          class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1 rounded"
+          class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-parchment-dim hover:text-red-500 dark:hover:text-red-400 p-1 rounded"
           @click.stop="handleDelete(project.id, project.name)"
           :title="t('general.delete')"
         >
           ✕
         </button>
 
-        <h2 class="text-base font-semibold text-gray-900 dark:text-white mb-3 pr-6 truncate">
+        <h2 class="text-base font-semibold text-parchment dark:text-white mb-3 pr-6 truncate">
           {{ project.name }}
         </h2>
 
         <!-- Last stage badge -->
         <div v-if="project.last_stage" class="mb-3">
-          <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
+          <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-chop/15 dark:bg-chop/20/40 text-chop dark:text-chop">
             {{ t('projects.last_stage') }}: {{ project.last_stage }}
           </span>
         </div>
 
         <!-- Dates -->
-        <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+        <div class="text-xs text-muted dark:text-parchment-dim space-y-1">
           <div v-if="project.updated_at">
             {{ t('projects.updated') }}: {{ formatDate(project.updated_at) }}
           </div>
@@ -166,34 +166,34 @@ function formatDate(iso: string): string {
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
         @click.self="closeCreateDialog"
       >
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-md mx-4 p-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-5">
+        <div class="bg-white dark:bg-ink-elevated rounded-2xl shadow-xl border border-ink-edge dark:border-ink-edge w-full max-w-md mx-4 p-6">
+          <h2 class="text-lg font-semibold text-parchment dark:text-white mb-5">
             {{ t('projects.new') }}
           </h2>
 
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label class="block text-sm font-medium text-parchment-dim dark:text-parchment-dim mb-1">
                 {{ t('projects.name') }}
               </label>
               <input
                 v-model="newName"
                 type="text"
                 :placeholder="t('projects.name_placeholder')"
-                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="w-full rounded-lg border border-ink-edge dark:border-ink-edge bg-white dark:bg-ink-elevated text-parchment dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 @keydown.enter="handleCreate"
               />
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label class="block text-sm font-medium text-parchment-dim dark:text-parchment-dim mb-1">
                 {{ t('projects.seed_idea') }}
               </label>
               <textarea
                 v-model="newSeedIdea"
                 :placeholder="t('projects.seed_idea_placeholder')"
                 rows="3"
-                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                class="w-full rounded-lg border border-ink-edge dark:border-ink-edge bg-white dark:bg-ink-elevated text-parchment dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
             </div>
 
@@ -205,7 +205,7 @@ function formatDate(iso: string): string {
           <div class="flex justify-end gap-3 mt-6">
             <button
               @click="closeCreateDialog"
-              class="rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+              class="rounded-lg border border-ink-edge dark:border-ink-edge text-parchment-dim dark:text-parchment-dim font-medium px-4 py-2 hover:bg-ink-elevated dark:hover:bg-ink-elevated transition-colors text-sm"
             >
               {{ t('general.cancel') }}
             </button>

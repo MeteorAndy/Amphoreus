@@ -205,10 +205,10 @@ async function handleReorder(actId: string, sceneIds: string[]): Promise<void> {
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-gray-100">{{ t('plot.title') }}</h1>
+      <h1 class="text-xl font-bold text-parchment">{{ t('plot.title') }}</h1>
       <button
         @click="showCreateModal = true"
-        class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 transition-colors"
+        class="px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop transition-colors"
       >
         {{ t('plot.new_outline') }}
       </button>
@@ -230,9 +230,9 @@ async function handleReorder(actId: string, sceneIds: string[]): Promise<void> {
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
       <!-- Sidebar -->
       <div class="lg:col-span-1 space-y-3">
-        <div class="bg-gray-900 rounded-lg border border-gray-800 p-4">
-          <h3 class="text-sm font-semibold text-gray-200 mb-3">{{ t('plot.outlines') }}</h3>
-          <div v-if="outlines.length === 0 && !loading" class="text-center py-6 text-gray-600 text-sm">
+        <div class="bg-ink-panel rounded-lg border border-ink-edge p-4">
+          <h3 class="text-sm font-semibold text-parchment mb-3">{{ t('plot.outlines') }}</h3>
+          <div v-if="outlines.length === 0 && !loading" class="text-center py-6 text-muted text-sm">
             {{ t('plot.empty') }}
           </div>
           <div class="space-y-1">
@@ -241,25 +241,25 @@ async function handleReorder(actId: string, sceneIds: string[]): Promise<void> {
               :key="outline.id"
               @click="selectOutline(outline.id)"
               class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors"
-              :class="selectedOutline?.id === outline.id ? 'bg-indigo-900/30 text-indigo-300' : 'text-gray-400 hover:bg-gray-800'"
+              :class="selectedOutline?.id === outline.id ? 'bg-chop/20/30 text-chop' : 'text-parchment-dim hover:bg-ink-elevated'"
             >
               <div class="font-medium truncate">{{ outline.title }}</div>
-              <div class="text-xs text-gray-500">{{ outline.structure }}</div>
+              <div class="text-xs text-muted">{{ outline.structure }}</div>
             </button>
           </div>
         </div>
 
-        <div v-if="selectedOutline" class="bg-gray-900 rounded-lg border border-gray-800 p-4 space-y-2">
-          <h3 class="text-sm font-semibold text-gray-200 mb-2">{{ t('plot.actions') }}</h3>
+        <div v-if="selectedOutline" class="bg-ink-panel rounded-lg border border-ink-edge p-4 space-y-2">
+          <h3 class="text-sm font-semibold text-parchment mb-2">{{ t('plot.actions') }}</h3>
           <button
             @click="openRefine"
-            class="w-full px-3 py-2 text-sm text-gray-400 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+            class="w-full px-3 py-2 text-sm text-parchment-dim bg-ink-elevated rounded-lg hover:bg-ink-elevated transition-colors"
           >
             Refine Outline
           </button>
           <button
             @click="deleteOutline(selectedOutline.id)"
-            class="w-full px-3 py-2 text-sm text-red-400 bg-gray-800 rounded-lg hover:bg-red-900/20 transition-colors"
+            class="w-full px-3 py-2 text-sm text-red-400 bg-ink-elevated rounded-lg hover:bg-red-900/20 transition-colors"
           >
             {{ t('plot.delete_outline') }}
           </button>
@@ -268,7 +268,7 @@ async function handleReorder(actId: string, sceneIds: string[]): Promise<void> {
 
       <!-- Main content -->
       <div class="lg:col-span-3">
-        <div v-if="loading && !selectedOutline" class="flex items-center justify-center h-64 text-gray-500 text-sm">
+        <div v-if="loading && !selectedOutline" class="flex items-center justify-center h-64 text-muted text-sm">
           {{ t('general.loading') }}
         </div>
         <PlotTimeline
@@ -289,26 +289,26 @@ async function handleReorder(actId: string, sceneIds: string[]): Promise<void> {
         class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
         @click.self="showCreateModal = false"
       >
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md mx-4">
-          <h2 class="text-lg font-semibold text-gray-100 mb-4">{{ t('plot.new_outline_title') }}</h2>
+        <div class="bg-ink-panel border border-ink-edge rounded-xl p-6 w-full max-w-md mx-4">
+          <h2 class="text-lg font-semibold text-parchment mb-4">{{ t('plot.new_outline_title') }}</h2>
           <div class="space-y-4">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">{{ t('plot.structure') }}</label>
+              <label class="block text-xs text-muted mb-1">{{ t('plot.structure') }}</label>
               <select
                 v-model="selectedStructure"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+                class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
               >
                 <option v-for="s in structures" :key="s.value" :value="s.value">{{ s.label }}</option>
               </select>
             </div>
           </div>
           <div class="flex justify-end gap-2 mt-6">
-            <button @click="showCreateModal = false" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">
+            <button @click="showCreateModal = false" class="px-4 py-2 text-sm text-parchment-dim hover:text-parchment">
               {{ t('general.cancel') }}
             </button>
             <button
               @click="saveOutline"
-              class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+              class="px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50"
             >
               {{ t('plot.generate') }}
             </button>
@@ -322,42 +322,42 @@ async function handleReorder(actId: string, sceneIds: string[]): Promise<void> {
         class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
         @click.self="showSceneModal = false"
       >
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md mx-4">
-          <h2 class="text-lg font-semibold text-gray-100 mb-4">
+        <div class="bg-ink-panel border border-ink-edge rounded-xl p-6 w-full max-w-md mx-4">
+          <h2 class="text-lg font-semibold text-parchment mb-4">
             {{ editingScene ? t('plot.edit_scene') : t('plot.add_scene') }}
           </h2>
           <div class="space-y-4">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">{{ t('plot.title_field') }}</label>
+              <label class="block text-xs text-muted mb-1">{{ t('plot.title_field') }}</label>
               <input
                 v-model="sceneForm.title"
                 type="text"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+                class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">{{ t('plot.description') }}</label>
+              <label class="block text-xs text-muted mb-1">{{ t('plot.description') }}</label>
               <textarea
                 v-model="sceneForm.description"
                 rows="2"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 resize-none"
+                class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop resize-none"
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">{{ t('plot.setting') }}</label>
+              <label class="block text-xs text-muted mb-1">{{ t('plot.setting') }}</label>
               <input
                 v-model="sceneForm.setting"
                 type="text"
-                class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+                class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">{{ t('chars.name') }}</label>
+              <label class="block text-xs text-muted mb-1">{{ t('chars.name') }}</label>
               <div class="flex flex-wrap gap-1 mb-2">
                 <span
                   v-for="(char, idx) in sceneForm.characters"
                   :key="idx"
-                  class="flex items-center gap-1 px-2 py-0.5 bg-gray-800 text-gray-300 text-xs rounded-full"
+                  class="flex items-center gap-1 px-2 py-0.5 bg-ink-elevated text-parchment-dim text-xs rounded-full"
                 >
                   {{ char }}
                   <button @click="removeCharacter(idx)" class="hover:text-red-400">&times;</button>
@@ -368,19 +368,19 @@ async function handleReorder(actId: string, sceneIds: string[]): Promise<void> {
                   v-model="charInput"
                   type="text"
                   placeholder="Character name..."
-                  class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+                  class="flex-1 bg-ink-elevated border border-ink-edge rounded-lg px-3 py-1.5 text-sm text-parchment focus:outline-none focus:border-chop"
                   @keydown.enter.prevent="addCharacter"
                 />
-                <button @click="addCharacter" class="px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg text-xs hover:bg-gray-600">Add</button>
+                <button @click="addCharacter" class="px-3 py-1.5 bg-ink-elevated text-parchment-dim rounded-lg text-xs hover:bg-ink-elevated">Add</button>
               </div>
             </div>
           </div>
           <div class="flex justify-end gap-2 mt-6">
-            <button @click="showSceneModal = false" class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200">{{ t('general.cancel') }}</button>
+            <button @click="showSceneModal = false" class="px-4 py-2 text-sm text-parchment-dim hover:text-parchment">{{ t('general.cancel') }}</button>
             <button
               @click="saveScene"
               :disabled="!sceneForm.title"
-              class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
+              class="px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50"
             >
               {{ editingScene ? t('general.save') : t('general.create') }}
             </button>
@@ -394,28 +394,28 @@ async function handleReorder(actId: string, sceneIds: string[]): Promise<void> {
         class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
         @click.self="showRefineModal = false"
       >
-        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md mx-4">
-          <h2 class="text-lg font-semibold text-gray-100 mb-2">Refine Plot Outline</h2>
-          <p class="text-xs text-gray-500 mb-4">
+        <div class="bg-ink-panel border border-ink-edge rounded-xl p-6 w-full max-w-md mx-4">
+          <h2 class="text-lg font-semibold text-parchment mb-2">Refine Plot Outline</h2>
+          <p class="text-xs text-muted mb-4">
             Provide feedback on how to improve the plot outline.
           </p>
           <textarea
             v-model="refineFeedback"
             rows="4"
             placeholder="Describe what should change..."
-            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment placeholder-muted focus:outline-none focus:border-chop resize-none"
           />
           <div class="flex justify-end gap-2 mt-4">
             <button
               @click="showRefineModal = false"
-              class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+              class="px-4 py-2 text-sm text-parchment-dim hover:text-parchment transition-colors"
             >
               {{ t('general.cancel') }}
             </button>
             <button
               @click="handleRefine"
               :disabled="refining || !refineFeedback.trim()"
-              class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+              class="px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 transition-colors"
             >
               {{ refining ? t('general.loading') : t('general.confirm') }}
             </button>

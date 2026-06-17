@@ -67,7 +67,7 @@ function canStart(): boolean {
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-gray-100">{{ t('scene.title') }}</h1>
+      <h1 class="text-xl font-bold text-parchment">{{ t('scene.title') }}</h1>
     </div>
 
     <!-- Error banner -->
@@ -76,15 +76,15 @@ function canStart(): boolean {
     </div>
 
     <!-- Configuration (idle state) -->
-    <div v-if="status.status === 'idle'" class="bg-gray-900 rounded-lg border border-gray-800 p-6 space-y-4">
-      <h2 class="text-sm font-semibold text-gray-200">{{ t('scene.config') }}</h2>
+    <div v-if="status.status === 'idle'" class="bg-ink-panel rounded-lg border border-ink-edge p-6 space-y-4">
+      <h2 class="text-sm font-semibold text-parchment">{{ t('scene.config') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs text-gray-500 mb-1">{{ t('scene.select_plot') }}</label>
+          <label class="block text-xs text-muted mb-1">{{ t('scene.select_plot') }}</label>
           <select
             v-model="selectedPlotId"
             @change="handleSelectPlot(selectedPlotId)"
-            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
           >
             <option value="" disabled>{{ t('writer.select_outline') }}</option>
             <option
@@ -97,10 +97,10 @@ function canStart(): boolean {
           </select>
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">{{ t('scene.select_scene') }}</label>
+          <label class="block text-xs text-muted mb-1">{{ t('scene.select_scene') }}</label>
           <select
             v-model="selectedSceneId"
-            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
           >
             <option value="" disabled>{{ t('scene.select_scene') }}</option>
             <template v-if="selectedOutline">
@@ -108,7 +108,7 @@ function canStart(): boolean {
                 <option
                   :value="'act-' + act.id"
                   disabled
-                  class="text-gray-500 italic"
+                  class="text-muted italic"
                 >
                   -- {{ act.title }} --
                 </option>
@@ -124,27 +124,27 @@ function canStart(): boolean {
           </select>
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">{{ t('scene.max_rounds') }}</label>
+          <label class="block text-xs text-muted mb-1">{{ t('scene.max_rounds') }}</label>
           <input
             v-model.number="maxRounds"
             type="number"
             min="1"
             max="50"
-            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
+            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
           />
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">{{ t('chars.title') }} ({{ characters.length }})</label>
-          <div class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-400">
+          <label class="block text-xs text-muted mb-1">{{ t('chars.title') }} ({{ characters.length }})</label>
+          <div class="bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment-dim">
             <div class="flex flex-wrap gap-1">
               <span
                 v-for="char in characters.slice(0, 5)"
                 :key="char.id"
-                class="text-xs text-indigo-400 bg-indigo-900/30 px-1.5 py-0.5 rounded"
+                class="text-xs text-chop bg-chop/20/30 px-1.5 py-0.5 rounded"
               >
                 {{ char.name }}
               </span>
-              <span v-if="characters.length > 5" class="text-xs text-gray-500">
+              <span v-if="characters.length > 5" class="text-xs text-muted">
                 +{{ characters.length - 5 }} more
               </span>
             </div>
@@ -154,7 +154,7 @@ function canStart(): boolean {
       <button
         @click="handleStartScene"
         :disabled="!canStart()"
-        class="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        class="px-6 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {{ t('scene.run') }}
       </button>

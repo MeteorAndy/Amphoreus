@@ -53,7 +53,7 @@ const ROLE_COLORS: Record<string, string> = {
   minor:       '#a855f7',  // purple-500
 }
 function roleColor(role: string): string {
-  return ROLE_COLORS[role?.toLowerCase()] ?? '#6b7280' // gray-500 fallback
+  return ROLE_COLORS[role?.toLowerCase()] ?? '#8a8070' // manuscript muted fallback
 }
 
 // ── Computed node label (truncate long names) ─────────────────────────────────
@@ -202,11 +202,11 @@ const nodeList = computed(() =>
 </script>
 
 <template>
-  <div ref="containerRef" class="relative bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+  <div ref="containerRef" class="relative bg-ink-panel rounded-lg border border-ink-edge overflow-hidden">
     <!-- Empty state -->
     <div
       v-if="characters.length === 0"
-      class="flex items-center justify-center h-40 text-gray-500 text-sm"
+      class="flex items-center justify-center h-40 text-muted text-sm"
     >
       暂无角色数据 / No characters to display
     </div>
@@ -292,7 +292,7 @@ const nodeList = computed(() =>
     <!-- Tooltip -->
     <div
       v-if="tooltip.visible"
-      class="absolute z-10 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-gray-200 pointer-events-none max-w-48 whitespace-normal"
+      class="absolute z-10 px-2 py-1 bg-ink-elevated border border-ink-edge rounded text-xs text-parchment pointer-events-none max-w-48 whitespace-normal"
       :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }"
     >
       {{ tooltip.text }}

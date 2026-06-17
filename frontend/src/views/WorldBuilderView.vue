@@ -108,7 +108,7 @@ function goToCharacters(): void {
   <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-gray-100">
+      <h1 class="text-xl font-bold text-parchment">
         {{ t('world.title') }}
       </h1>
       <button
@@ -144,9 +144,9 @@ function goToCharacters(): void {
             <div
               class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-colors flex-shrink-0"
               :class="{
-                'bg-indigo-500 text-white': stageStatus(s) === 'current',
+                'bg-chop text-white': stageStatus(s) === 'current',
                 'bg-green-600 text-white': stageStatus(s) === 'completed',
-                'bg-gray-800 text-gray-500': stageStatus(s) === 'upcoming',
+                'bg-ink-elevated text-muted': stageStatus(s) === 'upcoming',
               }"
             >
               <span v-if="stageStatus(s) === 'completed'">&check;</span>
@@ -155,8 +155,8 @@ function goToCharacters(): void {
             <span
               class="text-xs whitespace-nowrap"
               :class="{
-                'text-indigo-300 font-medium': stageStatus(s) === 'current',
-                'text-gray-400': stageStatus(s) !== 'current',
+                'text-chop font-medium': stageStatus(s) === 'current',
+                'text-parchment-dim': stageStatus(s) !== 'current',
               }"
             >
               {{ stageLabel(s) }}
@@ -165,10 +165,10 @@ function goToCharacters(): void {
           <div
             v-if="idx < stageOrder.length - 1"
             class="w-8 h-px mx-2"
-            :class="stageStatus(s) === 'completed' ? 'bg-green-600' : 'bg-gray-800'"
+            :class="stageStatus(s) === 'completed' ? 'bg-green-600' : 'bg-ink-elevated'"
           />
         </div>
-        <div class="ml-auto text-xs text-gray-500">
+        <div class="ml-auto text-xs text-muted">
           {{ t('world.completeness') }}: {{ Math.round(completeness * 100) }}%
         </div>
       </div>
@@ -180,14 +180,14 @@ function goToCharacters(): void {
           <!-- Welcome screen (initial state, no session yet) -->
           <div
             v-if="!sessionId && !loading && messages.length === 0"
-            class="bg-gray-900 rounded-lg border border-gray-800 p-8 text-center"
+            class="bg-ink-panel rounded-lg border border-ink-edge p-8 text-center"
           >
             <div class="max-w-md mx-auto space-y-4">
               <div class="text-5xl mb-2">&#127758;</div>
-              <h2 class="text-xl font-semibold text-gray-100">
+              <h2 class="text-xl font-semibold text-parchment">
                 {{ t('world.welcome_title') }}
               </h2>
-              <p class="text-sm text-gray-400">
+              <p class="text-sm text-parchment-dim">
                 {{ t('world.welcome_desc') }}
               </p>
               <form
@@ -198,13 +198,13 @@ function goToCharacters(): void {
                   v-model="seedIdea"
                   type="text"
                   :placeholder="t('world.idea_placeholder')"
-                  class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors"
+                  class="flex-1 bg-ink-elevated border border-ink-edge rounded-lg px-4 py-2.5 text-sm text-parchment placeholder-muted focus:outline-none focus:border-chop transition-colors"
                   :disabled="loading"
                 >
                 <button
                   type="submit"
                   :disabled="loading || !seedIdea.trim()"
-                  class="px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  class="px-5 py-2.5 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {{ t('world.start_building') }}
                 </button>
@@ -231,15 +231,15 @@ function goToCharacters(): void {
             <!-- World name & description -->
             <div
               v-if="extractedData.name"
-              class="bg-gray-900 rounded-lg border border-gray-800 p-4"
+              class="bg-ink-panel rounded-lg border border-ink-edge p-4"
             >
-              <h3 class="text-sm font-semibold text-gray-200 mb-2">
+              <h3 class="text-sm font-semibold text-parchment mb-2">
                 {{ t('world.sidebar_world') }}
               </h3>
-              <p class="text-sm text-gray-300">{{ extractedData.name }}</p>
+              <p class="text-sm text-parchment-dim">{{ extractedData.name }}</p>
               <p
                 v-if="extractedData.description"
-                class="text-xs text-gray-500 mt-1"
+                class="text-xs text-muted mt-1"
               >
                 {{ extractedData.description }}
               </p>
@@ -248,18 +248,18 @@ function goToCharacters(): void {
             <!-- Rules -->
             <div
               v-if="extractedData.rules?.length"
-              class="bg-gray-900 rounded-lg border border-gray-800 p-4"
+              class="bg-ink-panel rounded-lg border border-ink-edge p-4"
             >
-              <h3 class="text-sm font-semibold text-gray-200 mb-2">
+              <h3 class="text-sm font-semibold text-parchment mb-2">
                 {{ t('world.rules') }}
               </h3>
               <ul class="space-y-1">
                 <li
                   v-for="(rule, idx) in extractedData.rules"
                   :key="idx"
-                  class="text-xs text-gray-400 flex gap-2"
+                  class="text-xs text-parchment-dim flex gap-2"
                 >
-                  <span class="text-indigo-500 flex-shrink-0">-</span>
+                  <span class="text-chop flex-shrink-0">-</span>
                   <span>{{ rule }}</span>
                 </li>
               </ul>
@@ -268,9 +268,9 @@ function goToCharacters(): void {
             <!-- Locations -->
             <div
               v-if="extractedData.locations?.length"
-              class="bg-gray-900 rounded-lg border border-gray-800 p-4"
+              class="bg-ink-panel rounded-lg border border-ink-edge p-4"
             >
-              <h3 class="text-sm font-semibold text-gray-200 mb-2">
+              <h3 class="text-sm font-semibold text-parchment mb-2">
                 {{ t('world.locations') }}
               </h3>
               <div class="space-y-2">
@@ -278,8 +278,8 @@ function goToCharacters(): void {
                   v-for="(loc, idx) in extractedData.locations"
                   :key="idx"
                 >
-                  <p class="text-sm text-gray-300">{{ loc.name }}</p>
-                  <p class="text-xs text-gray-500">{{ loc.description }}</p>
+                  <p class="text-sm text-parchment-dim">{{ loc.name }}</p>
+                  <p class="text-xs text-muted">{{ loc.description }}</p>
                 </div>
               </div>
             </div>
@@ -287,9 +287,9 @@ function goToCharacters(): void {
             <!-- Factions -->
             <div
               v-if="extractedData.factions?.length"
-              class="bg-gray-900 rounded-lg border border-gray-800 p-4"
+              class="bg-ink-panel rounded-lg border border-ink-edge p-4"
             >
-              <h3 class="text-sm font-semibold text-gray-200 mb-2">
+              <h3 class="text-sm font-semibold text-parchment mb-2">
                 {{ t('world.factions') }}
               </h3>
               <div class="space-y-2">
@@ -297,8 +297,8 @@ function goToCharacters(): void {
                   v-for="(faction, idx) in extractedData.factions"
                   :key="idx"
                 >
-                  <p class="text-sm text-gray-300">{{ faction.name }}</p>
-                  <p class="text-xs text-gray-500">{{ faction.description }}</p>
+                  <p class="text-sm text-parchment-dim">{{ faction.name }}</p>
+                  <p class="text-xs text-muted">{{ faction.description }}</p>
                 </div>
               </div>
             </div>
@@ -306,9 +306,9 @@ function goToCharacters(): void {
             <!-- Timeline -->
             <div
               v-if="extractedData.timeline?.length"
-              class="bg-gray-900 rounded-lg border border-gray-800 p-4"
+              class="bg-ink-panel rounded-lg border border-ink-edge p-4"
             >
-              <h3 class="text-sm font-semibold text-gray-200 mb-2">
+              <h3 class="text-sm font-semibold text-parchment mb-2">
                 {{ t('world.timeline') }}
               </h3>
               <div class="space-y-2">
@@ -317,12 +317,12 @@ function goToCharacters(): void {
                   :key="idx"
                   class="flex gap-2"
                 >
-                  <span class="text-xs text-indigo-400 flex-shrink-0 w-auto min-w-[4rem]">{{ entry.date }}</span>
+                  <span class="text-xs text-chop flex-shrink-0 w-auto min-w-[4rem]">{{ entry.date }}</span>
                   <div>
-                    <p class="text-xs text-gray-300">{{ entry.event }}</p>
+                    <p class="text-xs text-parchment-dim">{{ entry.event }}</p>
                     <p
                       v-if="entry.description"
-                      class="text-xs text-gray-500"
+                      class="text-xs text-muted"
                     >
                       {{ entry.description }}
                     </p>
@@ -335,7 +335,7 @@ function goToCharacters(): void {
           <!-- Empty sidebar state -->
           <div
             v-else
-            class="bg-gray-900 rounded-lg border border-gray-800 p-6 text-center text-gray-600 text-sm"
+            class="bg-ink-panel rounded-lg border border-ink-edge p-6 text-center text-muted text-sm"
           >
             <p>{{ t('world.start_hint') }}</p>
           </div>
@@ -343,11 +343,11 @@ function goToCharacters(): void {
           <!-- Upload document (secondary option) -->
           <div
             v-if="sessionId"
-            class="border-t border-gray-800 pt-3"
+            class="border-t border-ink-edge pt-3"
           >
             <button
               @click="showUpload = !showUpload"
-              class="text-xs text-gray-500 hover:text-gray-300 transition-colors flex items-center gap-1"
+              class="text-xs text-muted hover:text-parchment-dim transition-colors flex items-center gap-1"
             >
               <span>&#128196;</span>
               <span>{{ t('world.upload_tab') }}</span>
@@ -360,12 +360,12 @@ function goToCharacters(): void {
                 type="file"
                 accept=".md,.txt,.pdf"
                 @change="handleUpload"
-                class="text-xs text-gray-400 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-indigo-600 file:text-white hover:file:bg-indigo-500"
+                class="text-xs text-parchment-dim file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-chop file:text-white hover:file:bg-chop"
                 :disabled="uploadLoading"
               >
               <p
                 v-if="uploadLoading"
-                class="text-xs text-gray-500 mt-1"
+                class="text-xs text-muted mt-1"
               >
                 {{ t('world.upload_processing') }}
               </p>
@@ -402,40 +402,40 @@ function goToCharacters(): void {
     >
       <div class="text-center space-y-2">
         <div class="text-5xl">&#127758;</div>
-        <h2 class="text-2xl font-bold text-gray-100">
+        <h2 class="text-2xl font-bold text-parchment">
           {{ t('world.finalized_title') }}
         </h2>
       </div>
 
-      <div class="bg-gray-900 rounded-lg border border-gray-800 p-6 space-y-4">
+      <div class="bg-ink-panel rounded-lg border border-ink-edge p-6 space-y-4">
         <div>
-          <h3 class="text-xl font-semibold text-gray-100">
+          <h3 class="text-xl font-semibold text-parchment">
             {{ worldState.name || t('world.unnamed') }}
           </h3>
           <p
             v-if="worldState.description"
-            class="text-sm text-gray-400 mt-1"
+            class="text-sm text-parchment-dim mt-1"
           >
             {{ worldState.description }}
           </p>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-gray-800">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-ink-edge">
           <div class="text-center">
-            <div class="text-2xl font-bold text-indigo-400">{{ worldState.rules?.length || 0 }}</div>
-            <div class="text-xs text-gray-500">{{ t('world.rules') }}</div>
+            <div class="text-2xl font-bold text-chop">{{ worldState.rules?.length || 0 }}</div>
+            <div class="text-xs text-muted">{{ t('world.rules') }}</div>
           </div>
           <div class="text-center">
-            <div class="text-2xl font-bold text-indigo-400">{{ worldState.locations?.length || 0 }}</div>
-            <div class="text-xs text-gray-500">{{ t('world.locations') }}</div>
+            <div class="text-2xl font-bold text-chop">{{ worldState.locations?.length || 0 }}</div>
+            <div class="text-xs text-muted">{{ t('world.locations') }}</div>
           </div>
           <div class="text-center">
-            <div class="text-2xl font-bold text-indigo-400">{{ worldState.factions?.length || 0 }}</div>
-            <div class="text-xs text-gray-500">{{ t('world.factions') }}</div>
+            <div class="text-2xl font-bold text-chop">{{ worldState.factions?.length || 0 }}</div>
+            <div class="text-xs text-muted">{{ t('world.factions') }}</div>
           </div>
           <div class="text-center">
-            <div class="text-2xl font-bold text-indigo-400">{{ worldState.timeline?.length || 0 }}</div>
-            <div class="text-xs text-gray-500">{{ t('world.timeline') }}</div>
+            <div class="text-2xl font-bold text-chop">{{ worldState.timeline?.length || 0 }}</div>
+            <div class="text-xs text-muted">{{ t('world.timeline') }}</div>
           </div>
         </div>
       </div>
@@ -443,13 +443,13 @@ function goToCharacters(): void {
       <div class="flex gap-4 justify-center">
         <button
           @click="goToCharacters"
-          class="px-6 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-500 transition-colors"
+          class="px-6 py-2.5 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop transition-colors"
         >
           {{ t('world.proceed_chars') }}
         </button>
         <button
           @click="resetWorld"
-          class="px-6 py-2.5 text-gray-400 border border-gray-700 rounded-lg text-sm font-medium hover:text-gray-200 hover:border-gray-600 transition-colors"
+          class="px-6 py-2.5 text-parchment-dim border border-ink-edge rounded-lg text-sm font-medium hover:text-parchment hover:border-ink-edge transition-colors"
         >
           {{ t('world.start_again') }}
         </button>

@@ -16,7 +16,7 @@ describe('StepProgress', () => {
     const wrapper = mount(StepProgress, { props: { steps, current: 2 } })
     const circles = wrapper.findAll('.rounded-full')
     expect(circles[1].classes()).toContain('animate-pulse')
-    expect(circles[1].classes()).toContain('bg-indigo-500')
+    expect(circles[1].classes()).toContain('bg-chop')
   })
 
   it('marks completed steps with a check mark and green background', () => {
@@ -30,7 +30,7 @@ describe('StepProgress', () => {
   it('marks upcoming steps as muted and shows their index number', () => {
     const wrapper = mount(StepProgress, { props: { steps, current: 1 } })
     const circles = wrapper.findAll('.rounded-full')
-    expect(circles[3].classes()).toContain('bg-gray-800')
+    expect(circles[3].classes()).toContain('bg-ink-elevated')
     expect(circles[3].text()).toBe('4')
   })
 
