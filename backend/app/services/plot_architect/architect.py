@@ -20,8 +20,11 @@ from app.services.plot_architect.structure_planner import plan, format_structure
 from app.services.plot_architect.types import (
     Act,
     NarrativeStructure,
+    PlanningStatus,
     PlotOutline,
     SceneSpec,
+    _coerce_source,
+    _coerce_status,
 )
 
 
@@ -67,10 +70,55 @@ class PlotArchitect:
     async def refine_plot(
         self, outline: PlotOutline, feedback: str
     ) -> PlotOutline:
-        """Revise an existing outline using LLM with user feedback."""
+        """Revise an existing outline using LLM with user feedback.
+
+        Nodes the user marked USER_EDITED are preserved verbatim (T3-①): the LLM
+        may rewrite the rest, but a hand-edited scene/act is copied back from the
+        pre-refine outline so user changes survive re-refinement."""
         prompt = self._build_refinement_prompt(outline, feedback)
         result = await self._llm.chat_json(prompt)
-        return self._parse_outline(result, outline.structure)
+        refined = self._parse_outline(result, outline.structure)
+        return self._merge_user_edited(outline, refined)
+
+    @staticmethod
+    def _merge_user_edited(
+        before: PlotOutline, after: PlotOutline
+    ) -> PlotOutline:
+        """Copy USER_EDITED acts/scenes from `before` over `after` (by name/id).
+
+        Pure: builds a fresh outline so neither input is mutated. Nodes not
+        marked USER_EDITED pass through unchanged (current behavior)."""
+        edited_scenes = {
+            s.id: s
+            for a in before.acts
+            for s in a.scenes
+            if s.planning_status == PlanningStatus.USER_EDITED
+        }
+        edited_acts = {
+            a.name: a
+            for a in before.acts
+            if a.planning_status == PlanningStatus.USER_EDITED
+        }
+
+        new_acts: list[Act] = []
+        for act in after.acts:
+            if act.name in edited_acts:
+                new_acts.append(edited_acts[act.name])
+                continue
+            scenes = [
+                edited_scenes.get(s.id, s) if s.id in edited_scenes else s
+                for s in act.scenes
+            ]
+            # preserve scene order; replace edited ones in place
+            scenes = [edited_scenes.get(s.id, s) for s in act.scenes]
+            new_acts.append(Act(
+                name=act.name, description=act.description, scenes=scenes,
+                planning_status=act.planning_status, source=act.source,
+            ))
+        return PlotOutline(
+            structure=after.structure, acts=new_acts,
+            character_arcs=after.character_arcs,
+        )
 
     async def generate_scene_specs(
         self, outline: PlotOutline
@@ -240,6 +288,8 @@ class PlotArchitect:
                     name=raw.get("name", ""),
                     description=raw.get("description", ""),
                     scenes=scenes,
+                    planning_status=_coerce_status(raw.get("planning_status")),
+                    source=_coerce_source(raw.get("source")),
                 )
             )
 
@@ -261,6 +311,8 @@ class PlotArchitect:
                 {
                     "name": a.name,
                     "description": a.description,
+                    "planning_status": a.planning_status.value,
+                    "source": a.source.value,
                     "scenes": [
                         {
                             "id": s.id,
@@ -271,6 +323,8 @@ class PlotArchitect:
                             "goal": s.goal,
                             "expected_outcome": s.expected_outcome,
                             "causal_chain": s.causal_chain,
+                            "planning_status": s.planning_status.value,
+                            "source": s.source.value,
                         }
                         for s in a.scenes
                     ],
@@ -289,6 +343,8 @@ class PlotArchitect:
                 name=a.get("name", ""),
                 description=a.get("description", ""),
                 scenes=[SceneSpec(**s) for s in a.get("scenes", [])],
+                planning_status=_coerce_status(a.get("planning_status")),
+                source=_coerce_source(a.get("source")),
             )
             for a in raw_acts
         ]
