@@ -73,6 +73,10 @@ class WritingOptions:
     # GraphInferenceReport (co-faction / co-location / indirect-cause facts).
     # Off by default; novel-only. Never writes to the graph.
     enable_graph_inference: bool = False
+    # Optional AI-slop adaptive pattern detection (T3-③): when True, the writer
+    # attaches a report of THIS novel's recurring cliche tics. Report-only —
+    # never mutates cliche_scanner._RULES. Off by default; novel-only.
+    learn_adaptive_patterns: bool = False
 
 
 @dataclass(frozen=True)
@@ -141,6 +145,9 @@ class WrittenOutput:
     # Graph-inference diagnostics (T3-④). Read-only Cypher-derived structural
     # facts when WritingOptions.enable_graph_inference is set. String-annotated.
     graph_inference_report: "GraphInferenceReport | None" = None
+    # Adaptive-pattern diagnostics (T3-③). Recurring cliche tics for this novel
+    # when WritingOptions.learn_adaptive_patterns is set. Report-only.
+    adaptive_pattern_report: "AdaptivePatternReport | None" = None
     # Persistent narrative-debt ledger. Populated after post-write diagnostics
     # from unresolved props, reader dangling threads, canon notes, and planted
     # foreshadowing. String-annotated to avoid a cycle.

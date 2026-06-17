@@ -13,6 +13,7 @@ from app.services.scene_engine.resolution import SceneArchive
 
 from .canon_verifier import verify
 from .cliche_scanner import scan
+from .adaptive_patterns import analyze_cliche_report
 from .entity_events import build_entity_event_history
 from .graph_inference import GraphInferenceEngine
 from .inferred_triples_store import InferredTriplesStore
@@ -55,6 +56,8 @@ class ChapterAftermathPipeline:
     ) -> WrittenOutput:
         """Populate all novel post-write reports on `output`."""
         output.cliche_report = scan(output.content)
+        if options.learn_adaptive_patterns and output.cliche_report is not None:
+            output.adaptive_pattern_report = analyze_cliche_report(output.cliche_report)
         if options.canonical_facts is not None:
             output.canon_report = verify(output.content, options.canonical_facts, "novel")
         if options.score_tension:
