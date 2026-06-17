@@ -94,6 +94,7 @@ def world_state_to_dict(w: WorldState) -> dict[str, Any]:
         "factions": w.factions,
         "timeline": w.timeline,
         "completeness": w.completeness,
+        "dimensions": w.dimensions,
     }
 
 
@@ -104,6 +105,7 @@ def world_state_from_dict(data: dict[str, Any]) -> WorldState:
         factions=data.get("factions", []),
         timeline=data.get("timeline", []),
         completeness=data.get("completeness", 0.0),
+        dimensions=data.get("dimensions", {}),
     )
 
 

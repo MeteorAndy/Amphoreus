@@ -14,6 +14,10 @@ from __future__ import annotations
 from app.core.i18n import get_lang, Lang
 from app.services.world_builder import WorldState
 
+from .world_dimensions import DIMENSION_LABELS_EN, DIMENSION_LABELS_ZH
+
+_DIM_RENDER_CAP = 6  # max item names rendered per dimension (token-budget guard)
+
 
 def build_contract_block(world: WorldState, target: str = "all") -> str:
     """Render the world contract as a compact bilingual prompt-constraint block.
@@ -32,6 +36,7 @@ def build_contract_block(world: WorldState, target: str = "all") -> str:
     _append_locations(sections, world, is_zh)
     _append_factions(sections, world, is_zh)
     _append_timeline(sections, world, is_zh)
+    _append_dimensions(sections, world, is_zh)
     _append_tone(sections, world, is_zh)
 
     if not sections:
@@ -111,6 +116,31 @@ def _append_timeline(lines: list[str], w: WorldState, is_zh: bool) -> None:
             lines.append(f"- {era}：{name}" if era else f"- {name}")
         else:
             lines.append(f"- {era}: {name}" if era else f"- {name}")
+
+
+def _append_dimensions(lines: list[str], w: WorldState, is_zh: bool) -> None:
+    """Render the 5-dimension view as a compact section (T2-③).
+
+    Opt-in: omitted entirely when ``w.dimensions`` is empty, so a world whose
+    dimensions were never derived produces a byte-identical contract block. Caps
+    item names per dimension to bound prompt growth."""
+    dims = getattr(w, "dimensions", None) or {}
+    if not dims:
+        return
+    if is_zh:
+        lines.append("\n### 世界维度\n")
+    else:
+        lines.append("\n### World Dimensions\n")
+    for dim, items in dims.items():
+        if not items:
+            continue
+        label = DIMENSION_LABELS_ZH.get(dim, dim) if is_zh else DIMENSION_LABELS_EN.get(dim, dim)
+        names = [str(it.get("_src_name") or it.get("name", "")) for it in items[:_DIM_RENDER_CAP]]
+        names = [n for n in names if n]
+        if not names:
+            continue
+        joined = "、".join(names) if is_zh else ", ".join(names)
+        lines.append(f"- {label}：{joined}" if is_zh else f"- {label}: {joined}")
 
 
 def _append_tone(lines: list[str], w: WorldState, is_zh: bool) -> None:

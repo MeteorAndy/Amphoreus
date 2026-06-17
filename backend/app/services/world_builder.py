@@ -17,6 +17,10 @@ class WorldState:
     factions: list[dict[str, Any]] = field(default_factory=list)
     timeline: list[dict[str, Any]] = field(default_factory=list)
     completeness: float = 0.0
+    # Derived 5-dimension view (T2-③). Additive: defaults to empty; populated by
+    # world_dimensions.derive_dimensions at pipeline finalize. Old persisted
+    # artifacts lack this key and load as {} via canon_persistence's .get default.
+    dimensions: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
 
 @dataclass

@@ -14,6 +14,7 @@ from typing import Any, AsyncIterator
 from app.models.character import CharacterProfile
 from app.services.narrative import WritingOptions
 from app.services.narrative import canon_persistence as cp
+from app.services.narrative.world_dimensions import derive_dimensions
 from app.services.narrative.narrative_debt import (
     NarrativeDebtLedger,
     build_narrative_debt_ledger,
@@ -83,6 +84,9 @@ class _StagesMixin:
             )
 
         world_state = await self._world_builder.finalize_world(wb_session.session_id)
+        # Derive the additive 5-dimension view (T2-③) before persisting, so the
+        # derived dimensions round-trip with the world_state artifact on resume.
+        world_state.dimensions = derive_dimensions(world_state)
         state["world_state"] = world_state
         state["world_done"] = True
         state["progress"] = 0.15
