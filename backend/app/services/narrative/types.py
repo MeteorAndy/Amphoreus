@@ -68,6 +68,11 @@ class WritingOptions:
     # a read-only CharacterEventHistory (auditable event stream) from scene
     # archives. Off by default; novel-only. Zero write-path change.
     track_entity_events: bool = False
+    # Optional graph-inference channel (T3-④): when True, the writer runs a few
+    # deterministic read-only Cypher rules over the Kuzu graph and attaches a
+    # GraphInferenceReport (co-faction / co-location / indirect-cause facts).
+    # Off by default; novel-only. Never writes to the graph.
+    enable_graph_inference: bool = False
 
 
 @dataclass(frozen=True)
@@ -133,6 +138,9 @@ class WrittenOutput:
     # scene archives when WritingOptions.track_entity_events is set. String-
     # annotated to avoid a cycle.
     entity_event_report: "CharacterEventHistory | None" = None
+    # Graph-inference diagnostics (T3-④). Read-only Cypher-derived structural
+    # facts when WritingOptions.enable_graph_inference is set. String-annotated.
+    graph_inference_report: "GraphInferenceReport | None" = None
     # Persistent narrative-debt ledger. Populated after post-write diagnostics
     # from unresolved props, reader dangling threads, canon notes, and planted
     # foreshadowing. String-annotated to avoid a cycle.

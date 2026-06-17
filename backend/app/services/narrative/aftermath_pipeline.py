@@ -14,6 +14,7 @@ from app.services.scene_engine.resolution import SceneArchive
 from .canon_verifier import verify
 from .cliche_scanner import scan
 from .entity_events import build_entity_event_history
+from .graph_inference import GraphInferenceEngine
 from .inferred_triples_store import InferredTriplesStore
 from .narrative_debt import build_narrative_debt_ledger
 from .prop_lifecycle import build_prop_lifecycle_report
@@ -38,6 +39,7 @@ class ChapterAftermathPipeline:
     ) -> None:
         self._llm = llm
         self._fact_extractor = fact_extractor or ProseFactExtractor(llm)
+        self._memory = memory
         self._triples_store = triples_store
         if self._triples_store is None and memory is not None:
             self._triples_store = InferredTriplesStore(memory)
@@ -65,6 +67,14 @@ class ChapterAftermathPipeline:
             output.entity_event_report = build_entity_event_history(
                 scene_archives, chapter_plan
             )
+        if options.enable_graph_inference and self._memory is not None:
+            # Read-only pass over the accumulated Kuzu graph. NOTE: this run's
+            # just-extracted triples are persisted by a background task after
+            # the completed event, so the report reflects the graph as it stood
+            # at write time (prior runs' facts); it never writes to the graph.
+            output.graph_inference_report = GraphInferenceEngine(
+                self._memory.kuzu
+            ).run()
         if options.extract_props:
             output.prop_lifecycle_report = await build_prop_lifecycle_report(
                 self._llm, output.content
