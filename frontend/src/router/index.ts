@@ -20,6 +20,7 @@ const routes = [
   { path: '/plot', name: 'Plot', component: PlotView },
   { path: '/scene', name: 'Scene', component: SceneView },
   { path: '/writer', name: 'Writer', component: WriterView },
+  { path: '/quality', name: 'Quality', component: () => import('../views/QualityView.vue') },
 ]
 
 const router = createRouter({

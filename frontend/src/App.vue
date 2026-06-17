@@ -4,6 +4,10 @@ import AppLayout from './components/AppLayout.vue'
 
 <template>
   <AppLayout>
-    <router-view />
+    <router-view v-slot="{ Component }">
+      <transition name="page-lift" mode="out-in">
+        <component :is="Component" />
+      </transition>
+    </router-view>
   </AppLayout>
 </template>

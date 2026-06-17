@@ -21,6 +21,7 @@ const translations: Record<string, Record<Lang, string>> = {
   'nav.plot': { zh: '剧情架构', en: 'Plot' },
   'nav.scene': { zh: '场景执行', en: 'Scene' },
   'nav.writer': { zh: '叙事写作', en: 'Writer' },
+  'nav.quality': { zh: '质量审稿', en: 'Quality' },
   'world.title': { zh: '世界构建', en: 'World Building' },
   'world.new': { zh: '从 Idea 开始', en: 'From Idea' },
   'world.upload': { zh: '上传文档', en: 'Upload Document' },

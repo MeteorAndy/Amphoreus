@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  FolderOpen, Zap, Sparkles, FlaskConical, Globe,
+  Users, List, Drama, PenTool, ShieldCheck,
+} from 'lucide-vue-next'
 import { useI18n } from '../i18n'
 import ToastContainer from './ToastContainer.vue'
 
@@ -11,24 +15,25 @@ const router = useRouter()
 interface NavItem {
   labelKey: string
   path: string
-  icon: string
+  icon: Component
 }
 
 const navItems: NavItem[] = [
-  { labelKey: 'nav.projects', path: '/projects', icon: '📁' },
-  { labelKey: 'nav.pipeline', path: '/pipeline', icon: '⚡' },
-  { labelKey: 'nav.interactive', path: '/interactive', icon: '🎨' },
-  { labelKey: 'nav.sandbox', path: '/sandbox', icon: '🔭' },
-  { labelKey: 'nav.world', path: '/world', icon: '🌍' },
-  { labelKey: 'nav.characters', path: '/characters', icon: '👥' },
-  { labelKey: 'nav.plot', path: '/plot', icon: '📋' },
-  { labelKey: 'nav.scene', path: '/scene', icon: '🎭' },
-  { labelKey: 'nav.writer', path: '/writer', icon: '✍️' },
+  { labelKey: 'nav.projects', path: '/projects', icon: FolderOpen },
+  { labelKey: 'nav.pipeline', path: '/pipeline', icon: Zap },
+  { labelKey: 'nav.interactive', path: '/interactive', icon: Sparkles },
+  { labelKey: 'nav.sandbox', path: '/sandbox', icon: FlaskConical },
+  { labelKey: 'nav.world', path: '/world', icon: Globe },
+  { labelKey: 'nav.characters', path: '/characters', icon: Users },
+  { labelKey: 'nav.plot', path: '/plot', icon: List },
+  { labelKey: 'nav.scene', path: '/scene', icon: Drama },
+  { labelKey: 'nav.writer', path: '/writer', icon: PenTool },
+  { labelKey: 'nav.quality', path: '/quality', icon: ShieldCheck },
 ]
 
-const activeIndex = computed(() => {
-  return navItems.findIndex((item) => route.path.startsWith(item.path))
-})
+const activeIndex = computed(() =>
+  navItems.findIndex((item) => route.path.startsWith(item.path)),
+)
 
 function navigate(path: string): void {
   router.push(path)
@@ -40,42 +45,53 @@ function toggleLang(): void {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden bg-gray-950">
-    <aside class="flex flex-col w-16 bg-gray-900 border-r border-gray-800 flex-shrink-0">
-      <div class="flex items-center justify-center h-14 border-b border-gray-800">
-        <span class="text-lg font-bold text-indigo-400">AS</span>
+  <div class="flex h-screen overflow-hidden bg-ink-bg">
+    <!-- Sidebar: manuscript rail -->
+    <aside class="flex flex-col w-20 bg-ink-panel border-r border-ink-edge flex-shrink-0">
+      <!-- Masthead: vermillion seal + serif wordmark -->
+      <div class="flex flex-col items-center justify-center h-16 border-b border-ink-edge">
+        <div class="w-7 h-7 rounded-seal bg-chop flex items-center justify-center mb-0.5">
+          <span class="text-xs font-display font-bold text-ink-bg">Am</span>
+        </div>
       </div>
-      <nav class="flex flex-col flex-1 py-4">
+
+      <!-- Navigation -->
+      <nav class="flex flex-col flex-1 py-3 overflow-y-auto">
         <button
           v-for="(item, idx) in navItems"
           :key="item.path"
           @click="navigate(item.path)"
-          class="flex flex-col items-center gap-1 py-3 text-xs transition-colors relative"
-          :class="idx === activeIndex ? 'text-indigo-400' : 'text-gray-500 hover:text-gray-300'"
+          class="group flex flex-col items-center gap-1 py-2.5 text-[0.65rem] transition-colors relative"
+          :class="idx === activeIndex ? 'text-chop' : 'text-muted hover:text-parchment-dim'"
         >
           <span
-            class="w-1 h-8 absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full transition-all"
-            :class="idx === activeIndex ? 'bg-indigo-400' : 'bg-transparent'"
+            class="w-0.5 h-7 absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full transition-all"
+            :class="idx === activeIndex ? 'bg-chop' : 'bg-transparent group-hover:bg-ink-edge'"
           />
-          <span class="text-lg">{{ item.icon }}</span>
-          <span>{{ t(item.labelKey) }}</span>
+          <component :is="item.icon" :size="18" :stroke-width="1.5" />
+          <span class="leading-tight text-center">{{ t(item.labelKey) }}</span>
         </button>
       </nav>
-      <div class="flex flex-col items-center gap-2 py-3 border-t border-gray-800">
+
+      <!-- Language toggle -->
+      <div class="flex flex-col items-center gap-2 py-3 border-t border-ink-edge">
         <button
           @click="toggleLang"
-          class="text-xs text-gray-500 hover:text-gray-300 transition-colors px-2 py-1 rounded hover:bg-gray-800"
+          class="text-[0.65rem] text-muted hover:text-parchment-dim transition-colors px-2 py-1 rounded hover:bg-ink-elevated"
           :title="t('lang.switch')"
         >
           {{ t('lang.switch') }}
         </button>
       </div>
     </aside>
+
+    <!-- Main content -->
     <main class="flex-1 overflow-y-auto">
       <div class="max-w-7xl mx-auto p-6">
         <slot />
       </div>
     </main>
+
     <ToastContainer />
   </div>
 </template>
