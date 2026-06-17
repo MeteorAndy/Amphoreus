@@ -26,6 +26,15 @@ class _PersistenceMixin:
             return {}
 
     async def _save_state(self, session_id: str, state: dict[str, Any]) -> None:
+        # Pre-reset STASH (T3-②): when enabled, snapshot the live state +
+        # artifacts to a side-channel namespace BEFORE this overwrite, so a
+        # rerun can never lose prior work. Opt-in; no-op when disabled.
+        if getattr(self, "_stash_enabled", False) and getattr(self, "_stash", None) is not None:
+            self._stash.stash(
+                session_id,
+                stage=str(state.get("current_stage", "")),
+                reason="pre-save",
+            )
         serializable = {
             k: v for k, v in state.items()
             if k in ("world_done", "characters_done", "relationships_done",
@@ -57,6 +66,20 @@ class _PersistenceMixin:
             return json.loads(entry.l2)
         except Exception:
             return None
+
+    # --- Stash pass-throughs (T3-②); self._stash set by PipelineOrchestrator ---
+
+    def list_stashes(self, session_id: str) -> list:
+        return self._stash.list_stashes(session_id)
+
+    def peek_stash(self, session_id: str, stash_id: str) -> dict:
+        return self._stash.peek(session_id, stash_id)
+
+    def restore_stash(self, session_id: str, stash_id: str) -> None:
+        self._stash.restore(session_id, stash_id)
+
+    def drop_stash(self, session_id: str, stash_id: str) -> None:
+        self._stash.drop(session_id, stash_id)
 
     def _load_partial_archives(self, session_id: str) -> list[SceneArchive]:
         """Reload scene archives a prior (crashed) run persisted, in order.

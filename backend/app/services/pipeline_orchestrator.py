@@ -24,6 +24,7 @@ from app.services.relationship_builder import RelationshipBuilder
 from app.services.scene_engine import SceneEngine
 from app.services.world_builder import WorldBuilder
 from app.services.pipeline_persistence import _PersistenceMixin
+from app.services.pipeline_stash import StashStore
 from app.services.pipeline_stages import _StagesMixin
 from app.services.pipeline_types import (  # re-exported for consumers
     PipelineConfig,
@@ -47,7 +48,8 @@ __all__ = [
 class PipelineOrchestrator(_StagesMixin, _PersistenceMixin):
     """Runs the full story generation pipeline autonomously."""
 
-    def __init__(self, llm: LLMClient, memory: MemoryManager) -> None:
+    def __init__(self, llm: LLMClient, memory: MemoryManager,
+                 *, stash_enabled: bool = False) -> None:
         self._llm = llm
         self._memory = memory
         self._world_builder = WorldBuilder(llm, memory)
@@ -59,6 +61,10 @@ class PipelineOrchestrator(_StagesMixin, _PersistenceMixin):
         self._canon_adjudicator = CanonAdjudicator(llm)
         self._aftermath = ChapterAftermathPipeline(llm, memory=memory)
         self._breaker = CircuitBreaker()
+        # T3-② pre-reset STASH — opt-in; off by default so _save_state is a no-op
+        # change and resume is untouched.
+        self._stash_enabled = stash_enabled
+        self._stash = StashStore(memory.openviking)
 
     def run(self, config: PipelineConfig) -> AsyncIterator[PipelineEvent]:
         """Execute the full pipeline, yielding events as progress is made."""
