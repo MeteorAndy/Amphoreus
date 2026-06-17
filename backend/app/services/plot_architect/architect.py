@@ -105,10 +105,6 @@ class PlotArchitect:
             if act.name in edited_acts:
                 new_acts.append(edited_acts[act.name])
                 continue
-            scenes = [
-                edited_scenes.get(s.id, s) if s.id in edited_scenes else s
-                for s in act.scenes
-            ]
             # preserve scene order; replace edited ones in place
             scenes = [edited_scenes.get(s.id, s) for s in act.scenes]
             new_acts.append(Act(
