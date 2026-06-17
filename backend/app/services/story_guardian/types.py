@@ -26,6 +26,9 @@ class GuardianIssue:
     dimension: str
     description: str
     suggestion: str
+    # T3-⑤ OOC-vs-Breakout tag (report-only; verdict never changes). Defaults to
+    # UNCLASSIFIED so existing behavior is unchanged unless classification runs.
+    deviation_kind: str = "UNCLASSIFIED"
 
 
 @dataclass

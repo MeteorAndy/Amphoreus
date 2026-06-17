@@ -39,10 +39,13 @@ class StoryGuardian:
         ) -> GuardianResult
     """
 
-    def __init__(self, llm: LLMClient, memory: MemoryManager) -> None:
+    def __init__(self, llm: LLMClient, memory: MemoryManager,
+                 *, classify_deviations: bool = False) -> None:
         self._llm = llm
         self._ov = memory.openviking
         self._kuzu = memory.kuzu
+        # T3-⑤ OOC-vs-Breakout: opt-in post-verdict tagging (report-only).
+        self._classify_deviations = classify_deviations
 
         self._validators: list[BaseValidator] = [
             CharacterConsistencyValidator(llm, memory),
@@ -239,6 +242,17 @@ class StoryGuardian:
         else:
             verdict = Verdict.APPROVED
             can_override = True
+
+        # T3-⑤ OOC-vs-Breakout (report-only): when opted in, tag each issue's
+        # deviation_kind using arc-beat evidence already in the context. Verdict
+        # and severities are NEVER changed — only the tag is stamped.
+        if self._classify_deviations:
+            from .deviation_classifier import classify_issues
+            evidence = [beat for beats in context.character_arcs.values()
+                        for beat in (beats or [])]
+            kinds = classify_issues(all_issues, evidence)
+            for issue, kind in zip(all_issues, kinds):
+                issue.deviation_kind = kind.value
 
         return GuardianResult(
             verdict=verdict,
