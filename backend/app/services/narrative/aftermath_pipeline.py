@@ -18,6 +18,7 @@ from .narrative_debt import build_narrative_debt_ledger
 from .prop_lifecycle import build_prop_lifecycle_report
 from .prose_fact_extractor import ProseFactExtractor
 from .reader_sim import build_reader_sim_report
+from .relationship_trend import build_relationship_trend_report
 from .tension_scorer import build_tension_report
 from .token_budget import BudgetReport, ChapterBudget
 from .types import ChapterPlan, WritingOptions, WrittenOutput
@@ -55,6 +56,10 @@ class ChapterAftermathPipeline:
             output.canon_report = verify(output.content, options.canonical_facts, "novel")
         if options.score_tension:
             output.tension_report = build_tension_report(scene_archives, chapter_plan)
+        if options.analyze_relationship_trends:
+            output.relationship_trend_report = build_relationship_trend_report(
+                scene_archives, chapter_plan
+            )
         if options.extract_props:
             output.prop_lifecycle_report = await build_prop_lifecycle_report(
                 self._llm, output.content

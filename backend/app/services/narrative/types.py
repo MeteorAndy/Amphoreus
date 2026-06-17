@@ -54,6 +54,10 @@ class WritingOptions:
     # post-write LLM pass and attaches a ReaderSimReport (confusion points,
     # dangling threads, engagement curve, retention). Off by default; novel-only.
     simulate_reader: bool = False
+    # Optional relationship-trend analysis (T2-⑧): when True, the novel writer
+    # attaches a zero-LLM RelationshipTrendReport (per-pair sentiment series +
+    # IMPROVING/DETERIORATING/VOLATILE/STABLE trend). Off by default; novel-only.
+    analyze_relationship_trends: bool = False
     # Optional token-budget accounting/allocation. By default it only estimates
     # per-section prompt cost and attaches a BudgetReport; when
     # TokenBudgetConfig.apply_trimming is explicitly true, the novel writer may
@@ -114,6 +118,10 @@ class WrittenOutput:
     # Reader-simulation diagnostics (T2-⑥). Populated by the novel writer when
     # WritingOptions.simulate_reader is set. String-annotated to avoid a cycle.
     reader_sim_report: "ReaderSimReport | None" = None
+    # Relationship-trend diagnostics (T2-⑧). Populated by the novel writer when
+    # WritingOptions.analyze_relationship_trends is set. String-annotated to
+    # avoid a cycle.
+    relationship_trend_report: "RelationshipTrendReport | None" = None
     # Token-budget accounting/allocation. Populated by the novel writer when
     # WritingOptions.token_budget is enabled. String-annotated to avoid a cycle.
     budget_report: "BudgetReport | None" = None
