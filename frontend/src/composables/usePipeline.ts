@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+import { useDiagnostics } from './useDiagnostics'
 
 export interface PipelineConfig {
   seed_idea: string
@@ -28,6 +29,7 @@ export function usePipeline() {
   const error = ref('')
   const sessionId = ref('')
   const outputText = ref('')
+  const { setReports } = useDiagnostics()
   let abortController: AbortController | null = null
 
   const isRunning = computed(() => status.value === 'running')
@@ -77,6 +79,8 @@ export function usePipeline() {
 
             if (event.stage === 'writing' && event.type === 'completed') {
               outputText.value = (event.data.output_text as string) || ''
+              // Preserve diagnostic reports for the Quality view (T2-⑤/⑥/⑦/⑧/③/④)
+              setReports(event.data)
             }
           } catch {
             // skip malformed events
