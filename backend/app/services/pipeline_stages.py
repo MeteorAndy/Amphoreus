@@ -14,6 +14,7 @@ from typing import Any, AsyncIterator
 from app.models.character import CharacterProfile
 from app.services.narrative import WritingOptions
 from app.services.narrative import canon_persistence as cp
+from app.services.narrative.token_budget import TokenBudgetConfig
 from app.services.narrative.world_dimensions import derive_dimensions
 from app.services.narrative.narrative_debt import (
     NarrativeDebtLedger,
@@ -342,6 +343,11 @@ class _StagesMixin:
             score_tension=True,
             extract_props=True,
             simulate_reader=True,
+            analyze_relationship_trends=True,
+            # Measure-only (no budget threshold, no prompt trimming): emits the
+            # per-section token-cost observability report without asserting an
+            # arbitrary budget or mutating generation output.
+            token_budget=TokenBudgetConfig(enabled=True),
         )
 
         output: WrittenOutput = await self._narrative_writer.convert(
