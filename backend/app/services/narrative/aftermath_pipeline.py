@@ -13,6 +13,7 @@ from app.services.scene_engine.resolution import SceneArchive
 
 from .canon_verifier import verify
 from .cliche_scanner import scan
+from .entity_events import build_entity_event_history
 from .inferred_triples_store import InferredTriplesStore
 from .narrative_debt import build_narrative_debt_ledger
 from .prop_lifecycle import build_prop_lifecycle_report
@@ -58,6 +59,10 @@ class ChapterAftermathPipeline:
             output.tension_report = build_tension_report(scene_archives, chapter_plan)
         if options.analyze_relationship_trends:
             output.relationship_trend_report = build_relationship_trend_report(
+                scene_archives, chapter_plan
+            )
+        if options.track_entity_events:
+            output.entity_event_report = build_entity_event_history(
                 scene_archives, chapter_plan
             )
         if options.extract_props:

@@ -64,6 +64,10 @@ class WritingOptions:
     # drop/trim lower-priority context before the LLM call. Off by default;
     # novel-only. String-annotated to avoid a cycle.
     token_budget: "TokenBudgetConfig | None" = None
+    # Optional entity event sourcing (T3-⑥): when True, the novel writer derives
+    # a read-only CharacterEventHistory (auditable event stream) from scene
+    # archives. Off by default; novel-only. Zero write-path change.
+    track_entity_events: bool = False
 
 
 @dataclass(frozen=True)
@@ -125,6 +129,10 @@ class WrittenOutput:
     # Token-budget accounting/allocation. Populated by the novel writer when
     # WritingOptions.token_budget is enabled. String-annotated to avoid a cycle.
     budget_report: "BudgetReport | None" = None
+    # Entity event sourcing (T3-⑥). Read-only CharacterEventHistory derived from
+    # scene archives when WritingOptions.track_entity_events is set. String-
+    # annotated to avoid a cycle.
+    entity_event_report: "CharacterEventHistory | None" = None
     # Persistent narrative-debt ledger. Populated after post-write diagnostics
     # from unresolved props, reader dangling threads, canon notes, and planted
     # foreshadowing. String-annotated to avoid a cycle.
