@@ -6,6 +6,7 @@ import {
 } from 'lucide-vue-next'
 import { useI18n } from '../i18n'
 import { useDiagnostics } from '../composables/useDiagnostics'
+import TensionCurve from '../components/TensionCurve.vue'
 
 const { currentLang } = useI18n()
 const isZh = computed(() => currentLang.value === 'zh')
@@ -134,8 +135,19 @@ function reportSummary(key: string): { metric: string; level: 'pass' | 'warn' | 
       </div>
     </div>
 
+    <!-- Tension curve visualization -->
+    <div
+      v-if="hasReports && (diagnostics.tension_report as Record<string, unknown> | undefined)?.chapters"
+      class="folio p-4 mt-4"
+    >
+      <h3 class="text-sm font-medium text-parchment mb-3">
+        {{ isZh ? '张力曲线' : 'Tension Curve' }}
+      </h3>
+      <TensionCurve :chapters="(diagnostics.tension_report as Record<string, unknown>).chapters as Array<Record<string, unknown>>" />
+    </div>
+
     <!-- Empty state -->
-    <div v-else class="folio p-12 text-center">
+    <div v-if="!hasReports" class="folio p-12 text-center">
       <ShieldCheck :size="32" :stroke-width="1" class="text-muted mx-auto mb-4" />
       <p class="text-parchment-dim text-sm leading-relaxed max-w-md mx-auto">
         {{ isZh

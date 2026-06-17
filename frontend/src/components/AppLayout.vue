@@ -3,12 +3,14 @@ import { computed, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   FolderOpen, Zap, Sparkles, FlaskConical, Globe,
-  Users, List, Drama, PenTool, ShieldCheck,
+  Users, List, Drama, PenTool, ShieldCheck, Sun, Moon,
 } from 'lucide-vue-next'
 import { useI18n } from '../i18n'
+import { useTheme } from '../composables/useTheme'
 import ToastContainer from './ToastContainer.vue'
 
 const { t, setLang, currentLang } = useI18n()
+const { theme, toggle: toggleTheme } = useTheme()
 const route = useRoute()
 const router = useRouter()
 
@@ -73,8 +75,15 @@ function toggleLang(): void {
         </button>
       </nav>
 
-      <!-- Language toggle -->
+      <!-- Language + theme toggles -->
       <div class="flex flex-col items-center gap-2 py-3 border-t border-ink-edge">
+        <button
+          @click="toggleTheme"
+          class="text-muted hover:text-parchment-dim transition-colors p-1.5 rounded hover:bg-ink-elevated"
+          :title="theme === 'ink' ? 'Paper' : 'Ink'"
+        >
+          <component :is="theme === 'ink' ? Sun : Moon" :size="16" :stroke-width="1.5" />
+        </button>
         <button
           @click="toggleLang"
           class="text-[0.65rem] text-muted hover:text-parchment-dim transition-colors px-2 py-1 rounded hover:bg-ink-elevated"

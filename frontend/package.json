@@ -30,9 +30,11 @@
     "d3-drag": "^3.0.0",
     "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",
+    "echarts": "^6.1.0",
     "lucide-vue-next": "^1.0.0",
     "sortablejs": "^1.15.7",
     "vue": "^3.5.34",
+    "vue-echarts": "^8.0.1",
     "vue-router": "^4.6.4"
   }
 }

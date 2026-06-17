@@ -158,3 +158,19 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Paper theme (light mode) ──────────────────────────────────────────── */
+
+[data-theme="paper"] {
+  --color-ink-bg: #f6f0e4;
+  --color-ink-panel: #ede5d3;
+  --color-ink-elevated: #e4dac4;
+  --color-ink-edge: #d4c9b0;
+  --color-parchment: #1a1a1a;
+  --color-parchment-dim: #4a4438;
+  --color-muted: #7a7060;
+  --color-chop: #a8362f;
+  --color-chop-hover: #c8423b;
+  --color-editor: #2d5016;
+  --color-gold: #9a7330;
+}
