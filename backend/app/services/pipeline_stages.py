@@ -344,9 +344,9 @@ class _StagesMixin:
             extract_props=True,
             simulate_reader=True,
             analyze_relationship_trends=True,
-            # Measure-only (no budget threshold, no prompt trimming): emits the
-            # per-section token-cost observability report without asserting an
-            # arbitrary budget or mutating generation output.
+            track_entity_events=True,
+            enable_graph_inference=True,
+            learn_adaptive_patterns=True,
             token_budget=TokenBudgetConfig(enabled=True),
         )
 
@@ -428,6 +428,26 @@ class _StagesMixin:
                 "narrative_debt_ledger": (
                     output.narrative_debt_ledger.to_dict()
                     if output.narrative_debt_ledger
+                    else {}
+                ),
+                "relationship_trend_report": (
+                    output.relationship_trend_report.to_dict()
+                    if output.relationship_trend_report
+                    else {}
+                ),
+                "entity_event_report": (
+                    output.entity_event_report.to_dict()
+                    if output.entity_event_report
+                    else {}
+                ),
+                "graph_inference_report": (
+                    output.graph_inference_report.to_dict()
+                    if output.graph_inference_report
+                    else {}
+                ),
+                "adaptive_pattern_report": (
+                    output.adaptive_pattern_report.to_dict()
+                    if output.adaptive_pattern_report
                     else {}
                 ),
             },

@@ -18,6 +18,14 @@ from app.services.pipeline_orchestrator import (
 
 router = APIRouter(prefix="/api/pipeline", tags=["pipeline"])
 
+# Singleton MemoryManager — Kuzu uses an exclusive file lock, so creating a new
+# MemoryManager per request crashes with "Could not set lock on file". Initialize
+# once at module load and reuse across all requests.
+_settings = get_settings()
+_memory = MemoryManager(_settings)
+_memory._kuzu.ensure_schema()
+_memory._openviking.ensure_schema()
+
 
 class PipelineRunRequest(BaseModel):
     seed_idea: str = Field(..., min_length=1)
@@ -27,15 +35,13 @@ class PipelineRunRequest(BaseModel):
     output_format: str = "novel"
     max_rounds_per_scene: int = Field(default=15, ge=3, le=50)
     auto_refine: bool = True
+    adjudicate: bool = True
     session_id: str | None = None
 
 
 async def _event_stream(config: PipelineConfig) -> AsyncIterator[str]:
     llm = LLMClient()
-    settings = get_settings()
-    memory = MemoryManager(settings)
-    await memory.initialize()
-    orchestrator = PipelineOrchestrator(llm, memory)
+    orchestrator = PipelineOrchestrator(llm, _memory)
 
     async for event in orchestrator.run(config):
         data = json.dumps({
@@ -60,6 +66,7 @@ async def pipeline_run(req: PipelineRunRequest) -> StreamingResponse:
         output_format=req.output_format,
         max_rounds_per_scene=req.max_rounds_per_scene,
         auto_refine=req.auto_refine,
+        adjudicate=req.adjudicate,
         session_id=req.session_id,
     )
     return StreamingResponse(
