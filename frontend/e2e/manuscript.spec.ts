@@ -22,6 +22,16 @@ async function collectConsoleErrors(page: Page): Promise<string[]> {
   return errors
 }
 
+const IGNORED_ERROR_PATTERNS = [
+  'favicon', 'net::ERR', 'Failed to fetch', 'Failed to load resource',
+  '502', 'Bad Gateway', '404', 'Not Found', 'ERR_CONNECTION',
+  'NetworkError', 'Load failed',
+]
+
+function filterCritical(errors: string[]): string[] {
+  return errors.filter(e => !IGNORED_ERROR_PATTERNS.some(p => e.includes(p)))
+}
+
 // ─── 1. All routes load without crashing ─────────────────────────────────
 
 for (const route of ROUTES) {
@@ -32,19 +42,7 @@ for (const route of ROUTES) {
     // The app root should be present (Vue mounted, no crash)
     await expect(page.locator('#app')).toBeVisible()
     // No unhandled errors (filter expected network errors — backend not running)
-    const criticalErrors = errors.filter(e =>
-      !e.includes('favicon') &&
-      !e.includes('net::ERR') &&
-      !e.includes('Failed to fetch') &&
-      !e.includes('Failed to load resource') &&
-      !e.includes('502') &&
-      !e.includes('Bad Gateway') &&
-      !e.includes('404') &&
-      !e.includes('Not Found') &&
-      !e.includes('ERR_CONNECTION') &&
-      !e.includes('NetworkError') &&
-      !e.includes('Load failed')
-    )
+    const criticalErrors = filterCritical(errors)
     expect(criticalErrors).toEqual([])
   })
 }
@@ -166,19 +164,7 @@ test('no critical console errors during full navigation sweep', async ({ page })
     await page.waitForTimeout(300)
   }
   // Filter out expected network errors (backend not running) and favicon
-  const critical = errors.filter(e =>
-    !e.includes('favicon') &&
-    !e.includes('net::ERR') &&
-    !e.includes('Failed to fetch') &&
-    !e.includes('Failed to load resource') &&
-    !e.includes('502') &&
-    !e.includes('Bad Gateway') &&
-    !e.includes('404') &&
-    !e.includes('Not Found') &&
-    !e.includes('ERR_CONNECTION') &&
-    !e.includes('NetworkError') &&
-    !e.includes('Load failed')
-  )
+  const critical = filterCritical(errors)
   expect(critical).toEqual([])
 })
 

@@ -67,25 +67,19 @@ class _PersistenceMixin:
         except Exception:
             return None
 
-    # --- Stash pass-throughs (T3-②); self._stash set by PipelineOrchestrator ---
+    # --- Stash pass-throughs (T3-②); self._stash always set by PipelineOrchestrator.__init__ ---
 
     def list_stashes(self, session_id: str) -> list:
-        stash = getattr(self, '_stash', None)
-        return stash.list_stashes(session_id) if stash else []
+        return self._stash.list_stashes(session_id)
 
     def peek_stash(self, session_id: str, stash_id: str) -> dict:
-        stash = getattr(self, '_stash', None)
-        return stash.peek(session_id, stash_id) if stash else {}
+        return self._stash.peek(session_id, stash_id)
 
     def restore_stash(self, session_id: str, stash_id: str) -> None:
-        stash = getattr(self, '_stash', None)
-        if stash:
-            stash.restore(session_id, stash_id)
+        self._stash.restore(session_id, stash_id)
 
     def drop_stash(self, session_id: str, stash_id: str) -> None:
-        stash = getattr(self, '_stash', None)
-        if stash:
-            stash.drop(session_id, stash_id)
+        self._stash.drop(session_id, stash_id)
 
     def _load_partial_archives(self, session_id: str) -> list[SceneArchive]:
         """Reload scene archives a prior (crashed) run persisted, in order.

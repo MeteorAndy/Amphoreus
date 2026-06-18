@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from dataclasses import fields as dataclass_fields
 from typing import Any
 
 from app.core.i18n import get_lang, Lang
@@ -27,12 +28,8 @@ from app.services.plot_architect.types import (
     _coerce_status,
 )
 
-# Whitelist of keys SceneSpec accepts — filters out unexpected LLM JSON keys
-# that would crash SceneSpec(**s) with TypeError.
-_SCENESPEC_KEYS = frozenset({
-    "id", "title", "location", "cast", "conflict", "goal",
-    "expected_outcome", "causal_chain", "planning_status", "source",
-})
+# Derive the key whitelist from the dataclass itself — single source of truth.
+_SCENESPEC_KEYS = frozenset(f.name for f in dataclass_fields(SceneSpec))
 
 
 def _safe_scene(d: dict[str, Any]) -> SceneSpec:

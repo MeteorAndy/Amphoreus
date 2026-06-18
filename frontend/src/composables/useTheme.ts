@@ -14,13 +14,6 @@ function applyTheme(t: Theme): void {
   if (!isBrowser) return
   document.documentElement.setAttribute('data-theme', t)
   localStorage.setItem(STORAGE_KEY, t)
-  if (t === 'paper') {
-    document.body.style.backgroundColor = '#f6f0e4'
-    document.body.style.color = '#1a1a1a'
-  } else {
-    document.body.style.backgroundColor = '#14110e'
-    document.body.style.color = '#e8dfcf'
-  }
 }
 
 if (isBrowser) applyTheme(theme.value)

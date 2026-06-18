@@ -385,28 +385,18 @@ class _StagesMixin:
         state["progress"] = 1.0
         await self._save_state(session_id, state)
 
-        # Extract prose facts SYNCHRONOUSLY (not fire-and-forget) so graph
-        # inference has the BELONGS_TO/LOCATED_AT/CAUSED_BY edges to reason over.
-        try:
-            await self._aftermath.persist_inferred_facts(session_id, output.content)
-        except Exception as exc:
-            import logging
-            logging.getLogger(__name__).warning(
-                "prose fact extraction failed: %s — graph_inference may be empty", exc
-            )
-
-        # Re-run graph inference now that prose-derived edges are in the graph.
-        # Only run if the first pass (inside attach_novel_reports) produced
-        # nothing — avoids redundant work when facts were already available.
-        from app.services.narrative.graph_inference import GraphInferenceEngine
-        if not output.graph_inference_report or not output.graph_inference_report.facts:
+        # Extract prose facts → persist → run graph inference, all before the
+        # completed event so the report reaches the SSE payload. Single site
+        # (not duplicated inside attach_novel_reports).
+        if output.graph_inference_report is None:
             try:
+                await self._aftermath.persist_inferred_facts(session_id, output.content)
+                from app.services.narrative.graph_inference import GraphInferenceEngine
                 output.graph_inference_report = GraphInferenceEngine(
                     self._memory.kuzu
                 ).run()
-            except Exception as exc:
-                import logging
-                logging.getLogger(__name__).warning("graph inference failed: %s", exc)
+            except Exception:
+                pass
 
         yield PipelineEvent(
             stage=PipelineStage.WRITING,

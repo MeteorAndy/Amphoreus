@@ -20,14 +20,13 @@ router = APIRouter(prefix="/api/pipeline", tags=["pipeline"])
 
 # Lazy singleton MemoryManager — initialized on first request, not at module
 # import, so importing the module (tests, CLI) doesn't lock the Kuzu file.
-_settings = get_settings()
 _memory: MemoryManager | None = None
 
 
 def _get_memory() -> MemoryManager:
     global _memory
     if _memory is None:
-        _memory = MemoryManager(_settings)
+        _memory = MemoryManager(get_settings())
         _memory._kuzu.ensure_schema()
         _memory._openviking.ensure_schema()
     return _memory

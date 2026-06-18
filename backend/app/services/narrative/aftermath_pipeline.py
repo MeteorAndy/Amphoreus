@@ -53,6 +53,7 @@ class ChapterAftermathPipeline:
         chapter_plan: ChapterPlan,
         options: WritingOptions,
         budget_acc: list[ChapterBudget],
+        session_id: str = "",
     ) -> WrittenOutput:
         """Populate all novel post-write reports on `output`."""
         output.cliche_report = scan(output.content)
@@ -70,14 +71,9 @@ class ChapterAftermathPipeline:
             output.entity_event_report = build_entity_event_history(
                 scene_archives, chapter_plan
             )
-        if options.enable_graph_inference and self._memory is not None:
-            # Read-only pass over the accumulated Kuzu graph. NOTE: this run's
-            # just-extracted triples are persisted by a background task after
-            # the completed event, so the report reflects the graph as it stood
-            # at write time (prior runs' facts); it never writes to the graph.
-            output.graph_inference_report = GraphInferenceEngine(
-                self._memory.kuzu
-            ).run()
+        # Graph inference is NOT run here — it needs prose facts persisted first,
+        # which requires session_id (not available in this call chain). It runs
+        # in pipeline_stages._stage_writing after this method returns.
         if options.extract_props:
             output.prop_lifecycle_report = await build_prop_lifecycle_report(
                 self._llm, output.content
