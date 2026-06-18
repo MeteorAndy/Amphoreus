@@ -11,6 +11,15 @@ const theme = ref<Theme>(
 function applyTheme(t: Theme): void {
   document.documentElement.setAttribute('data-theme', t)
   localStorage.setItem(STORAGE_KEY, t)
+  // Direct body style override — bypasses Tailwind v4 @theme CSS-var cascade
+  // issues (the html[data-theme] var override doesn't reliably reach body in v4).
+  if (t === 'paper') {
+    document.body.style.backgroundColor = '#f6f0e4'
+    document.body.style.color = '#1a1a1a'
+  } else {
+    document.body.style.backgroundColor = '#14110e'
+    document.body.style.color = '#e8dfcf'
+  }
 }
 
 // Apply on module load
