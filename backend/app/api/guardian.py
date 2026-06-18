@@ -71,7 +71,7 @@ async def _get_story_guardian(
     llm: LLMClient = Depends(get_llm_client),
     memory: MemoryManager = Depends(get_memory_manager),
 ) -> StoryGuardian:
-    return StoryGuardian(llm, memory)
+    return StoryGuardian(llm, memory, classify_deviations=True)
 
 
 # ---------------------------------------------------------------------------

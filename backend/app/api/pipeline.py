@@ -18,13 +18,19 @@ from app.services.pipeline_orchestrator import (
 
 router = APIRouter(prefix="/api/pipeline", tags=["pipeline"])
 
-# Singleton MemoryManager — Kuzu uses an exclusive file lock, so creating a new
-# MemoryManager per request crashes with "Could not set lock on file". Initialize
-# once at module load and reuse across all requests.
+# Lazy singleton MemoryManager — initialized on first request, not at module
+# import, so importing the module (tests, CLI) doesn't lock the Kuzu file.
 _settings = get_settings()
-_memory = MemoryManager(_settings)
-_memory._kuzu.ensure_schema()
-_memory._openviking.ensure_schema()
+_memory: MemoryManager | None = None
+
+
+def _get_memory() -> MemoryManager:
+    global _memory
+    if _memory is None:
+        _memory = MemoryManager(_settings)
+        _memory._kuzu.ensure_schema()
+        _memory._openviking.ensure_schema()
+    return _memory
 
 
 class PipelineRunRequest(BaseModel):
@@ -36,12 +42,14 @@ class PipelineRunRequest(BaseModel):
     max_rounds_per_scene: int = Field(default=15, ge=3, le=50)
     auto_refine: bool = True
     adjudicate: bool = True
+    stash_enabled: bool = False
     session_id: str | None = None
 
 
-async def _event_stream(config: PipelineConfig) -> AsyncIterator[str]:
+async def _event_stream(config: PipelineConfig, stash_enabled: bool = False) -> AsyncIterator[str]:
     llm = LLMClient()
-    orchestrator = PipelineOrchestrator(llm, _memory)
+    memory = _get_memory()
+    orchestrator = PipelineOrchestrator(llm, memory, stash_enabled=stash_enabled)
 
     async for event in orchestrator.run(config):
         data = json.dumps({
@@ -70,6 +78,6 @@ async def pipeline_run(req: PipelineRunRequest) -> StreamingResponse:
         session_id=req.session_id,
     )
     return StreamingResponse(
-        _event_stream(config),
+        _event_stream(config, stash_enabled=req.stash_enabled),
         media_type="text/event-stream",
     )

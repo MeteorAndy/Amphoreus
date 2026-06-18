@@ -4,15 +4,16 @@ type Theme = 'ink' | 'paper'
 
 const STORAGE_KEY = 'amphoreus-theme'
 
+const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined'
+
 const theme = ref<Theme>(
-  (localStorage.getItem(STORAGE_KEY) as Theme) || 'ink',
+  isBrowser ? ((localStorage.getItem(STORAGE_KEY) as Theme) || 'ink') : 'ink',
 )
 
 function applyTheme(t: Theme): void {
+  if (!isBrowser) return
   document.documentElement.setAttribute('data-theme', t)
   localStorage.setItem(STORAGE_KEY, t)
-  // Direct body style override — bypasses Tailwind v4 @theme CSS-var cascade
-  // issues (the html[data-theme] var override doesn't reliably reach body in v4).
   if (t === 'paper') {
     document.body.style.backgroundColor = '#f6f0e4'
     document.body.style.color = '#1a1a1a'
@@ -22,8 +23,7 @@ function applyTheme(t: Theme): void {
   }
 }
 
-// Apply on module load
-applyTheme(theme.value)
+if (isBrowser) applyTheme(theme.value)
 
 export function useTheme() {
   function toggle(): void {

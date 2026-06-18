@@ -27,6 +27,18 @@ from app.services.plot_architect.types import (
     _coerce_status,
 )
 
+# Whitelist of keys SceneSpec accepts — filters out unexpected LLM JSON keys
+# that would crash SceneSpec(**s) with TypeError.
+_SCENESPEC_KEYS = frozenset({
+    "id", "title", "location", "cast", "conflict", "goal",
+    "expected_outcome", "causal_chain", "planning_status", "source",
+})
+
+
+def _safe_scene(d: dict[str, Any]) -> SceneSpec:
+    """Construct a SceneSpec from an LLM/persisted dict, ignoring unknown keys."""
+    return SceneSpec(**{k: v for k, v in d.items() if k in _SCENESPEC_KEYS})
+
 
 class PlotArchitect:
     """Generates narrative structure from world + characters.
@@ -278,7 +290,7 @@ class PlotArchitect:
         acts: list[Act] = []
         for raw in raw_acts:
             raw_scenes: list[dict[str, Any]] = raw.get("scenes", [])
-            scenes = [SceneSpec(**s) for s in raw_scenes]
+            scenes = [_safe_scene(s) for s in raw_scenes]
             acts.append(
                 Act(
                     name=raw.get("name", ""),
@@ -338,7 +350,7 @@ class PlotArchitect:
             Act(
                 name=a.get("name", ""),
                 description=a.get("description", ""),
-                scenes=[SceneSpec(**s) for s in a.get("scenes", [])],
+                scenes=[_safe_scene(s) for s in a.get("scenes", [])],
                 planning_status=_coerce_status(a.get("planning_status")),
                 source=_coerce_source(a.get("source")),
             )

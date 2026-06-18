@@ -38,8 +38,10 @@ _NEGATIVE_KW = (
     "accuse", "wound",
 )
 # A positive keyword is flipped to negative when a negation prefix appears
-# before it in the text — guards against "不再信任" / "no longer trusts".
+# in the ~10 chars immediately before it — guards against "不再信任" / "no
+# longer trusts" without over-triggering on distant unrelated negations.
 _NEGATION_PREFIX = ("不再", "没有", "不曾", "不", "没", "no longer", "not ", "never")
+_NEGATION_WINDOW = 10
 
 # Trend thresholds over the sentiment series.
 _TREND_SLOPE = 0.20        # |slope| >= this => IMPROVING / DETERIORATING
@@ -113,11 +115,11 @@ def sentiment_of_text(text: str) -> float:
     neg = 0
     for kw in _POSITIVE_KW:
         for i in _find_all(text, kw):
-            # A positive keyword is flipped to negative when a negation prefix
-            # appears anywhere before it in the text ("不再信任" / "no longer
-            # trusts"). Short change descriptions make a whole-prefix check safe.
-            before = text[:i].lower()
-            if any(p.strip() and p in before for p in _NEGATION_PREFIX):
+            # Check only the ~10 chars immediately before the keyword for a
+            # negation prefix. Checking the entire preceding text over-triggers
+            # on unrelated negations ("他们没有放弃，最终信任了彼此").
+            window = text[max(0, i - _NEGATION_WINDOW):i].lower()
+            if any(p.strip() and p in window for p in _NEGATION_PREFIX):
                 neg += 1
             else:
                 pos += 1

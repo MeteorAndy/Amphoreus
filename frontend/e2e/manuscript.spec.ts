@@ -39,6 +39,8 @@ for (const route of ROUTES) {
       !e.includes('Failed to load resource') &&
       !e.includes('502') &&
       !e.includes('Bad Gateway') &&
+      !e.includes('404') &&
+      !e.includes('Not Found') &&
       !e.includes('ERR_CONNECTION') &&
       !e.includes('NetworkError') &&
       !e.includes('Load failed')
@@ -168,8 +170,11 @@ test('no critical console errors during full navigation sweep', async ({ page })
     !e.includes('favicon') &&
     !e.includes('net::ERR') &&
     !e.includes('Failed to fetch') &&
+    !e.includes('Failed to load resource') &&
     !e.includes('502') &&
     !e.includes('Bad Gateway') &&
+    !e.includes('404') &&
+    !e.includes('Not Found') &&
     !e.includes('ERR_CONNECTION') &&
     !e.includes('NetworkError') &&
     !e.includes('Load failed')

@@ -153,14 +153,14 @@ def build_entity_event_history(
             emotion = str(changes.get("emotion_change", "") or "").strip()
             if emotion:
                 events.append(EntityEvent(
-                    event_id=f"{char_id}:ch{ch}:emotion", character_id=char_id,
+                    event_id=f"{char_id}:{scene_id}:emotion", character_id=char_id,
                     chapter=ch, scene_id=scene_id, kind="emotion_shift",
                     after=emotion,
                 ))
             goal = str(changes.get("goal_update", "") or "").strip()
             if goal:
                 events.append(EntityEvent(
-                    event_id=f"{char_id}:ch{ch}:goal", character_id=char_id,
+                    event_id=f"{char_id}:{scene_id}:goal", character_id=char_id,
                     chapter=ch, scene_id=scene_id, kind="goal_update", after=goal,
                 ))
             rel = changes.get("relationship_changes") or {}
@@ -168,7 +168,7 @@ def build_entity_event_history(
                 for other_id, text in rel.items():
                     after = text if isinstance(text, str) else str(text)
                     events.append(EntityEvent(
-                        event_id=f"{char_id}:ch{ch}:rel:{other_id}",
+                        event_id=f"{char_id}:{scene_id}:rel:{other_id}",
                         character_id=char_id, chapter=ch, scene_id=scene_id,
                         kind="relationship_delta", after=after,
                         evidence={"other_id": str(other_id)},

@@ -58,7 +58,8 @@ def _co_faction_facts(row: dict, confidence: float) -> list[InferredFact]:
 
 
 def _co_location_facts(row: dict, confidence: float) -> list[InferredFact]:
-    a, b, loc = row["a"], row["b"], "l" if "l" in row else row.get("loc", "")
+    a, b = row["a"], row["b"]
+    loc = row.get("l") or row.get("loc") or ""
     return [InferredFact(
         rule_id="co_location", subject=a, relation="co_location", object=b,
         evidence_path=[

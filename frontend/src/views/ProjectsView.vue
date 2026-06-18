@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '../i18n'
 import { useProjects } from '../composables/useProjects'
-import AppLayout from '../components/AppLayout.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -71,7 +70,7 @@ function formatDate(iso: string): string {
 </script>
 
 <template>
-  <AppLayout>
+  <div>
     <!-- Header -->
     <div class="flex items-center justify-between mb-8">
       <h1 class="text-2xl font-bold text-parchment dark:text-white">{{ t('projects.title') }}</h1>
@@ -220,5 +219,5 @@ function formatDate(iso: string): string {
         </div>
       </div>
     </Teleport>
-  </AppLayout>
+  </div>
 </template>
