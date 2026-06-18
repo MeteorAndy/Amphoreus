@@ -385,14 +385,23 @@ class _StagesMixin:
         state["progress"] = 1.0
         await self._save_state(session_id, state)
 
-        # Fire-and-forget: extract S/P/O facts from the finished prose and
-        # persist them to the knowledge graph. This is a SEPARATE channel from
-        # the synchronous cliche/canon diagnostics (which ride the event below)
-        # — it must not block or delay the completed event. chapter_id = the
-        # session_id for the single-output MVP.
-        asyncio.create_task(
-            self._post_write_background(session_id, output.content)
-        )
+        # Extract prose facts SYNCHRONOUSLY (not fire-and-forget) so graph
+        # inference has the BELONGS_TO/LOCATED_AT/CAUSED_BY edges to reason over.
+        # The old asyncio.create_task ran too late — inference always saw an
+        # empty graph. Now: extract → persist → re-run inference → emit event.
+        try:
+            await self._aftermath.persist_inferred_facts(session_id, output.content)
+        except Exception:
+            pass
+
+        # Re-run graph inference now that prose-derived edges are in the graph.
+        from app.services.narrative.graph_inference import GraphInferenceEngine
+        try:
+            output.graph_inference_report = GraphInferenceEngine(
+                self._memory.kuzu
+            ).run()
+        except Exception:
+            pass
 
         yield PipelineEvent(
             stage=PipelineStage.WRITING,
