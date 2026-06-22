@@ -28,3 +28,19 @@ env/
 
 # Generated code index (codegraph daemon)
 .codegraph/
+
+# Agent session state / replay logs (per-workspace tooling)
+.omc/
+
+# Test artifacts
+**/screenshots/
+**/test-results/
+
+# Scratch / debug scripts
+debug_*.py
+test_crash.py
+test_distrust.py
+test_edge_cases.py
+test_more_cases.py
+test_original_problem.py
+test_simple_edge_cases.py
