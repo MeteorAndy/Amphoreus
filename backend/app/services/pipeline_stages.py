@@ -336,18 +336,27 @@ class _StagesMixin:
         reg_dict = self._load_artifact(session_id, "foreshadowing_registry")
         registry = cp.registry_from_dict(reg_dict) if reg_dict else None
 
+        # The 8 diagnostic channels below (tension/props/reader/trends/events/
+        # graph/patterns/budget) are turned OFF by default. They are valuable
+        # offline-quality-analysis tools, but running them inline during novel
+        # generation multiplies the LLM cost and latency so badly that the
+        # pipeline cannot complete even a 2-scene short story in 10 minutes
+        # (verified during the PRD 9.2 dogfood run). Writers only need the core
+        # conversion to produce text; diagnostics should run as a separate,
+        # opt-in post-generation pass. Enable explicitly via WritingOptions when
+        # you actually want a quality report.
         options = WritingOptions(
             format=config.output_format,
             canonical_facts=state.get("canonical_facts"),
             foreshadowing_registry=registry,
-            score_tension=True,
-            extract_props=True,
-            simulate_reader=True,
-            analyze_relationship_trends=True,
-            track_entity_events=True,
-            enable_graph_inference=True,
-            learn_adaptive_patterns=True,
-            token_budget=TokenBudgetConfig(enabled=True),
+            score_tension=False,
+            extract_props=False,
+            simulate_reader=False,
+            analyze_relationship_trends=False,
+            track_entity_events=False,
+            enable_graph_inference=False,
+            learn_adaptive_patterns=False,
+            token_budget=None,
         )
 
         output: WrittenOutput = await self._narrative_writer.convert(

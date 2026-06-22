@@ -44,3 +44,7 @@ test_edge_cases.py
 test_more_cases.py
 test_original_problem.py
 test_simple_edge_cases.py
+
+# Dogfood run artifacts (regenerated each run, not source)
+backend/dogfood_out/
+*.pkl
