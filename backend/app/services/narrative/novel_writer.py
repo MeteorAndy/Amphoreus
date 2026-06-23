@@ -131,6 +131,13 @@ def _extract_chapter_story(raw: str) -> str:
     deanalyzed = re.sub(
         r"\A(?:\s*#{1,6}[^\n]*\n+)+", "", deanalyzed,
     )
+    # The model also echoes the chapter title as a BOLD line rather than a
+    # markdown header: "**第1章 …**" / "**Chapter N: …**". Same duplicate-title
+    # bug, different shape — strip a leading bold chapter-title line too.
+    deanalyzed = re.sub(
+        r"\A\s*\*+\s*(?:第\s*\d+\s*章|Chapter\s+\d+)[^\n]*\*+\s*\n+",
+        "", deanalyzed, count=1,
+    )
 
     result = deanalyzed.strip()
     # Safety: extraction must never blank out a non-empty response.

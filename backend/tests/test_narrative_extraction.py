@@ -82,6 +82,26 @@ def test_extract_strips_stacked_leading_headings():
     assert "月光漫过书脊" in out
 
 
+def test_extract_strips_leading_bold_chapter_heading():
+    # The model sometimes emits the chapter title as a bold line rather than a
+    # markdown header: "**第1章 灰烬中的觉醒**". The assembler still prepends
+    # its canonical "## 第N章 …", so the bold echo must be stripped too —
+    # otherwise the finished novel shows both (the duplicate-title bug seen in
+    # the dogfood run).
+    raw = "<story>\n**第1章 灰烬中的觉醒**\n\n油灯的光芒被瓶中液体染成幽蓝。\n</story>"
+    out = _extract_chapter_story(raw)
+    assert "灰烬中的觉醒" not in out
+    assert not out.lstrip().startswith("**")
+    assert "油灯的光芒" in out
+
+
+def test_extract_strips_leading_bold_english_chapter_heading():
+    raw = "**Chapter 3: The Forgetting Stair**\n\nThe night fell."
+    out = _extract_chapter_story(raw)
+    assert "Forgetting Stair" not in out
+    assert "The night fell" in out
+
+
 def test_extract_preserves_inner_heading():
     # Only a LEADING heading run is stripped; headings within prose stay.
     raw = "夜色降临。\n\n# 章节内的小节标题\n\n他继续前行。"

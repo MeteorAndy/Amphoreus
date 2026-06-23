@@ -230,8 +230,10 @@ async def main() -> int:
             final_title = getattr(out, "title", "") or final_title
 
     if final_text:
-        header = f"# {final_title}\n\n" if final_title else ""
-        (OUT_DIR / "novel.md").write_text(header + final_text, encoding="utf-8")
+        # `content` already carries the title (assembled by _assemble_novel as
+        # "# {title}\n"), so do NOT prepend another header — that doubled the
+        # title in earlier runs.
+        (OUT_DIR / "novel.md").write_text(final_text, encoding="utf-8")
         print(f"\n小说已保存：{OUT_DIR / 'novel.md'}", flush=True)
 
     print(f"\nPhase 2 耗时 {time.time()-start:.1f}s", flush=True)
