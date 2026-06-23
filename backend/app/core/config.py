@@ -72,6 +72,16 @@ class Settings(BaseSettings):
     volcengine_vlm_model: str = Field(default="doubao-seed-2-0-pro-260215")
     volcengine_embedding_model: str = Field(default="doubao-embedding-vision-251215")
 
+    # ── Tavily (web fact-checking) ──────────────────────────────
+    # Optional. When set, the fact-checker in the revise loop runs web searches
+    # to catch real-world factual errors (weapon model years, medical procedure
+    # accuracy, historical/geographical anachronisms). When unset, the
+    # fact-checker silently no-ops — it never breaks the write path.
+    tavily_api_key: str = Field(
+        default="",
+        description="Tavily API key for web fact-checking (optional; empty = skip)",
+    )
+
     # ── LLM fallback flags ──────────────────────────────────────
     openviking_use_deepseek: bool = Field(
         default=False,
@@ -111,7 +121,7 @@ class Settings(BaseSettings):
         data = _load_user_config()
         if not data:
             return
-        for key in ("deepseek_api_key", "volcengine_api_key"):
+        for key in ("deepseek_api_key", "volcengine_api_key", "tavily_api_key"):
             if data.get(key) and not getattr(self, key):
                 object.__setattr__(self, key, data[key])
 
@@ -129,6 +139,9 @@ class Settings(BaseSettings):
     @property
     def volcengine_api_key_effective(self) -> str:
         return self.volcengine_api_key or os.environ.get("VOLCENGINE_API_KEY", "")
+
+    def tavily_api_key_effective(self) -> str:
+        return self.tavily_api_key or os.environ.get("TAVILY_API_KEY", "")
 
 
 _settings: Optional[Settings] = None

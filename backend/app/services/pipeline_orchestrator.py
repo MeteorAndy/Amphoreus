@@ -19,6 +19,7 @@ from app.services.memory import MemoryManager
 from app.services.narrative import NarrativeWriter
 from app.services.narrative.aftermath_pipeline import ChapterAftermathPipeline
 from app.services.narrative.canon_adjudicator import CanonAdjudicator
+from app.services.narrative.fact_checker import FactChecker, TavilyClient
 from app.services.plot_architect import PlotArchitect
 from app.services.relationship_builder import RelationshipBuilder
 from app.services.scene_engine import SceneEngine
@@ -45,6 +46,21 @@ __all__ = [
 ]
 
 
+def _build_fact_checker(llm: LLMClient) -> FactChecker | None:
+    """Construct a FactChecker wired to Tavily when a key is configured.
+
+    Returns None (=> fact-checking silently skipped in the revise loop) when no
+    TAVILY_API_KEY is present, so the feature is opt-in via configuration alone.
+    """
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    key = settings.tavily_api_key_effective()
+    if not key:
+        return None
+    return FactChecker(llm=llm, tavily=TavilyClient(key), has_key=True)
+
+
 class PipelineOrchestrator(_StagesMixin, _PersistenceMixin):
     """Runs the full story generation pipeline autonomously."""
 
@@ -57,7 +73,7 @@ class PipelineOrchestrator(_StagesMixin, _PersistenceMixin):
         self._rel_builder = RelationshipBuilder(llm, memory)
         self._plot_architect = PlotArchitect(llm, memory)
         self._scene_engine = SceneEngine(llm, memory)
-        self._narrative_writer = NarrativeWriter(llm, memory)
+        self._narrative_writer = NarrativeWriter(llm, memory, fact_checker=_build_fact_checker(llm))
         self._canon_adjudicator = CanonAdjudicator(llm)
         self._aftermath = ChapterAftermathPipeline(llm, memory=memory)
         self._breaker = CircuitBreaker()

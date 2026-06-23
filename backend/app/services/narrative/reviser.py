@@ -23,6 +23,7 @@ from .cliche_scanner import ClicheReport
 from .types import ReviseConfig
 
 if TYPE_CHECKING:
+    from .fact_checker import FactReport
     from .logic_reviewer import LogicReport
 
 
@@ -32,13 +33,15 @@ def needs_revision(
     repeats: list[tuple[str, int]],
     config: ReviseConfig,
     logic: "LogicReport | None" = None,
+    facts: "FactReport | None" = None,
 ) -> bool:
     """True iff any diagnostic crosses a revise threshold.
 
     Triggers on: a hard canon contradiction, any critical cliche hit, an
     ai_flavor_score over threshold, a verbatim repeat at/over the trigger
-    count, or any critical/major logic-plausibility issue. 'unconfirmed' canon
-    notes and 'minor' logic issues never trigger (they are hints, not faults).
+    count, any critical/major logic-plausibility issue, or a confirmed factual
+    contradiction. 'unconfirmed' canon notes, 'minor' logic issues, and
+    'unverifiable' facts never trigger (they are hints, not faults).
     """
     if not config.enabled:
         return False
@@ -55,6 +58,8 @@ def needs_revision(
         return True
     if logic is not None and logic.needs_rewrite:
         return True
+    if facts is not None and facts.needs_rewrite:
+        return True
     return False
 
 
@@ -65,17 +70,18 @@ def build_revise_directive(
     config: ReviseConfig,
     is_zh: bool,
     logic: "LogicReport | None" = None,
+    facts: "FactReport | None" = None,
 ) -> str:
     """Build a compact, bilingual revise directive from the diagnostics.
 
     Returns "" when nothing crosses threshold (caller then skips the rewrite).
     The directive lists concrete, deduped problems — canon contradictions first
     (highest priority), then critical/scored cliche hits with their existing
-    replacement_hint, then verbatim repeats, then logic-plausibility issues —
-    capped at `max_directives` lines so an overloaded chapter cannot produce an
-    unbounded prompt.
+    replacement_hint, then verbatim repeats, then logic-plausibility issues,
+    then factual contradictions — capped at `max_directives` lines so an
+    overloaded chapter cannot produce an unbounded prompt.
     """
-    if not needs_revision(cliche, canon, repeats, config, logic):
+    if not needs_revision(cliche, canon, repeats, config, logic, facts):
         return ""
 
     lines: list[str] = []
@@ -83,6 +89,7 @@ def build_revise_directive(
     _append_cliche(lines, cliche, config, is_zh)
     _append_repeats(lines, repeats, config, is_zh)
     _append_logic(lines, logic, is_zh)
+    _append_facts(lines, facts, is_zh)
 
     if not lines:
         return ""
@@ -168,6 +175,25 @@ def _append_logic(lines: list[str], logic: "LogicReport | None", is_zh: bool) ->
                 f"Logic · {issue.category} ['{issue.location}']: {issue.problem}"
                 + (f"; suggested fix: {issue.fix_hint}" if issue.fix_hint else "")
             )
+
+
+def _append_facts(lines: list[str], facts: "FactReport | None", is_zh: bool) -> None:
+    """Add one line per confirmed factual contradiction.
+
+    Only contradictions are actionable for a rewrite; confirmed/unverifiable
+    are notes and excluded. Each carries the original claim and the evidence
+    snippet so the rewrite can correct the specific anachronism.
+    """
+    if facts is None:
+        return
+    for chk in facts.checks:
+        if chk.verdict != "contradiction":
+            continue
+        ev = f"（证据：{chk.evidence[:80]}）" if chk.evidence else ""
+        if is_zh:
+            lines.append(f"事实错误「{chk.claim}」：与现实世界矛盾{ev}")
+        else:
+            lines.append(f"Fact error ['{chk.claim}']: contradicts the real world{(' ' + ev) if ev else ''}")
 
 
 def _wrap(lines: list[str], is_zh: bool) -> str:

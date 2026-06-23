@@ -19,6 +19,7 @@ from .prompts import (
 from .canon_verifier import verify
 from .cliche_scanner import scan
 from .foreshadowing import render_foreshadowing_block, visible_profile
+from .fact_checker import FactChecker
 from .logic_reviewer import LogicReviewer
 from .post_processor import PostProcessor
 from .reviser import build_revise_directive
@@ -237,9 +238,12 @@ class NovelWriter:
     adjacent chapter summaries for transition context.
     """
 
-    def __init__(self, llm: LLMClient) -> None:
+    def __init__(self, llm: LLMClient, fact_checker: FactChecker | None = None) -> None:
         self._llm = llm
         self._logic_reviewer = LogicReviewer(llm)
+        # Optional: injected by the pipeline when a Tavily key is configured.
+        # None => fact-checking is skipped (no-op) in the revise loop.
+        self._fact_checker = fact_checker
 
     async def write_chapters(
         self,
@@ -463,8 +467,16 @@ class NovelWriter:
                     characters=characters or [],
                     max_issues=config.logic_max_issues,
                 )
+            facts = None
+            if config.fact_check_enabled and self._fact_checker is not None:
+                facts = await self._fact_checker.check(
+                    chapter_text=prose,
+                    world_summary=world_summary,
+                    characters=characters or [],
+                    max_queries=config.fact_check_max_queries,
+                )
             directive = build_revise_directive(
-                cliche, canon, repeats, config, is_zh, logic=logic
+                cliche, canon, repeats, config, is_zh, logic=logic, facts=facts
             )
             if not directive:
                 break

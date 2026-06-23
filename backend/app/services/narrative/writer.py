@@ -15,6 +15,7 @@ from app.services.scene_engine.resolution import SceneArchive
 
 from .aftermath_pipeline import ChapterAftermathPipeline
 from .chapter_planner import ChapterPlanner
+from .fact_checker import FactChecker
 from .novel_writer import NovelWriter, _flatten_scenes
 from .post_processor import PostProcessor
 from .screenplay_writer import ScreenplayWriter
@@ -34,12 +35,12 @@ class NarrativeWriter:
     Also handles export to file and format metadata queries.
     """
 
-    def __init__(self, llm: LLMClient, memory: MemoryManager) -> None:
+    def __init__(self, llm: LLMClient, memory: MemoryManager, fact_checker: FactChecker | None = None) -> None:
         self._llm = llm
         self._memory = memory
         self._title_gen = TitleGenerator(llm)
         self._planner = ChapterPlanner(llm)
-        self._novel_writer = NovelWriter(llm)
+        self._novel_writer = NovelWriter(llm, fact_checker=fact_checker)
         self._screenplay_writer = ScreenplayWriter(llm)
         self._aftermath = ChapterAftermathPipeline(llm)
         self._post_processor = PostProcessor()

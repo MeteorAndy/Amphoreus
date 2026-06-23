@@ -111,6 +111,14 @@ class ReviseConfig:
     # the class of bug dogfood acceptance surfaced. Disabled callers set False.
     logic_enabled: bool = True
     logic_max_issues: int = 8
+    # Real-world fact checking via Tavily (T1-⑨). One LLM call extracts
+    # checkable real-world claims (weapon years, medical history, geography),
+    # then N Tavily searches + one verdict LLM call classify each as
+    # confirmed/contradiction/unverifiable. Only contradictions trigger a
+    # rewrite. No-ops silently when no TAVILY_API_KEY is configured, so this
+    # flag being True costs nothing without a key.
+    fact_check_enabled: bool = True
+    fact_check_max_queries: int = 5
 
 
 @dataclass
