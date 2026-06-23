@@ -7,6 +7,7 @@ Public API:
 """
 
 from .types import WritingOptions, WrittenOutput, ChapterSpec, ChapterPlan
+from .types import ReviseConfig
 from .types import CanonicalFacts, CanonicalFact, OpenConflict
 from .title_generator import TitleGenerator
 from .chapter_planner import ChapterPlanner
@@ -21,6 +22,7 @@ from .narrative_debt import NarrativeDebtItem, NarrativeDebtLedger
 
 __all__ = [
     "WritingOptions", "WrittenOutput", "ChapterSpec", "ChapterPlan",
+    "ReviseConfig",
     "CanonicalFacts", "CanonicalFact", "OpenConflict",
     "TitleGenerator", "ChapterPlanner", "PostProcessor",
     "NovelWriter", "ScreenplayWriter", "NarrativeWriter",

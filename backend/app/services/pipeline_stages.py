@@ -14,6 +14,7 @@ from typing import Any, AsyncIterator
 from app.models.character import CharacterProfile
 from app.services.narrative import WritingOptions
 from app.services.narrative import canon_persistence as cp
+from app.services.narrative import ReviseConfig
 from app.services.narrative.token_budget import TokenBudgetConfig
 from app.services.narrative.world_dimensions import derive_dimensions
 from app.services.narrative.narrative_debt import (
@@ -345,10 +346,22 @@ class _StagesMixin:
         # conversion to produce text; diagnostics should run as a separate,
         # opt-in post-generation pass. Enable explicitly via WritingOptions when
         # you actually want a quality report.
+        #
+        # The revise loop IS enabled by default (unlike the 8 report-only
+        # diagnostics above) because it is the only closed-loop quality gate:
+        # it rewrites chapters that trip cliche/canon/repeat thresholds, and —
+        # crucially — runs the LLM logic-plausibility reviewer (logic_enabled),
+        # the only diagnostic that can catch the class of reasonableness bug
+        # dogfood acceptance surfaced (e.g. an implausible identity prop).
         options = WritingOptions(
             format=config.output_format,
             canonical_facts=state.get("canonical_facts"),
             foreshadowing_registry=registry,
+            revise=ReviseConfig(
+                enabled=True,
+                max_rounds=2,
+                logic_enabled=True,
+            ),
             score_tension=False,
             extract_props=False,
             simulate_reader=False,

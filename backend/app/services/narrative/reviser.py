@@ -16,9 +16,14 @@ skips the rewrite entirely (no wasted LLM call on already-clean prose).
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .canon_verifier import CanonReport
 from .cliche_scanner import ClicheReport
 from .types import ReviseConfig
+
+if TYPE_CHECKING:
+    from .logic_reviewer import LogicReport
 
 
 def needs_revision(
@@ -26,12 +31,14 @@ def needs_revision(
     canon: CanonReport | None,
     repeats: list[tuple[str, int]],
     config: ReviseConfig,
+    logic: "LogicReport | None" = None,
 ) -> bool:
     """True iff any diagnostic crosses a revise threshold.
 
     Triggers on: a hard canon contradiction, any critical cliche hit, an
-    ai_flavor_score over threshold, or a verbatim repeat at/over the trigger
-    count. 'unconfirmed' canon notes never trigger (they are hints, not faults).
+    ai_flavor_score over threshold, a verbatim repeat at/over the trigger
+    count, or any critical/major logic-plausibility issue. 'unconfirmed' canon
+    notes and 'minor' logic issues never trigger (they are hints, not faults).
     """
     if not config.enabled:
         return False
@@ -46,6 +53,8 @@ def needs_revision(
             return True
     if any(n >= config.repeat_trigger_count for _, n in repeats):
         return True
+    if logic is not None and logic.needs_rewrite:
+        return True
     return False
 
 
@@ -55,22 +64,25 @@ def build_revise_directive(
     repeats: list[tuple[str, int]],
     config: ReviseConfig,
     is_zh: bool,
+    logic: "LogicReport | None" = None,
 ) -> str:
     """Build a compact, bilingual revise directive from the diagnostics.
 
     Returns "" when nothing crosses threshold (caller then skips the rewrite).
     The directive lists concrete, deduped problems — canon contradictions first
     (highest priority), then critical/scored cliche hits with their existing
-    replacement_hint, then verbatim repeats — capped at `max_directives` lines
-    so an overloaded chapter cannot produce an unbounded prompt.
+    replacement_hint, then verbatim repeats, then logic-plausibility issues —
+    capped at `max_directives` lines so an overloaded chapter cannot produce an
+    unbounded prompt.
     """
-    if not needs_revision(cliche, canon, repeats, config):
+    if not needs_revision(cliche, canon, repeats, config, logic):
         return ""
 
     lines: list[str] = []
     _append_canon(lines, canon, is_zh)
     _append_cliche(lines, cliche, config, is_zh)
     _append_repeats(lines, repeats, config, is_zh)
+    _append_logic(lines, logic, is_zh)
 
     if not lines:
         return ""
@@ -131,6 +143,31 @@ def _append_repeats(
         else:
             lines.append(f"Repetition · '{frag}' appears {n}×: reword most "
                          f"occurrences to avoid verbatim echo.")
+
+
+def _append_logic(lines: list[str], logic: "LogicReport | None", is_zh: bool) -> None:
+    """Add one line per critical/major logic-plausibility issue.
+
+    minor issues are notes and are intentionally excluded — they would cost an
+    LLM rewrite without a clear quality payoff. Each surviving issue carries its
+    reviewer-provided fix_hint so the directive tells the model what to write
+    instead, not merely what to avoid.
+    """
+    if logic is None:
+        return
+    for issue in logic.issues:
+        if issue.severity not in ("critical", "major"):
+            continue
+        if is_zh:
+            lines.append(
+                f"逻辑·{issue.category}「{issue.location}」：{issue.problem}"
+                + (f"；建议：{issue.fix_hint}" if issue.fix_hint else "")
+            )
+        else:
+            lines.append(
+                f"Logic · {issue.category} ['{issue.location}']: {issue.problem}"
+                + (f"; suggested fix: {issue.fix_hint}" if issue.fix_hint else "")
+            )
 
 
 def _wrap(lines: list[str], is_zh: bool) -> str:

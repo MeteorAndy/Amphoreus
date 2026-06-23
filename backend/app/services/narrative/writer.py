@@ -87,6 +87,7 @@ class NarrativeWriter:
                 plot_outline=plot_outline,
                 selected_title=selected_title,
                 title_candidates=title_candidates,
+                world_summary=world_summary,
             )
         else:
             result = await self._convert_screenplay(
@@ -108,6 +109,7 @@ class NarrativeWriter:
         plot_outline: PlotOutline | None,
         selected_title: str,
         title_candidates: list[str],
+        world_summary: str = "",
     ) -> WrittenOutput:
         """Full novel pipeline: plan chapters, write chapter by chapter, assemble."""
         scene_specs: dict[str, SceneSpec] = {}
@@ -129,6 +131,7 @@ class NarrativeWriter:
             options=options,
             scene_specs=scene_specs if scene_specs else None,
             budget_acc=budget_acc,
+            world_summary=world_summary,
         )
 
         # --- Step 4: Post-process each chapter ---

@@ -104,6 +104,13 @@ class ReviseConfig:
     repeat_min_len: int = 8
     repeat_trigger_count: int = 3
     max_directives: int = 12
+    # Logic-plausibility audit (T1-⑧). Unlike cliche/canon/repeats which are
+    # string-level zero-LLM checks, this is one LLM call per chapter that catches
+    # *reasonableness* failures (implausible identity props, motivation gaps,
+    # causal breaks). Default ON because it is the only diagnostic that can catch
+    # the class of bug dogfood acceptance surfaced. Disabled callers set False.
+    logic_enabled: bool = True
+    logic_max_issues: int = 8
 
 
 @dataclass

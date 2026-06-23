@@ -19,6 +19,7 @@ from .prompts import (
 from .canon_verifier import verify
 from .cliche_scanner import scan
 from .foreshadowing import render_foreshadowing_block, visible_profile
+from .logic_reviewer import LogicReviewer
 from .post_processor import PostProcessor
 from .reviser import build_revise_directive
 from .scene_archive_io import flatten_scenes, load_scene_archive, parse_archive_json
@@ -231,6 +232,7 @@ class NovelWriter:
 
     def __init__(self, llm: LLMClient) -> None:
         self._llm = llm
+        self._logic_reviewer = LogicReviewer(llm)
 
     async def write_chapters(
         self,
@@ -240,6 +242,7 @@ class NovelWriter:
         options: WritingOptions,
         scene_specs: dict[str, SceneSpec] | None = None,
         budget_acc: list[ChapterBudget] | None = None,
+        world_summary: str = "",
     ) -> list[str]:
         """Write each chapter as prose.  Returns one string per chapter.
 
@@ -294,7 +297,9 @@ class NovelWriter:
                 chapter_prose = await self._enhance_prose(chapter_prose, canon_block)
 
             if options.revise is not None and options.revise.enabled:
-                chapter_prose = await self._revise_chapter(chapter_prose, options)
+                chapter_prose = await self._revise_chapter(
+                    chapter_prose, options, world_summary, characters
+                )
 
             chapters.append(chapter_prose)
 
@@ -410,15 +415,22 @@ class NovelWriter:
         messages.append({"role": "user", "content": prose})
         return await self._llm.chat(messages)
 
-    async def _revise_chapter(self, prose: str, options: WritingOptions) -> str:
+    async def _revise_chapter(
+        self,
+        prose: str,
+        options: WritingOptions,
+        world_summary: str = "",
+        characters: list[CharacterProfile] | None = None,
+    ) -> str:
         """Bounded quality-loop rewrite (T1-①), reusing the second-pass channel.
 
-        Each round runs the existing zero-LLM diagnostics — cliche scan, canon
-        verify, verbatim-repeat detection — and asks `reviser` for a directive.
-        An empty directive means nothing crossed threshold, so we stop without
-        spending an LLM call. Otherwise we rewrite the chapter against the
-        directive, then re-check; we stop early once clean or after max_rounds.
-        Rewrites that come back empty are discarded (keep the better draft).
+        Each round runs the diagnostics — cliche scan, canon verify, verbatim-
+        repeat detection, and (when logic_enabled) an LLM logic-plausibility
+        review — and asks `reviser` for a directive. An empty directive means
+        nothing crossed threshold, so we stop without spending an LLM call.
+        Otherwise we rewrite the chapter against the directive, then re-check;
+        we stop early once clean or after max_rounds. Rewrites that come back
+        empty are discarded (keep the better draft).
         """
         config = options.revise
         if config is None:
@@ -436,7 +448,17 @@ class NovelWriter:
             cliche = scan(prose)
             canon = verify(prose, facts, "novel") if facts is not None else None
             repeats = PostProcessor.find_repeated_fragments(prose, config.repeat_min_len)
-            directive = build_revise_directive(cliche, canon, repeats, config, is_zh)
+            logic = None
+            if config.logic_enabled:
+                logic = await self._logic_reviewer.review(
+                    chapter_text=prose,
+                    world_summary=world_summary,
+                    characters=characters or [],
+                    max_issues=config.logic_max_issues,
+                )
+            directive = build_revise_directive(
+                cliche, canon, repeats, config, is_zh, logic=logic
+            )
             if not directive:
                 break
             messages: list[dict[str, str]] = [
