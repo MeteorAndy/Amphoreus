@@ -45,9 +45,10 @@ STATE_PICKLE = OUT_DIR / "pre_writing_state.pkl"
 PHASE = sys.argv[1] if len(sys.argv) > 1 else "1"
 
 # Keep the run inside a reasonable time budget: WORLD varies 4-9 LLM rounds,
-# each scene is 4 rounds * multiple characters. Two scenes + lean writing
-# fits comfortably when the 8 diagnostic channels are off (now the default).
-MAX_SCENES = 2
+# each scene is 4 rounds * multiple characters. Override via env MAX_SCENES
+# (e.g. MAX_SCENES=6 for a fuller short story). Phase 1 of a 6-scene run takes
+# ~20-30 min and must run in the background; 2-4 scenes fits a foreground call.
+MAX_SCENES = int(os.environ.get("MAX_SCENES", "6"))
 
 
 async def main() -> int:
@@ -70,10 +71,21 @@ async def main() -> int:
 
     # Cap the scene count so the whole run finishes inside the timeout.
     original_stage_plot = orchestrator._stage_plot
+    _architect = orchestrator._plot_architect
+    _orig_gen_plot = _architect.generate_plot
+
+    async def _gen_plot_with_target(world_state, characters, structure):
+        # Hint the desired scale up-front so the outline is balanced across
+        # acts, rather than generating 10 scenes and lopping the tail off.
+        return await _orig_gen_plot(world_state, characters, structure, target_chapters=MAX_SCENES)
 
     async def _truncated_stage_plot(cfg, sid, state):
-        async for event in original_stage_plot(cfg, sid, state):
-            yield event
+        _architect.generate_plot = _gen_plot_with_target
+        try:
+            async for event in original_stage_plot(cfg, sid, state):
+                yield event
+        finally:
+            _architect.generate_plot = _orig_gen_plot
         outline = state.get("outline")
         if outline is not None and outline.acts:
             kept = 0
@@ -84,7 +96,7 @@ async def main() -> int:
                 room = MAX_SCENES - kept
                 act.scenes = act.scenes[:room]
                 kept += len(act.scenes)
-            print(f"\n  [dogfood] 场景截断为前 {kept} 个\n", flush=True)
+            print(f"\n  [dogfood] 场景数: {kept}（目标 {MAX_SCENES}）\n", flush=True)
 
     orchestrator._stage_plot = _truncated_stage_plot
 

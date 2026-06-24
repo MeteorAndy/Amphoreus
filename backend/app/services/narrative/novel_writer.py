@@ -467,16 +467,16 @@ class NovelWriter:
                     characters=characters or [],
                     max_issues=config.logic_max_issues,
                 )
-            facts = None
+            fact_report = None
             if config.fact_check_enabled and self._fact_checker is not None:
-                facts = await self._fact_checker.check(
+                fact_report = await self._fact_checker.check(
                     chapter_text=prose,
                     world_summary=world_summary,
                     characters=characters or [],
                     max_queries=config.fact_check_max_queries,
                 )
             directive = build_revise_directive(
-                cliche, canon, repeats, config, is_zh, logic=logic, facts=facts
+                cliche, canon, repeats, config, is_zh, logic=logic, facts=fact_report
             )
             if not directive:
                 break

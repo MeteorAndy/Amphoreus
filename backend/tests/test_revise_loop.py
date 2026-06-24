@@ -243,3 +243,43 @@ async def test_revise_injects_canon_block_and_triggers_on_contradiction():
     assert "平民" in msgs[1]["content"]  # the correct answer, not just "avoid X"
 
 
+@pytest.mark.asyncio
+async def test_revise_canon_facts_survives_fact_checker_multiround():
+    """Regression: fact_report variable must not shadow canon `facts`.
+
+    Phase 2 dogfood crashed with `FactReport has no attribute '_facts_for'`
+    because the fact-checker result was assigned to the same `facts` name as
+    options.canonical_facts, so the second loop iteration passed a FactReport
+    to canon_verifier.verify(). This test pins canon + fact-checker coexistence
+    across multiple revise rounds.
+    """
+    from app.services.narrative.fact_checker import FactChecker, FactReport
+    from app.services.narrative.types import CanonicalFact, CanonicalFacts
+
+    canon_facts = CanonicalFacts(facts=[CanonicalFact(
+        id="f1", topic="出身", question="主角出身？",
+        canonical_answer_zh="平民", canonical_answer_en="commoner",
+        rejected_answers=["他是皇室血脉"],
+    )])
+    llm = AsyncMock()
+    # Every rewrite stays flagged (still mentions 皇室血脉) -> runs both rounds.
+    llm.chat.return_value = "<story>他是皇室血脉，无人不知。</story>"
+
+    # A fact-checker that returns an empty report (no contradiction) — enough to
+    # exercise the code path without mocking Tavily.
+    fc = AsyncMock(spec=FactChecker)
+    fc.check.return_value = FactReport(candidates=[], checks=[])
+
+    nw = NovelWriter(llm, fact_checker=fc)
+    opts = WritingOptions(
+        format="novel",
+        canonical_facts=canon_facts,
+        revise=ReviseConfig(max_rounds=2, fact_check_enabled=True),
+    )
+    # Must not raise AttributeError: 'FactReport' object has no attribute '_facts_for'
+    out = await nw._revise_chapter("他是皇室血脉，无人不知。", opts)
+    assert "皇室血脉" in out  # rewrite was the same flagged text
+    # fact-checker was called each round (2 rounds, both dirty)
+    assert fc.check.await_count == 2
+
+
