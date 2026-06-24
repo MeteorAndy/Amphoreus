@@ -1,5 +1,5 @@
-import { ref } from 'vue'
-import type { PlotOutline, Act, ActResponse, SceneSpecResponse, PlotOutlineResponse } from '../types/api'
+import { ref, watch } from 'vue'
+import type { PlotOutline, Act, CreateSceneRequest } from '../types/api'
 import {
   getPlotTemplates,
   createOutline as apiCreateOutline,
@@ -11,51 +11,64 @@ import {
   deleteScene as apiDeleteScene,
   checkPlotConsistency as apiCheckConsistency,
 } from '../api/client'
-
-function mapResponseToDisplay(resp: PlotOutlineResponse): PlotOutline {
-  const numberWords = ['I', 'II', 'III', 'IV', 'V']
-  return {
-    id: resp.plot_id,
-    title: resp.structure.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
-    description: '',
-    structure: resp.structure,
-    acts: resp.acts.map((act: ActResponse, i: number) => ({
-      id: `act-${i}`,
-      number: i + 1,
-      title: act.name || `Act ${numberWords[i] || i + 1}`,
-      summary: act.description,
-      scenes: act.scenes.map((scene: SceneSpecResponse, j: number) => ({
-        id: scene.id,
-        title: scene.title,
-        description: scene.conflict,
-        setting: scene.location,
-        characters: scene.cast,
-        act_id: `act-${i}`,
-        order: j + 1,
-      })),
-    })),
-  }
-}
+import { useProjectStore } from './useProjectStore'
 
 export function usePlotArchitect() {
+  const projectStore = useProjectStore()
+
   const outlines = ref<PlotOutline[]>([])
   const selectedOutline = ref<PlotOutline | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const templates = ref<string[]>([])
 
-  // Track plot IDs in a separate list for later retrieval
-  const plotIds = ref<string[]>([])
+  function mapResponseToDisplay(resp: {
+    plot_id: string
+    structure: string
+    acts: {
+      name: string
+      description: string
+      scenes: {
+        id: string
+        title: string
+        location: string
+        cast: string[]
+        conflict: string
+        goal: string
+        expected_outcome: string
+        causal_chain: string[]
+      }[]
+    }[]
+  }): PlotOutline {
+    const numberWords = ['I', 'II', 'III', 'IV', 'V']
+    return {
+      id: resp.plot_id,
+      title: resp.structure.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+      description: '',
+      structure: resp.structure,
+      acts: resp.acts.map((act, i) => ({
+        id: `act-${i}`,
+        number: i + 1,
+        title: act.name || `Act ${numberWords[i] || i + 1}`,
+        summary: act.description,
+        scenes: act.scenes.map((scene, j) => ({
+          id: scene.id,
+          title: scene.title,
+          description: scene.conflict,
+          setting: scene.location,
+          characters: scene.cast,
+          act_id: `act-${i}`,
+          order: j + 1,
+        })),
+      })),
+    }
+  }
 
-  async function fetchOutlines(): Promise<void> {
-    loading.value = true
-    error.value = null
+  async function fetchTemplates(): Promise<void> {
     try {
-      // fetch templates to validate structure options, then load any known outlines
-      await getPlotTemplates()
+      templates.value = await getPlotTemplates()
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to fetch templates'
-    } finally {
-      loading.value = false
     }
   }
 
@@ -70,8 +83,8 @@ export function usePlotArchitect() {
       })
       const display = mapResponseToDisplay(resp)
       outlines.value.push(display)
-      plotIds.value.push(resp.plot_id)
       selectedOutline.value = display
+      await projectStore.setPlotOutline(display, resp.plot_id)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to create outline'
     } finally {
@@ -80,21 +93,18 @@ export function usePlotArchitect() {
   }
 
   async function selectOutline(id: string): Promise<void> {
-    // Check if it's already loaded in our outlines list
     const existing = outlines.value.find((o) => o.id === id)
     if (existing) {
       selectedOutline.value = existing
       return
     }
 
-    // Try fetching from backend
     loading.value = true
     error.value = null
     try {
       const resp = await getPlot(id)
       const display = mapResponseToDisplay(resp)
       outlines.value.push(display)
-      plotIds.value.push(id)
       selectedOutline.value = display
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load outline'
@@ -106,7 +116,6 @@ export function usePlotArchitect() {
   async function updateOutline(id: string, data: { acts?: Act[] }): Promise<void> {
     error.value = null
     try {
-      // Convert display acts back to API format
       const apiActs = data.acts
         ? data.acts.map((act) => ({
             name: act.title,
@@ -129,6 +138,7 @@ export function usePlotArchitect() {
       const idx = outlines.value.findIndex((o) => o.id === id)
       if (idx !== -1) outlines.value[idx] = updated
       if (selectedOutline.value?.id === id) selectedOutline.value = updated
+      await projectStore.setPlotOutline(updated, id)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to update outline'
     }
@@ -139,8 +149,6 @@ export function usePlotArchitect() {
     try {
       await apiDeletePlot(id)
       outlines.value = outlines.value.filter((o) => o.id !== id)
-      const pIdx = plotIds.value.indexOf(id)
-      if (pIdx !== -1) plotIds.value.splice(pIdx, 1)
       if (selectedOutline.value?.id === id) selectedOutline.value = null
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to delete outline'
@@ -161,29 +169,13 @@ export function usePlotArchitect() {
         goal: '',
         expected_outcome: '',
       })
-      // Reload the outline from the response
       const updated = mapResponseToDisplay(resp)
       const idx = outlines.value.findIndex((o) => o.id === outlineId)
       if (idx !== -1) outlines.value[idx] = updated
       if (selectedOutline.value?.id === outlineId) selectedOutline.value = updated
+      await projectStore.setPlotOutline(updated, outlineId)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to create scene'
-    }
-  }
-
-  async function updateSceneById(id: string, data: { title: string; setting: string; description: string }): Promise<void> {
-    error.value = null
-    // Scene update is done through plot update (PUT /api/plot/{id}) with full acts list
-    // Since we don't have a dedicated scene update endpoint, we skip server-side update
-    // and just update locally
-    if (selectedOutline.value) {
-      for (const act of selectedOutline.value.acts) {
-        const idx = act.scenes.findIndex((s) => s.id === id)
-        if (idx !== -1) {
-          act.scenes[idx] = { ...act.scenes[idx], ...data }
-          break
-        }
-      }
     }
   }
 
@@ -196,9 +188,39 @@ export function usePlotArchitect() {
       const idx = outlines.value.findIndex((o) => o.id === selectedOutline.value!.id)
       if (idx !== -1) outlines.value[idx] = updated
       selectedOutline.value = updated
+      await projectStore.setPlotOutline(updated, selectedOutline.value.id)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to delete scene'
     }
+  }
+
+  async function updateSceneById(sceneId: string, data: CreateSceneRequest): Promise<void> {
+    error.value = null
+    if (!selectedOutline.value) return
+    try {
+      const outline = { ...selectedOutline.value }
+      for (const act of outline.acts) {
+        const sceneIdx = act.scenes.findIndex((s) => s.id === sceneId)
+        if (sceneIdx !== -1) {
+          act.scenes[sceneIdx] = {
+            ...act.scenes[sceneIdx],
+            title: data.title,
+            description: data.description,
+            setting: data.setting,
+            characters: data.characters,
+            order: data.order,
+          }
+          break
+        }
+      }
+      await updateOutline(outline.id, { acts: outline.acts })
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to update scene'
+    }
+  }
+
+  function fetchOutlines(): void {
+    initFromProject()
   }
 
   async function refineOutline(plotId: string, feedback: string): Promise<void> {
@@ -209,6 +231,7 @@ export function usePlotArchitect() {
       const idx = outlines.value.findIndex((o) => o.id === plotId)
       if (idx !== -1) outlines.value[idx] = updated
       if (selectedOutline.value?.id === plotId) selectedOutline.value = updated
+      await projectStore.setPlotOutline(updated, plotId)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to refine outline'
     }
@@ -229,12 +252,39 @@ export function usePlotArchitect() {
     }
   }
 
+  function initFromProject(): void {
+    if (projectStore.currentPlotOutline.value && projectStore.currentPlotId.value) {
+      const outline = projectStore.currentPlotOutline.value
+      outlines.value = [outline]
+      selectedOutline.value = outline
+    }
+  }
+
+  watch(
+    () => projectStore.currentPlotOutline.value,
+    (outline) => {
+      if (outline) {
+        const existing = outlines.value.findIndex((o) => o.id === outline.id)
+        if (existing === -1) {
+          outlines.value.push(outline)
+        } else {
+          outlines.value[existing] = outline
+        }
+        if (!selectedOutline.value || selectedOutline.value.id === outline.id) {
+          selectedOutline.value = outline
+        }
+      }
+    },
+    { immediate: true },
+  )
+
   return {
     outlines,
     selectedOutline,
     loading,
     error,
-    plotIds,
+    templates,
+    fetchTemplates,
     fetchOutlines,
     createOutline,
     selectOutline,
@@ -245,5 +295,6 @@ export function usePlotArchitect() {
     removeScene,
     refineOutline,
     checkConsistency,
+    initFromProject,
   }
 }

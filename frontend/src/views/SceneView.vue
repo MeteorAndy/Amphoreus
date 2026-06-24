@@ -2,13 +2,16 @@
 import { ref, onMounted } from 'vue'
 import SceneFeed from '../components/SceneFeed.vue'
 import DirectorPanel from '../components/DirectorPanel.vue'
+import EnvironmentPanel from '../components/EnvironmentPanel.vue'
 import { useSceneEngine } from '../composables/useSceneEngine'
 import { usePlotArchitect } from '../composables/usePlotArchitect'
 import { useCharacters } from '../composables/useCharacters'
+import { useProjectStore } from '../composables/useProjectStore'
 import { useI18n } from '../i18n'
 import type { SceneRunRequest } from '../types/api'
 
 const { t } = useI18n()
+const projectStore = useProjectStore()
 
 const {
   status,
@@ -18,37 +21,60 @@ const {
   connect,
   intervene,
   endSceneSession,
-  fetchStatus,
   reset,
+  environmentState,
+  resolutionText,
 } = useSceneEngine()
 
-const { fetchOutlines, outlines, selectOutline, selectedOutline } = usePlotArchitect()
+const { fetchTemplates, outlines, selectOutline, selectedOutline, initFromProject: initPlot } = usePlotArchitect()
 const { fetchCharacters, characters } = useCharacters()
 
 const selectedPlotId = ref('')
 const selectedSceneId = ref('')
 const maxRounds = ref(10)
+const selectedCharacterIds = ref<string[]>([])
 
 onMounted(() => {
-  fetchStatus()
-  fetchOutlines()
-  fetchCharacters()
+  initPlot()
+  fetchTemplates()
+  if (projectStore.currentCharacters.value.length > 0) {
+    characters.value = [...projectStore.currentCharacters.value]
+  } else {
+    fetchCharacters()
+  }
+  if (projectStore.currentPlotId.value) {
+    selectedPlotId.value = projectStore.currentPlotId.value
+    if (projectStore.currentPlotOutline.value) {
+      selectOutline(selectedPlotId.value)
+    }
+  }
+  selectedCharacterIds.value = characters.value.map((c) => c.id)
 })
 
 async function handleSelectPlot(plotId: string): Promise<void> {
   selectedPlotId.value = plotId
+  selectedSceneId.value = ''
   if (plotId) {
     await selectOutline(plotId)
   }
 }
 
+function toggleCharacter(charId: string): void {
+  const idx = selectedCharacterIds.value.indexOf(charId)
+  if (idx !== -1) {
+    selectedCharacterIds.value.splice(idx, 1)
+  } else {
+    selectedCharacterIds.value.push(charId)
+  }
+}
+
 function handleStartScene(): void {
-  if (!selectedPlotId.value || !selectedSceneId.value) return
+  if (!selectedPlotId.value || !selectedSceneId.value || selectedCharacterIds.value.length === 0) return
 
   const req: SceneRunRequest = {
     scene_spec_id: selectedSceneId.value,
     plot_id: selectedPlotId.value,
-    character_ids: characters.value.map((c) => c.id),
+    character_ids: selectedCharacterIds.value,
     max_rounds: maxRounds.value,
   }
   connect(req)
@@ -58,9 +84,13 @@ function canStart(): boolean {
   return (
     !!selectedPlotId.value &&
     !!selectedSceneId.value &&
-    characters.value.length > 0 &&
+    selectedCharacterIds.value.length > 0 &&
     status.value.status === 'idle'
   )
+}
+
+function handleReset(): void {
+  reset()
 }
 </script>
 
@@ -133,24 +163,25 @@ function canStart(): boolean {
             class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
           />
         </div>
-        <div>
-          <label class="block text-xs text-muted mb-1">{{ t('chars.title') }} ({{ characters.length }})</label>
-          <div class="bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment-dim">
-            <div class="flex flex-wrap gap-1">
-              <span
-                v-for="char in characters.slice(0, 5)"
-                :key="char.id"
-                class="text-xs text-chop bg-chop/20/30 px-1.5 py-0.5 rounded"
-              >
-                {{ char.name }}
-              </span>
-              <span v-if="characters.length > 5" class="text-xs text-muted">
-                +{{ characters.length - 5 }} more
-              </span>
-            </div>
-          </div>
+      </div>
+
+      <div v-if="characters.length > 0">
+        <label class="block text-xs text-muted mb-2">选择参与角色 ({{ selectedCharacterIds.length }}/{{ characters.length }})</label>
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="char in characters"
+            :key="char.id"
+            @click="toggleCharacter(char.id)"
+            class="px-3 py-1.5 rounded-lg text-sm transition-colors border"
+            :class="selectedCharacterIds.includes(char.id)
+              ? 'bg-chop/20 border-chop text-chop'
+              : 'bg-ink-elevated border-ink-edge text-parchment-dim hover:border-chop/50'"
+          >
+            {{ char.name }}
+          </button>
         </div>
       </div>
+
       <button
         @click="handleStartScene"
         :disabled="!canStart()"
@@ -161,15 +192,23 @@ function canStart(): boolean {
     </div>
 
     <!-- Running / completed scene -->
-    <div v-if="status.status !== 'idle'" class="grid grid-cols-1 lg:grid-cols-3 gap-6" style="height: calc(100vh - 12rem)">
-      <div class="lg:col-span-2 h-full">
-        <SceneFeed
-          :rounds="rounds"
-          :status="status"
-          :connected="connected"
-        />
+    <div v-if="status.status !== 'idle'" class="grid grid-cols-1 lg:grid-cols-4 gap-4" style="height: calc(100vh - 12rem)">
+      <div class="lg:col-span-3 h-full flex flex-col gap-4">
+        <div class="flex-1 min-h-0">
+          <SceneFeed
+            :rounds="rounds"
+            :status="status"
+            :connected="connected"
+            :resolution-text="resolutionText"
+          />
+        </div>
       </div>
-      <div class="h-full">
+      <div class="h-full flex flex-col gap-4">
+        <EnvironmentPanel
+          :environment-state="environmentState"
+          :rounds="rounds"
+          class="flex-1 min-h-0"
+        />
         <DirectorPanel
           :status="status"
           :connected="connected"
@@ -178,7 +217,7 @@ function canStart(): boolean {
           @intervene="intervene"
           @end-scene="endSceneSession"
           @start-scene="handleStartScene"
-          @reset="reset"
+          @reset="handleReset"
         />
       </div>
     </div>

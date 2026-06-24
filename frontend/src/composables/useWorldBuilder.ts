@@ -1,11 +1,14 @@
 import { ref, computed } from 'vue'
-import type { ChatMessage, WorldBuildStage, WorldExtractedData, WorldState } from '../types/api'
+import type { ChatMessage, WorldBuildStageType, WorldExtractedData, WorldState } from '../types/api'
 import { startWorldBuild, continueWorldBuild, finalizeWorldBuild } from '../api/client'
+import { useProjectStore } from './useProjectStore'
 
 export function useWorldBuilder() {
+  const projectStore = useProjectStore()
+
   const messages = ref<ChatMessage[]>([])
   const sessionId = ref<string | null>(null)
-  const stage = ref<WorldBuildStage>('rules')
+  const stage = ref<WorldBuildStageType>('rules')
   const extractedData = ref<WorldExtractedData>({})
   const completeness = ref(0)
   const loading = ref(false)
@@ -24,7 +27,7 @@ export function useWorldBuilder() {
       sessionId.value = res.session_id
       stage.value = res.stage
       completeness.value = res.completeness
-      mergeExtractedData(res.extracted_data)
+      mergeExtractedDataFromResponse(res)
       messages.value.push({ role: 'user', content: seedIdea })
       messages.value.push({ role: 'assistant', content: res.next_question })
     } catch (e) {
@@ -42,7 +45,7 @@ export function useWorldBuilder() {
       const res = await withRetry(() => continueWorldBuild(sessionId.value!, userInput))
       stage.value = res.stage
       completeness.value = res.completeness
-      mergeExtractedData(res.extracted_data)
+      mergeExtractedDataFromResponse(res)
       messages.value.push({ role: 'user', content: userInput })
       messages.value.push({ role: 'assistant', content: res.next_question })
     } catch (e) {
@@ -60,9 +63,7 @@ export function useWorldBuilder() {
       const state = await withRetry(() => finalizeWorldBuild(sessionId.value!))
       worldState.value = state
       finalized.value = true
-      if (state.world_id) {
-        localStorage.setItem('amphoreus-world-id', state.world_id)
-      }
+      await projectStore.setWorldState(state, sessionId.value)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to finalize world'
     } finally {
@@ -70,40 +71,51 @@ export function useWorldBuilder() {
     }
   }
 
-  function mergeExtractedData(data?: WorldExtractedData): void {
-    if (!data) return
-    if (data.name) extractedData.value.name = data.name
-    if (data.description) extractedData.value.description = data.description
-    if (data.rules) {
-      const existing = new Set(extractedData.value.rules || [])
-      for (const rule of data.rules) {
-        if (!existing.has(rule)) {
-          extractedData.value.rules = [...(extractedData.value.rules || []), rule]
-          existing.add(rule)
-        }
-      }
+  function mergeExtractedDataFromResponse(res: {
+    rules: unknown[]
+    locations: unknown[]
+    factions: unknown[]
+    timeline: unknown[]
+  }): void {
+    if (res.rules?.length) {
+      const rules = res.rules
+        .filter((r): r is string => typeof r === 'string')
+      const existingRules = Array.isArray(extractedData.value.rules)
+        ? extractedData.value.rules.filter((r): r is string => typeof r === 'string')
+        : []
+      extractedData.value.rules = [...new Set([...existingRules, ...rules])]
     }
-    if (data.locations) {
+
+    if (res.locations?.length) {
+      const locations = res.locations
+        .filter((l): l is { name: string; description: string } =>
+          typeof l === 'object' && l !== null && 'name' in l)
       const existing = new Map((extractedData.value.locations || []).map((l) => [l.name, l]))
-      for (const loc of data.locations) {
-        if (!existing.has(loc.name)) {
-          extractedData.value.locations = [...(extractedData.value.locations || []), loc]
-          existing.set(loc.name, loc)
-        }
+      for (const loc of locations) {
+        existing.set(loc.name, { ...existing.get(loc.name), ...loc })
       }
+      extractedData.value.locations = Array.from(existing.values())
     }
-    if (data.factions) {
+
+    if (res.factions?.length) {
+      const factions = res.factions
+        .filter((f): f is { name: string; description: string } =>
+          typeof f === 'object' && f !== null && 'name' in f)
       const existing = new Map((extractedData.value.factions || []).map((f) => [f.name, f]))
-      for (const fac of data.factions) {
-        if (!existing.has(fac.name)) {
-          extractedData.value.factions = [...(extractedData.value.factions || []), fac]
-          existing.set(fac.name, fac)
-        }
+      for (const fac of factions) {
+        existing.set(fac.name, { ...existing.get(fac.name), ...fac })
       }
+      extractedData.value.factions = Array.from(existing.values())
     }
-    if (data.timeline) {
-      const existing = new Set((extractedData.value.timeline || []).map((t) => `${t.date}|${t.event}`))
-      for (const entry of data.timeline) {
+
+    if (res.timeline?.length) {
+      const timeline = res.timeline
+        .filter((t): t is { date: string; event: string; description: string } =>
+          typeof t === 'object' && t !== null && 'event' in t)
+      const existing = new Set(
+        (extractedData.value.timeline || []).map((t) => `${t.date}|${t.event}`),
+      )
+      for (const entry of timeline) {
         const key = `${entry.date}|${entry.event}`
         if (!existing.has(key)) {
           extractedData.value.timeline = [...(extractedData.value.timeline || []), entry]
@@ -137,7 +149,24 @@ export function useWorldBuilder() {
     error.value = null
     worldState.value = null
     finalized.value = false
-    localStorage.removeItem('amphoreus-world-id')
+  }
+
+  function initFromProject(): void {
+    if (projectStore.currentWorldState.value && projectStore.currentWorldId.value) {
+      const ws = projectStore.currentWorldState.value
+      worldState.value = ws
+      sessionId.value = projectStore.currentWorldId.value
+      finalized.value = true
+      stage.value = 'done'
+      extractedData.value = {
+        rules: Array.isArray(ws.rules)
+          ? ws.rules.filter((r): r is string => typeof r === 'string')
+          : [],
+        locations: ws.locations || [],
+        factions: ws.factions || [],
+        timeline: ws.timeline || [],
+      }
+    }
   }
 
   return {
@@ -156,5 +185,6 @@ export function useWorldBuilder() {
     continueBuilding,
     finalizeWorld,
     resetWorld,
+    initFromProject,
   }
 }
