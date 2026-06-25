@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { Check, Globe, FileText } from 'lucide-vue-next'
 import ChatPanel from '../components/ChatPanel.vue'
 import { useWorldBuilder } from '../composables/useWorldBuilder'
 import { useI18n } from '../i18n'
@@ -52,7 +53,7 @@ function stageStatus(s: string): 'completed' | 'current' | 'upcoming' {
   if (!sessionId.value) return 'upcoming'
   const order = ['rules', 'locations', 'factions', 'timeline']
   const currentIdx = order.indexOf(stage.value)
-  if (currentIdx < 0) return 'completed' // stage is 'done'
+  if (currentIdx < 0) return 'completed'
   const sIdx = order.indexOf(s)
   if (sIdx < 0) return 'upcoming'
   if (sIdx < currentIdx) return 'completed'
@@ -87,12 +88,13 @@ async function handleUpload(event: Event): Promise<void> {
     if (state.factions?.length) extractedData.value.factions = state.factions
     if (state.timeline?.length) extractedData.value.timeline = state.timeline
     stage.value = 'done'
+    const processedMsg = t('world.document_processed').replace('{name}', file.name)
     messages.value.push({
       role: 'assistant',
-      content: `Document "${file.name}" processed. World data has been extracted. You can review the details and finalize.`,
+      content: processedMsg,
     })
   } catch (e) {
-    uploadError.value = e instanceof Error ? e.message : 'Failed to upload document'
+    uploadError.value = e instanceof Error ? e.message : t('world.upload_failed')
   } finally {
     uploadLoading.value = false
     target.value = ''
@@ -106,31 +108,25 @@ function goToCharacters(): void {
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-parchment">
-        {{ t('world.title') }}
-      </h1>
+    <div class="page-header">
+      <h1>{{ t('world.title') }}</h1>
       <button
         v-if="sessionId && !finalized"
         @click="resetWorld"
-        class="px-3 py-1.5 text-xs text-red-400 border border-red-800 rounded-lg hover:bg-red-900/20 transition-colors"
+        class="btn btn-danger btn-sm"
       >
         {{ t('world.reset') }}
       </button>
     </div>
 
-    <!-- Error banner -->
     <div
       v-if="error"
-      class="bg-red-900/20 border border-red-800 rounded-lg p-3"
+      class="error-banner"
     >
-      <span class="text-sm text-red-400">{{ error }}</span>
+      {{ error }}
     </div>
 
-    <!-- Non-finalized: chat-based world building -->
     <template v-if="!finalized">
-      <!-- Stage progress indicator -->
       <div
         v-if="sessionId"
         class="flex items-center"
@@ -145,11 +141,11 @@ function goToCharacters(): void {
               class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-colors flex-shrink-0"
               :class="{
                 'bg-chop text-white': stageStatus(s) === 'current',
-                'bg-green-600 text-white': stageStatus(s) === 'completed',
+                'bg-editor text-white': stageStatus(s) === 'completed',
                 'bg-ink-elevated text-muted': stageStatus(s) === 'upcoming',
               }"
             >
-              <span v-if="stageStatus(s) === 'completed'">&check;</span>
+              <Check v-if="stageStatus(s) === 'completed'" :size="12" />
               <span v-else>{{ idx + 1 }}</span>
             </div>
             <span
@@ -165,7 +161,7 @@ function goToCharacters(): void {
           <div
             v-if="idx < stageOrder.length - 1"
             class="w-8 h-px mx-2"
-            :class="stageStatus(s) === 'completed' ? 'bg-green-600' : 'bg-ink-elevated'"
+            :class="stageStatus(s) === 'completed' ? 'bg-editor' : 'bg-ink-elevated'"
           />
         </div>
         <div class="ml-auto text-xs text-muted">
@@ -173,17 +169,16 @@ function goToCharacters(): void {
         </div>
       </div>
 
-      <!-- Main grid: chat + sidebar -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Chat / Welcome area -->
         <div class="lg:col-span-2">
-          <!-- Welcome screen (initial state, no session yet) -->
           <div
             v-if="!sessionId && !loading && messages.length === 0"
-            class="bg-ink-panel rounded-lg border border-ink-edge p-8 text-center"
+            class="card p-8 text-center"
           >
             <div class="max-w-md mx-auto space-y-4">
-              <div class="text-5xl mb-2">&#127758;</div>
+              <div class="flex justify-center mb-2">
+                <Globe :size="48" class="text-muted opacity-50" />
+              </div>
               <h2 class="text-xl font-semibold text-parchment">
                 {{ t('world.welcome_title') }}
               </h2>
@@ -198,20 +193,19 @@ function goToCharacters(): void {
                   v-model="seedIdea"
                   type="text"
                   :placeholder="t('world.idea_placeholder')"
-                  class="flex-1 bg-ink-elevated border border-ink-edge rounded-lg px-4 py-2.5 text-sm text-parchment placeholder-muted focus:outline-none focus:border-chop transition-colors"
+                  class="input flex-1"
                   :disabled="loading"
                 >
                 <button
                   type="submit"
                   :disabled="loading || !seedIdea.trim()"
-                  class="px-5 py-2.5 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  class="btn btn-primary"
                 >
                   {{ t('world.start_building') }}
                 </button>
               </form>
             </div>
           </div>
-          <!-- ChatPanel (during or after building) -->
           <div
             v-else
             class="h-[500px]"
@@ -225,13 +219,11 @@ function goToCharacters(): void {
           </div>
         </div>
 
-        <!-- Sidebar: world data cards + upload -->
         <div class="space-y-4">
           <template v-if="hasExtractedData">
-            <!-- World name & description -->
             <div
               v-if="extractedData.name"
-              class="bg-ink-panel rounded-lg border border-ink-edge p-4"
+              class="card p-4"
             >
               <h3 class="text-sm font-semibold text-parchment mb-2">
                 {{ t('world.sidebar_world') }}
@@ -245,10 +237,9 @@ function goToCharacters(): void {
               </p>
             </div>
 
-            <!-- Rules -->
             <div
               v-if="extractedData.rules?.length"
-              class="bg-ink-panel rounded-lg border border-ink-edge p-4"
+              class="card p-4"
             >
               <h3 class="text-sm font-semibold text-parchment mb-2">
                 {{ t('world.rules') }}
@@ -265,10 +256,9 @@ function goToCharacters(): void {
               </ul>
             </div>
 
-            <!-- Locations -->
             <div
               v-if="extractedData.locations?.length"
-              class="bg-ink-panel rounded-lg border border-ink-edge p-4"
+              class="card p-4"
             >
               <h3 class="text-sm font-semibold text-parchment mb-2">
                 {{ t('world.locations') }}
@@ -284,10 +274,9 @@ function goToCharacters(): void {
               </div>
             </div>
 
-            <!-- Factions -->
             <div
               v-if="extractedData.factions?.length"
-              class="bg-ink-panel rounded-lg border border-ink-edge p-4"
+              class="card p-4"
             >
               <h3 class="text-sm font-semibold text-parchment mb-2">
                 {{ t('world.factions') }}
@@ -303,10 +292,9 @@ function goToCharacters(): void {
               </div>
             </div>
 
-            <!-- Timeline -->
             <div
               v-if="extractedData.timeline?.length"
-              class="bg-ink-panel rounded-lg border border-ink-edge p-4"
+              class="card p-4"
             >
               <h3 class="text-sm font-semibold text-parchment mb-2">
                 {{ t('world.timeline') }}
@@ -332,46 +320,44 @@ function goToCharacters(): void {
             </div>
           </template>
 
-          <!-- Empty sidebar state -->
           <div
             v-else
-            class="bg-ink-panel rounded-lg border border-ink-edge p-6 text-center text-muted text-sm"
+            class="card p-6 text-center text-muted text-sm"
           >
             <p>{{ t('world.start_hint') }}</p>
           </div>
 
-          <!-- Upload document (secondary option) -->
           <div
             v-if="sessionId"
-            class="border-t border-ink-edge pt-3"
+            class="pt-3 border-t border-ink-edge"
           >
             <button
               @click="showUpload = !showUpload"
-              class="text-xs text-muted hover:text-parchment-dim transition-colors flex items-center gap-1"
+              class="btn btn-ghost btn-sm"
             >
-              <span>&#128196;</span>
-              <span>{{ t('world.upload_tab') }}</span>
+              <FileText :size="14" />
+              {{ t('world.upload_tab') }}
             </button>
             <div
               v-if="showUpload"
-              class="mt-2"
+              class="mt-2 space-y-2"
             >
               <input
                 type="file"
                 accept=".md,.txt,.pdf"
                 @change="handleUpload"
-                class="text-xs text-parchment-dim file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-chop file:text-white hover:file:bg-chop"
+                class="text-xs text-parchment-dim file:mr-2 file:btn file:btn-sm file:btn-primary"
                 :disabled="uploadLoading"
               >
               <p
                 v-if="uploadLoading"
-                class="text-xs text-muted mt-1"
+                class="text-xs text-muted"
               >
                 {{ t('world.upload_processing') }}
               </p>
               <p
                 v-if="uploadError"
-                class="text-xs text-red-400 mt-1"
+                class="text-xs text-danger"
               >
                 {{ uploadError }}
               </p>
@@ -380,7 +366,6 @@ function goToCharacters(): void {
         </div>
       </div>
 
-      <!-- Finalize button -->
       <div
         v-if="isDone"
         class="text-center pt-4"
@@ -388,26 +373,28 @@ function goToCharacters(): void {
         <button
           @click="finalizeWorld"
           :disabled="loading"
-          class="px-8 py-3 bg-green-600 hover:bg-green-500 disabled:bg-green-800 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+          class="btn btn-lg"
+          :class="loading ? 'bg-ink-elevated text-muted border-ink-edge' : 'bg-editor border-editor text-white hover:bg-editor hover:border-editor'"
         >
           {{ loading ? t('world.finalizing') : t('world.finalize') }}
         </button>
       </div>
     </template>
 
-    <!-- Finalized: summary -->
     <div
       v-if="finalized && worldState"
       class="max-w-2xl mx-auto space-y-6"
     >
       <div class="text-center space-y-2">
-        <div class="text-5xl">&#127758;</div>
+        <div class="flex justify-center">
+          <Globe :size="48" class="text-muted opacity-50" />
+        </div>
         <h2 class="text-2xl font-bold text-parchment">
           {{ t('world.finalized_title') }}
         </h2>
       </div>
 
-      <div class="bg-ink-panel rounded-lg border border-ink-edge p-6 space-y-4">
+      <div class="card p-6 space-y-4">
         <div>
           <h3 class="text-xl font-semibold text-parchment">
             {{ worldState.name || t('world.unnamed') }}
@@ -443,13 +430,13 @@ function goToCharacters(): void {
       <div class="flex gap-4 justify-center">
         <button
           @click="goToCharacters"
-          class="px-6 py-2.5 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop transition-colors"
+          class="btn btn-primary"
         >
           {{ t('world.proceed_chars') }}
         </button>
         <button
           @click="resetWorld"
-          class="px-6 py-2.5 text-parchment-dim border border-ink-edge rounded-lg text-sm font-medium hover:text-parchment hover:border-ink-edge transition-colors"
+          class="btn btn-secondary"
         >
           {{ t('world.start_again') }}
         </button>

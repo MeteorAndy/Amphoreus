@@ -1,12 +1,7 @@
 import { ref } from 'vue'
+import type { Project } from '../types/api'
 
-export interface Project {
-  id: string
-  name: string
-  created_at: string
-  updated_at: string
-  last_stage: string
-}
+export type { Project }
 
 export interface CreateProjectPayload {
   name: string

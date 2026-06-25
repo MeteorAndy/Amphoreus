@@ -3,7 +3,8 @@ import { computed, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   FolderOpen, Zap, Sparkles, FlaskConical, Globe,
-  Users, List, Drama, PenTool, ShieldCheck, Sun, Moon,
+  Users, ListTree, Drama, PenTool, ShieldCheck, Sun, Moon,
+  BookOpen,
 } from 'lucide-vue-next'
 import { useI18n } from '../i18n'
 import { useTheme } from '../composables/useTheme'
@@ -18,19 +19,20 @@ interface NavItem {
   labelKey: string
   path: string
   icon: Component
+  desc: string
 }
 
 const navItems: NavItem[] = [
-  { labelKey: 'nav.projects', path: '/projects', icon: FolderOpen },
-  { labelKey: 'nav.pipeline', path: '/pipeline', icon: Zap },
-  { labelKey: 'nav.interactive', path: '/interactive', icon: Sparkles },
-  { labelKey: 'nav.sandbox', path: '/sandbox', icon: FlaskConical },
-  { labelKey: 'nav.world', path: '/world', icon: Globe },
-  { labelKey: 'nav.characters', path: '/characters', icon: Users },
-  { labelKey: 'nav.plot', path: '/plot', icon: List },
-  { labelKey: 'nav.scene', path: '/scene', icon: Drama },
-  { labelKey: 'nav.writer', path: '/writer', icon: PenTool },
-  { labelKey: 'nav.quality', path: '/quality', icon: ShieldCheck },
+  { labelKey: 'nav.projects', path: '/projects', icon: FolderOpen, desc: '我的项目' },
+  { labelKey: 'nav.pipeline', path: '/pipeline', icon: Zap, desc: '一键生成' },
+  { labelKey: 'nav.interactive', path: '/interactive', icon: Sparkles, desc: '互动创作' },
+  { labelKey: 'nav.sandbox', path: '/sandbox', icon: FlaskConical, desc: '沙盒观察' },
+  { labelKey: 'nav.world', path: '/world', icon: Globe, desc: '世界构建' },
+  { labelKey: 'nav.characters', path: '/characters', icon: Users, desc: '角色管理' },
+  { labelKey: 'nav.plot', path: '/plot', icon: ListTree, desc: '剧情架构' },
+  { labelKey: 'nav.scene', path: '/scene', icon: Drama, desc: '场景执行' },
+  { labelKey: 'nav.writer', path: '/writer', icon: PenTool, desc: '叙事写作' },
+  { labelKey: 'nav.quality', path: '/quality', icon: ShieldCheck, desc: '质量审稿' },
 ]
 
 const activeIndex = computed(() =>
@@ -48,55 +50,62 @@ function toggleLang(): void {
 
 <template>
   <div class="flex h-screen overflow-hidden bg-ink-bg">
-    <!-- Sidebar: manuscript rail -->
-    <aside class="flex flex-col w-20 bg-ink-panel border-r border-ink-edge flex-shrink-0">
-      <!-- Masthead: vermillion seal + serif wordmark -->
-      <div class="flex flex-col items-center justify-center h-16 border-b border-ink-edge">
-        <div class="w-7 h-7 rounded-seal bg-chop flex items-center justify-center mb-0.5">
-          <span class="text-xs font-display font-bold text-ink-bg">Am</span>
+    <!-- Sidebar -->
+    <aside class="flex flex-col w-56 bg-ink-panel border-r border-ink-edge flex-shrink-0">
+      <!-- Masthead -->
+      <div class="flex items-center gap-2.5 px-4 h-14 border-b border-ink-edge">
+        <div class="w-8 h-8 rounded-seal bg-chop flex items-center justify-center flex-shrink-0 shadow-sm">
+          <BookOpen :size="16" class="text-white" :stroke-width="2" />
+        </div>
+        <div class="min-w-0">
+          <div class="font-display font-semibold text-parchment text-sm leading-tight truncate">Amphoreus</div>
+          <div class="text-[0.65rem] text-muted leading-tight">{{ t('app.title') }}</div>
         </div>
       </div>
 
       <!-- Navigation -->
-      <nav class="flex flex-col flex-1 py-3 overflow-y-auto">
+      <nav class="flex-1 overflow-y-auto py-3 px-2">
         <button
           v-for="(item, idx) in navItems"
           :key="item.path"
           @click="navigate(item.path)"
-          class="group flex flex-col items-center gap-1 py-2.5 text-[0.65rem] transition-colors relative"
-          :class="idx === activeIndex ? 'text-chop' : 'text-muted hover:text-parchment-dim'"
+          class="group w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all relative mb-0.5"
+          :class="idx === activeIndex
+            ? 'bg-chop/15 text-chop'
+            : 'text-parchment-dim hover:bg-ink-elevated hover:text-parchment'"
         >
           <span
-            class="w-0.5 h-7 absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full transition-all"
-            :class="idx === activeIndex ? 'bg-chop' : 'bg-transparent group-hover:bg-ink-edge'"
+            class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full transition-all"
+            :class="idx === activeIndex ? 'bg-chop' : 'bg-transparent'"
           />
-          <component :is="item.icon" :size="18" :stroke-width="1.5" />
-          <span class="leading-tight text-center">{{ t(item.labelKey) }}</span>
+          <component :is="item.icon" :size="16" :stroke-width="idx === activeIndex ? 2 : 1.5" class="flex-shrink-0" />
+          <span class="font-medium leading-tight">{{ t(item.labelKey) }}</span>
         </button>
       </nav>
 
-      <!-- Language + theme toggles -->
-      <div class="flex flex-col items-center gap-2 py-3 border-t border-ink-edge">
+      <!-- Bottom controls -->
+      <div class="px-3 py-3 border-t border-ink-edge flex items-center gap-2">
         <button
           @click="toggleTheme"
-          class="text-muted hover:text-parchment-dim transition-colors p-1.5 rounded hover:bg-ink-elevated"
-          :title="theme === 'ink' ? 'Paper' : 'Ink'"
+          class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs text-parchment-dim hover:bg-ink-elevated hover:text-parchment transition-colors"
+          :title="theme === 'ink' ? t('theme.paper') : t('theme.ink')"
         >
-          <component :is="theme === 'ink' ? Sun : Moon" :size="16" :stroke-width="1.5" />
+          <component :is="theme === 'ink' ? Sun : Moon" :size="14" :stroke-width="1.5" />
+          <span>{{ theme === 'ink' ? (currentLang === 'zh' ? '纸色' : 'Paper') : (currentLang === 'zh' ? '墨色' : 'Ink') }}</span>
         </button>
         <button
           @click="toggleLang"
-          class="text-[0.65rem] text-muted hover:text-parchment-dim transition-colors px-2 py-1 rounded hover:bg-ink-elevated"
+          class="flex items-center justify-center px-2 py-1.5 rounded-lg text-xs text-parchment-dim hover:bg-ink-elevated hover:text-parchment transition-colors"
           :title="t('lang.switch')"
         >
-          {{ t('lang.switch') }}
+          {{ currentLang === 'zh' ? 'EN' : '中' }}
         </button>
       </div>
     </aside>
 
     <!-- Main content -->
     <main class="flex-1 overflow-y-auto">
-      <div class="max-w-7xl mx-auto p-6">
+      <div class="max-w-7xl mx-auto px-8 py-6">
         <slot />
       </div>
     </main>

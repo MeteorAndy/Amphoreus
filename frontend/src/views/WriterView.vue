@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
+import { Sparkles } from 'lucide-vue-next'
 import WritingPreview from '../components/WritingPreview.vue'
 import { useNarrativeWriter } from '../composables/useNarrativeWriter'
 import { usePlotArchitect } from '../composables/usePlotArchitect'
@@ -36,11 +37,11 @@ const selectedCharacterIds = ref<Set<string>>(new Set())
 const chapterTitle = ref('')
 const povCharacterId = ref<string>('')
 
-const narrativeVoices = [
-  { value: 'first_person', label: 'First Person', desc: 'I/me perspective' },
-  { value: 'third_person_limited', label: 'Third Person Limited', desc: 'Following one character' },
-  { value: 'third_person_omniscient', label: 'Third Person Omniscient', desc: 'All-knowing narrator' },
-]
+const narrativeVoices = computed(() => [
+  { value: 'first_person', label: t('writer.voice_first'), desc: t('writer.voice_first_desc') },
+  { value: 'third_person_limited', label: t('writer.voice_third_limited'), desc: t('writer.voice_third_limited_desc') },
+  { value: 'third_person_omniscient', label: t('writer.voice_third_omni'), desc: t('writer.voice_third_omni_desc') },
+])
 
 const allScenes = computed<SceneSpec[]>(() => {
   if (!selectedOutline.value) return []
@@ -155,21 +156,23 @@ function handleSelectTitle(title: string): void {
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-parchment">{{ t('writer.title') }}</h1>
+    <div class="page-header">
+      <div>
+        <h1>{{ t('writer.title') }}</h1>
+      </div>
     </div>
 
-    <div v-if="error" class="bg-red-900/20 border border-red-800 rounded-lg p-3 text-sm text-red-400">
+    <div v-if="error" class="error-banner">
       {{ error }}
     </div>
 
-    <div class="bg-ink-panel rounded-lg border border-ink-edge p-4 space-y-4">
+    <div class="card p-4 space-y-4">
       <div class="flex items-end gap-4">
         <div class="flex-1">
-          <label class="block text-xs text-muted mb-1">{{ t('writer.plot_outline') }}</label>
+          <label class="field-label">{{ t('writer.plot_outline') }}</label>
           <select
             v-model="selectedPlotId"
-            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
+            class="input"
           >
             <option value="" disabled>{{ t('writer.select_outline') }}</option>
             <option
@@ -182,34 +185,35 @@ function handleSelectTitle(title: string): void {
           </select>
         </div>
         <div class="flex-1">
-          <label class="block text-xs text-muted mb-1">Chapter Title (optional)</label>
+          <label class="field-label">{{ t('writer.chapter_title') }}</label>
           <input
             v-model="chapterTitle"
             type="text"
-            placeholder="Enter chapter title..."
-            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment placeholder-muted focus:outline-none focus:border-chop"
+            :placeholder="t('writer.chapter_placeholder')"
+            class="input"
           />
         </div>
         <button
           @click="handleGenerate"
           :disabled="!selectedPlotId || selectedSceneIds.size === 0 || selectedCharacterIds.size === 0 || loading"
-          class="px-6 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          class="btn btn-primary"
         >
+          <Sparkles :size="14" />
           {{ loading ? t('writer.generating') : t('writer.convert') }}
         </button>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label class="block text-xs text-muted mb-2">Narrative Voice</label>
+          <label class="field-label">{{ t('writer.narrative_voice') }}</label>
           <div class="space-y-1">
             <button
               v-for="voice in narrativeVoices"
               :key="voice.value"
               @click="setVoice(voice.value as typeof narrativeVoice)"
-              class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors border"
+              class="w-full text-left px-3 py-2 rounded-folio text-sm transition-colors border"
               :class="narrativeVoice === voice.value
-                ? 'bg-chop/20 border-chop text-chop'
+                ? 'bg-chop-soft border-chop text-chop'
                 : 'bg-ink-elevated border-ink-edge text-parchment-dim hover:border-chop/50'"
             >
               <div class="font-medium">{{ voice.label }}</div>
@@ -219,12 +223,12 @@ function handleSelectTitle(title: string): void {
         </div>
 
         <div>
-          <label class="block text-xs text-muted mb-2">POV Character (optional)</label>
+          <label class="field-label">{{ t('writer.pov_char') }}</label>
           <select
             v-model="povCharacterId"
-            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
+            class="input"
           >
-            <option value="">All characters</option>
+            <option value="">{{ t('writer.pov_all') }}</option>
             <option
               v-for="char in selectedCharacterObjects"
               :key="char.id"
@@ -243,35 +247,31 @@ function handleSelectTitle(title: string): void {
                 class="w-4 h-4 rounded border-ink-edge bg-ink-elevated text-chop focus:ring-chop"
               />
               <span class="text-sm text-parchment-dim">
-                Enhance prose quality
+                {{ t('writer.enhance') }}
               </span>
             </label>
             <p class="text-xs text-muted mt-1">
-                Applies stylistic improvements and descriptive detail
+              {{ t('writer.enhance_desc') }}
             </p>
           </div>
         </div>
 
         <div>
-          <label class="block text-xs text-muted mb-2">Output Format</label>
+          <label class="field-label">{{ t('writer.format') }}</label>
           <div class="flex gap-2">
             <button
               @click="setFormat('novel')"
-              class="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors border"
-              :class="format === 'novel'
-                ? 'bg-chop/20 border-chop text-chop'
-                : 'bg-ink-elevated border-ink-edge text-parchment-dim hover:border-chop/50'"
+              class="chip flex-1 justify-center"
+              :class="format === 'novel' ? 'chip-active' : ''"
             >
-              Novel
+              {{ t('writer.novel') }}
             </button>
             <button
               @click="setFormat('screenplay')"
-              class="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors border"
-              :class="format === 'screenplay'
-                ? 'bg-chop/20 border-chop text-chop'
-                : 'bg-ink-elevated border-ink-edge text-parchment-dim hover:border-chop/50'"
+              class="chip flex-1 justify-center"
+              :class="format === 'screenplay' ? 'chip-active' : ''"
             >
-              Screenplay
+              {{ t('writer.screenplay') }}
             </button>
           </div>
         </div>
@@ -279,19 +279,24 @@ function handleSelectTitle(title: string): void {
 
       <div v-if="allScenes.length > 0">
         <div class="flex items-center justify-between mb-2">
-          <label class="text-xs text-muted">Scenes ({{ selectedSceneIds.size }}/{{ allScenes.length }} selected)</label>
+          <label class="field-label !mb-0 flex items-center gap-2">
+            {{ t('writer.scenes') }}
+            <span class="badge badge-accent normal-case tracking-normal">
+              {{ t('writer.scenes_selected', { s: selectedSceneIds.size, t: allScenes.length }) }}
+            </span>
+          </label>
           <div class="flex gap-2">
             <button
               @click="selectAllScenes"
-              class="text-xs text-chop hover:text-chop transition-colors"
+              class="btn btn-ghost btn-sm"
             >
-              Select All
+              {{ t('writer.select_all') }}
             </button>
             <button
               @click="clearSceneSelection"
-              class="text-xs text-muted hover:text-parchment-dim transition-colors"
+              class="btn btn-ghost btn-sm"
             >
-              Clear
+              {{ t('chars.clear') }}
             </button>
           </div>
         </div>
@@ -300,10 +305,8 @@ function handleSelectTitle(title: string): void {
             v-for="scene in allScenes"
             :key="scene.id"
             @click="toggleScene(scene.id)"
-            class="px-3 py-1.5 rounded-lg text-sm transition-colors border"
-            :class="selectedSceneIds.has(scene.id)
-              ? 'bg-blue-900/20 border-blue-700 text-blue-400'
-              : 'bg-ink-elevated border-ink-edge text-parchment-dim hover:border-blue-700/50'"
+            class="chip"
+            :class="selectedSceneIds.has(scene.id) ? 'chip-active' : ''"
           >
             {{ scene.order }}. {{ scene.title }}
           </button>
@@ -312,17 +315,20 @@ function handleSelectTitle(title: string): void {
 
       <div v-if="characters.length > 0">
         <div class="flex items-center justify-between mb-2">
-          <label class="text-xs text-muted">Characters ({{ selectedCharacterIds.size }}/{{ characters.length }} selected)</label>
+          <label class="field-label !mb-0 flex items-center gap-2">
+            {{ t('writer.characters') }}
+            <span class="badge badge-accent normal-case tracking-normal">
+              {{ t('writer.characters_selected', { s: selectedCharacterIds.size, t: characters.length }) }}
+            </span>
+          </label>
         </div>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="char in characters"
             :key="char.id"
             @click="toggleCharacter(char.id)"
-            class="px-3 py-1.5 rounded-lg text-sm transition-colors border"
-            :class="selectedCharacterIds.has(char.id)
-              ? 'bg-purple-900/20 border-purple-700 text-purple-400'
-              : 'bg-ink-elevated border-ink-edge text-parchment-dim hover:border-purple-700/50'"
+            class="chip"
+            :class="selectedCharacterIds.has(char.id) ? 'chip-active' : ''"
           >
             {{ char.name }}
           </button>
@@ -330,7 +336,7 @@ function handleSelectTitle(title: string): void {
       </div>
     </div>
 
-    <div v-if="titleCandidates.length > 0" class="bg-ink-panel rounded-lg border border-ink-edge p-4">
+    <div v-if="titleCandidates.length > 0" class="card p-4">
       <h3 class="text-sm font-semibold text-parchment mb-3">{{ t('writer.title_candidates') }}</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         <button
