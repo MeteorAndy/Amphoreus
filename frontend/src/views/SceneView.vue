@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Play, RotateCcw, Users, ChevronRight } from 'lucide-vue-next'
+import { Play, RotateCcw, Users, ChevronRight, Clapperboard } from 'lucide-vue-next'
 import SceneFeed from '../components/SceneFeed.vue'
 import DirectorPanel from '../components/DirectorPanel.vue'
 import EnvironmentPanel from '../components/EnvironmentPanel.vue'
@@ -106,15 +106,23 @@ function goToWriter(): void {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 fade-in-up">
     <div class="page-header">
-      <div>
-        <h1>{{ t('scene.title') }}</h1>
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-seal flex items-center justify-center flex-shrink-0 seal-glow" style="background: var(--gradient-chop-seal);">
+          <Clapperboard :size="22" class="text-white" />
+        </div>
+        <div>
+          <h1 class="font-display">{{ t('scene.title') }}</h1>
+        </div>
       </div>
       <button v-if="isCompleted" @click="goToWriter" class="btn btn-primary">
         <ChevronRight :size="14" />
         {{ t('plot.proceed_writer') || '前往叙事写作' }}
       </button>
+    </div>
+    <div class="rule-ornament rule-ornament-diamond text-xs">
+      <span class="font-display small-caps tracking-widest opacity-70">SCENE ENGINE</span>
     </div>
 
     <div v-if="error" class="error-banner">

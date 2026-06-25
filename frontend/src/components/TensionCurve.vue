@@ -5,6 +5,7 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
+import { useTheme } from '../composables/useTheme'
 
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
 
@@ -12,7 +13,34 @@ const props = defineProps<{
   chapters: Array<Record<string, unknown>>
 }>()
 
+const { theme } = useTheme()
+
+const inkColors = {
+  axisLine: '#2e2820',
+  axisLabel: '#8a8070',
+  tooltipBg: '#1c1814',
+  tooltipBorder: '#2e2820',
+  tooltipText: '#e8dfcf',
+  line: '#c8423b',
+  areaStart: 'rgba(200,66,59,0.25)',
+  areaEnd: 'rgba(200,66,59,0)',
+  flatMark: '#b8893c',
+}
+
+const paperColors = {
+  axisLine: '#c9bda3',
+  axisLabel: '#8a7f6e',
+  tooltipBg: '#f0e7d5',
+  tooltipBorder: '#c9bda3',
+  tooltipText: '#1a1510',
+  line: '#a8362f',
+  areaStart: 'rgba(168,54,47,0.18)',
+  areaEnd: 'rgba(168,54,47,0)',
+  flatMark: '#9a7330',
+}
+
 const option = computed(() => {
+  const colors = theme.value === 'paper' ? paperColors : inkColors
   const chs = props.chapters || []
   const labels = chs.map((c) => `Ch${c.chapter_number}`)
   const values = chs.map((c) => Number(c.tension) || 0)
@@ -23,21 +51,21 @@ const option = computed(() => {
     xAxis: {
       type: 'category',
       data: labels,
-      axisLine: { lineStyle: { color: '#2e2820' } },
-      axisLabel: { color: '#8a8070', fontSize: 10 },
+      axisLine: { lineStyle: { color: colors.axisLine } },
+      axisLabel: { color: colors.axisLabel, fontSize: 10 },
     },
     yAxis: {
       type: 'value',
       min: 0,
       max: 1,
-      splitLine: { lineStyle: { color: '#2e2820' } },
-      axisLabel: { color: '#8a8070', fontSize: 10 },
+      splitLine: { lineStyle: { color: colors.axisLine } },
+      axisLabel: { color: colors.axisLabel, fontSize: 10 },
     },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#1c1814',
-      borderColor: '#2e2820',
-      textStyle: { color: '#e8dfcf', fontSize: 12 },
+      backgroundColor: colors.tooltipBg,
+      borderColor: colors.tooltipBorder,
+      textStyle: { color: colors.tooltipText, fontSize: 12 },
     },
     series: [
       {
@@ -47,19 +75,19 @@ const option = computed(() => {
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,
-        lineStyle: { color: '#c8423b', width: 2 },
-        itemStyle: { color: '#c8423b' },
+        lineStyle: { color: colors.line, width: 2 },
+        itemStyle: { color: colors.line },
         areaStyle: {
           color: {
             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(200,66,59,0.25)' },
-              { offset: 1, color: 'rgba(200,66,59,0)' },
+              { offset: 0, color: colors.areaStart },
+              { offset: 1, color: colors.areaEnd },
             ],
           },
         },
         markPoint: {
-          data: flats.map((f, i) => f ? { xAxis: i, yAxis: values[i], itemStyle: { color: '#b8893c' } } : null).filter(Boolean),
+          data: flats.map((f, i) => f ? { xAxis: i, yAxis: values[i], itemStyle: { color: colors.flatMark } } : null).filter(Boolean),
         },
       },
     ],
@@ -68,5 +96,5 @@ const option = computed(() => {
 </script>
 
 <template>
-  <VChart :option="option" autoresize style="height: 200px; width: 100%;" />
+  <VChart :option="option" autoresize style="height: 240px; width: 100%;" />
 </template>

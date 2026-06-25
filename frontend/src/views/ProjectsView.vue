@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '../i18n'
 import { useProjects } from '../composables/useProjects'
-import { FolderPlus, Trash2, Clock, Calendar, BookOpen } from 'lucide-vue-next'
+import { FolderPlus, Trash2, Clock, Calendar, BookOpen, FolderOpen } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -80,96 +80,120 @@ function stageLabel(stage: string): string {
   }
   return map[stage] || stage
 }
+
+function stageBadgeClass(stage: string): string {
+  const classMap: Record<string, string> = {
+    world: 'badge-globe',
+    characters: 'badge-accent',
+    plot: 'badge-gold',
+    scenes: 'badge-editor',
+    writing: 'badge-accent',
+  }
+  return classMap[stage] || 'badge-muted'
+}
 </script>
 
 <template>
-  <div>
-    <div class="page-header">
-      <div>
-        <h1>{{ t('projects.title') }}</h1>
-        <p>{{ t('projects.empty') }}</p>
+  <div class="projects-view">
+    <section class="hero-section corner-flourish fade-in-up">
+      <div class="stagger-children">
+        <div class="hero-icon-wrapper">
+          <div class="hero-icon">
+            <BookOpen :size="40" />
+          </div>
+        </div>
+        <h1 class="hero-title font-display">{{ t('projects.title') }}</h1>
+        <div class="rule-ornament rule-ornament-diamond">
+          <span class="hero-subtitle">{{ t('app.title') }}</span>
+        </div>
+        <p class="hero-tagline">{{ t('projects.empty') }}</p>
+        <button @click="openCreateDialog" class="btn btn-primary btn-lg hero-cta">
+          <FolderPlus :size="18" />
+          {{ t('projects.new') }}
+        </button>
       </div>
-      <button @click="openCreateDialog" class="btn btn-primary">
-        <FolderPlus :size="14" />
-        {{ t('projects.new') }}
-      </button>
-    </div>
+    </section>
 
-    <div v-if="error" class="error-banner mb-6">
+    <div v-if="error" class="error-banner mb-6 fade-in-up">
       {{ error }}
     </div>
 
-    <!-- Loading skeleton -->
-    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div v-for="n in 6" :key="n" class="card p-5 animate-pulse">
-        <div class="h-4 bg-ink-elevated rounded w-3/4 mb-3" />
-        <div class="h-3 bg-ink-elevated rounded w-1/2 mb-2" />
-        <div class="h-3 bg-ink-elevated rounded w-1/3" />
+    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div v-for="n in 6" :key="n" class="skeleton-card">
+        <div class="skeleton-shimmer"></div>
+        <div class="skeleton-icon"></div>
+        <div class="skeleton-line w-3/4"></div>
+        <div class="skeleton-line w-1/2"></div>
+        <div class="skeleton-line w-1/3"></div>
       </div>
     </div>
 
-    <!-- Empty state -->
-    <div v-else-if="!loading && projects.length === 0" class="empty-state">
-      <div class="empty-state-icon">📁</div>
+    <div v-else-if="!loading && projects.length === 0" class="empty-state fade-in-up">
+      <div class="empty-state-icon-wrapper">
+        <FolderOpen :size="56" class="empty-state-folder-icon" />
+      </div>
       <p class="empty-state-text">{{ t('projects.empty') }}</p>
       <button @click="openCreateDialog" class="btn btn-primary btn-lg">
-        <FolderPlus :size="16" />
+        <FolderPlus :size="18" />
         {{ t('projects.new') }}
       </button>
     </div>
 
-    <!-- Project grid -->
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger-children">
       <div
         v-for="project in projects"
         :key="project.id"
-        class="card p-5 cursor-pointer hover:border-chop/50 group relative"
+        class="project-card card group relative"
         @click="openProject(project.id)"
       >
         <button
-          class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-danger-soft text-muted hover:text-danger"
+          class="delete-btn"
           @click="handleDelete(project.id, project.name, $event)"
           :title="t('general.delete')"
         >
           <Trash2 :size="14" />
         </button>
 
-        <div class="flex items-start gap-3 mb-3 pr-6">
-          <div class="w-10 h-10 rounded-lg bg-chop/15 flex items-center justify-center flex-shrink-0">
-            <BookOpen :size="18" class="text-chop" />
+        <div class="flex items-start gap-3 mb-4 pr-8">
+          <div class="project-icon seal-glow flex-shrink-0">
+            <BookOpen :size="20" />
           </div>
-          <div class="min-w-0">
-            <h3 class="text-base font-semibold text-parchment truncate">{{ project.name }}</h3>
-            <p v-if="project.seed_idea" class="text-xs text-muted mt-0.5 line-clamp-2">{{ project.seed_idea }}</p>
+          <div class="min-w-0 flex-1">
+            <h3 class="project-name font-display truncate">{{ project.name }}</h3>
+            <p v-if="project.seed_idea" class="project-seed line-clamp-2">{{ project.seed_idea }}</p>
           </div>
         </div>
 
-        <div v-if="project.last_stage && project.last_stage !== 'idle'" class="mb-3">
-          <span class="badge badge-accent">
+        <div v-if="project.last_stage && project.last_stage !== 'idle'" class="mb-4">
+          <span :class="['badge', stageBadgeClass(project.last_stage)]">
             {{ stageLabel(project.last_stage) }}
           </span>
         </div>
 
-        <div class="flex items-center gap-3 text-xs text-muted pt-3 border-t border-ink-edge">
-          <div v-if="project.updated_at" class="flex items-center gap-1">
-            <Clock :size="11" />
-            {{ formatDate(project.updated_at) }}
+        <div class="project-meta">
+          <div v-if="project.updated_at" class="meta-item">
+            <Clock :size="12" class="meta-icon" />
+            <span>{{ formatDate(project.updated_at) }}</span>
           </div>
-          <div v-if="project.created_at" class="flex items-center gap-1">
-            <Calendar :size="11" />
-            {{ formatDate(project.created_at) }}
+          <div v-if="project.created_at" class="meta-item">
+            <Calendar :size="12" class="meta-icon" />
+            <span>{{ formatDate(project.created_at) }}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Create dialog -->
     <Teleport to="body">
       <div v-if="showCreateDialog" class="modal-overlay" @click.self="closeCreateDialog">
-        <div class="modal-panel">
-          <h2 class="text-lg font-semibold text-parchment mb-5">{{ t('projects.new') }}</h2>
+        <div class="modal-panel fade-in-up">
+          <div class="modal-header">
+            <div class="modal-icon">
+              <FolderPlus :size="20" />
+            </div>
+            <h2 class="modal-title font-display">{{ t('projects.new') }}</h2>
+          </div>
 
-          <div class="space-y-4">
+          <div class="space-y-5">
             <div>
               <label class="field-label">{{ t('projects.name') }}</label>
               <input
@@ -192,14 +216,14 @@ function stageLabel(stage: string): string {
               />
             </div>
 
-            <div v-if="createError" class="text-sm text-danger">{{ createError }}</div>
+            <div v-if="createError" class="error-banner">{{ createError }}</div>
           </div>
 
-          <div class="flex justify-end gap-2 mt-6">
-            <button @click="closeCreateDialog" class="btn btn-secondary btn-sm">
+          <div class="flex justify-end gap-3 mt-7">
+            <button @click="closeCreateDialog" class="btn btn-secondary">
               {{ t('general.cancel') }}
             </button>
-            <button @click="handleCreate" :disabled="creating || !newName.trim()" class="btn btn-primary btn-sm">
+            <button @click="handleCreate" :disabled="creating || !newName.trim()" class="btn btn-primary">
               {{ creating ? t('projects.creating') : t('general.create') }}
             </button>
           </div>
@@ -208,3 +232,341 @@ function stageLabel(stage: string): string {
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.projects-view {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-section) var(--space-page);
+}
+
+.hero-section {
+  text-align: center;
+  padding: 3rem 1.5rem 2.5rem;
+  margin-bottom: 2.5rem;
+  position: relative;
+}
+
+.hero-icon-wrapper {
+  margin-bottom: 1.25rem;
+}
+
+.hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-card);
+  background: var(--gradient-chop-seal);
+  color: #fff;
+  box-shadow: var(--shadow-chop-glow),
+              var(--shadow-elevated),
+              inset 0 1px 0 rgba(255,255,255,0.2),
+              inset 0 -1px 0 rgba(0,0,0,0.1);
+  position: relative;
+}
+
+.hero-icon::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: calc(var(--radius-card) + 4px);
+  border: 1px solid var(--color-chop-border);
+  opacity: 0.5;
+}
+
+.hero-title {
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 700;
+  color: var(--color-parchment-bright);
+  margin: 0 0 0.75rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.hero-subtitle {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  font-style: italic;
+  letter-spacing: 0.08em;
+  padding: 0 1rem;
+  white-space: nowrap;
+}
+
+.hero-tagline {
+  font-size: var(--text-base);
+  color: var(--color-parchment-dim);
+  margin: 1rem auto 1.5rem;
+  max-width: 40ch;
+  line-height: 1.7;
+}
+
+.hero-cta {
+  margin-top: 0.5rem;
+}
+
+.project-card {
+  padding: 1.25rem;
+  cursor: pointer;
+  border-color: var(--color-chop-border);
+  border-width: 1px;
+}
+
+.project-card:hover {
+  border-color: rgba(200, 66, 59, 0.6);
+  box-shadow: var(--shadow-chop-glow),
+              var(--shadow-elevated),
+              var(--shadow-inset),
+              inset 0 0 0 1px rgba(237, 228, 211, 0.03);
+  transform: translateY(-3px);
+}
+
+.project-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-folio);
+  background: var(--gradient-chop-seal);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2),
+              inset 0 -1px 0 rgba(0,0,0,0.1);
+}
+
+.project-icon::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: calc(var(--radius-folio) + 2px);
+  border: 1px solid var(--color-chop-border);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-editorial);
+}
+
+.project-card:hover .project-icon::after {
+  opacity: 1;
+}
+
+.project-name {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-parchment-bright);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.project-seed {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  margin: 0.35rem 0 0;
+  line-height: 1.5;
+}
+
+.project-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--color-ink-edge);
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--text-xs);
+  color: var(--color-parchment-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.meta-icon {
+  opacity: 0.7;
+}
+
+.delete-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-muted);
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all var(--duration-fast) var(--ease-editorial);
+}
+
+.delete-btn:hover {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  opacity: 1 !important;
+  transform: scale(1);
+}
+
+.project-card:hover .delete-btn {
+  opacity: 0.7;
+  transform: scale(1);
+}
+
+.skeleton-card {
+  background: var(--color-ink-panel);
+  border: 1px solid var(--color-ink-edge);
+  border-radius: var(--radius-card);
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-card), var(--shadow-inset);
+}
+
+.skeleton-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(237, 228, 211, 0.06) 50%,
+    transparent 100%
+  );
+  animation: skeletonShimmer 1.8s infinite;
+}
+
+.skeleton-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-folio);
+  background: var(--color-ink-elevated);
+  margin-bottom: 0.875rem;
+}
+
+.skeleton-line {
+  height: 0.75rem;
+  background: var(--color-ink-elevated);
+  border-radius: 2px;
+  margin-bottom: 0.5rem;
+}
+
+@keyframes skeletonShimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.empty-state-icon-wrapper {
+  width: 6rem;
+  height: 6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-ink-wash-light);
+  border: 1px solid var(--color-ink-edge);
+  margin-bottom: 1.25rem;
+}
+
+.empty-state-folder-icon {
+  color: var(--color-muted);
+  opacity: 0.6;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.modal-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-folio);
+  background: var(--gradient-chop-seal);
+  color: #fff;
+  box-shadow: var(--shadow-chop-glow),
+              inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.modal-title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--color-parchment-bright);
+  margin: 0;
+}
+
+.badge-globe {
+  background: rgba(74, 127, 181, 0.15);
+  color: #6a9fd4;
+  border: 1px solid rgba(74, 127, 181, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+html[data-theme="paper"] .badge-globe {
+  background: rgba(52, 101, 154, 0.12);
+  color: #34659a;
+  border-color: rgba(52, 101, 154, 0.3);
+}
+
+html[data-theme="paper"] .hero-icon {
+  box-shadow: 0 0 20px rgba(168, 54, 47, 0.12),
+              var(--shadow-elevated-paper),
+              inset 0 1px 0 rgba(255,255,255,0.3),
+              inset 0 -1px 0 rgba(0,0,0,0.06);
+}
+
+html[data-theme="paper"] .project-card:hover {
+  border-color: rgba(168, 54, 47, 0.5);
+  box-shadow: 0 0 16px rgba(168, 54, 47, 0.1),
+              var(--shadow-elevated),
+              var(--shadow-inset-paper);
+}
+
+html[data-theme="paper"] .skeleton-card {
+  background: var(--color-paper-cream);
+  border-color: var(--color-paper-edge-soft);
+  box-shadow: var(--shadow-card-paper), var(--shadow-inset-paper);
+}
+
+html[data-theme="paper"] .skeleton-icon,
+html[data-theme="paper"] .skeleton-line {
+  background: var(--color-paper-elevated);
+}
+
+html[data-theme="paper"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 100%
+  );
+}
+
+html[data-theme="paper"] .empty-state-icon-wrapper {
+  background: rgba(26, 21, 16, 0.03);
+  border-color: var(--color-paper-edge);
+}
+
+html[data-theme="paper"] .project-meta {
+  border-top-color: var(--color-paper-edge);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none;
+  }
+}
+</style>

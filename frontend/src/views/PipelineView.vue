@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from '../i18n'
 import { usePipeline, type PipelineConfig } from '../composables/usePipeline'
-import { Zap, FileText, Film, Users, BookOpen, Sparkles, Square, RotateCcw, Check, Globe, Drama, PenTool } from 'lucide-vue-next'
+import { Workflow, FileText, Film, Users, BookOpen, Sparkles, Square, RotateCcw, Check, Globe, Drama, PenTool } from 'lucide-vue-next'
 
 const { t, currentLang } = useI18n()
 const pipeline = usePipeline()
@@ -34,7 +34,7 @@ function handleStart() {
 }
 
 const stages = ['world', 'characters', 'relationships', 'plot', 'scenes', 'writing']
-const stageIcons: Record<string, typeof Zap> = {
+const stageIcons: Record<string, typeof Workflow> = {
   world: Globe,
   characters: Users,
   relationships: Users,
@@ -53,13 +53,20 @@ function stageStatus(idx: number): 'done' | 'current' | 'upcoming' {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto">
-    <div class="text-center mb-8 pt-4">
-      <div class="inline-flex items-center justify-center w-14 h-14 rounded-seal bg-chop/15 mb-4">
-        <Zap :size="24" class="text-chop" />
+  <div class="max-w-3xl mx-auto fade-in-up">
+    <div class="page-header text-center pb-6 mb-6">
+      <div class="flex flex-col items-center gap-3 w-full">
+        <div class="w-14 h-14 rounded-seal flex items-center justify-center seal-glow" style="background: var(--gradient-chop-seal);">
+          <Workflow :size="26" class="text-white" />
+        </div>
+        <div>
+          <h1 class="font-display text-2xl mb-1">{{ t('pipeline.title') }}</h1>
+          <p class="text-sm text-muted italic">{{ t('pipeline.subtitle') }}</p>
+        </div>
       </div>
-      <h1 class="text-2xl font-bold text-parchment mb-2">{{ t('pipeline.title') }}</h1>
-      <p class="text-sm text-muted">{{ t('pipeline.subtitle') }}</p>
+    </div>
+    <div class="rule-ornament rule-ornament-diamond text-xs mb-8">
+      <span class="font-display small-caps tracking-widest opacity-70">PIPELINE</span>
     </div>
 
     <div v-if="pipeline.status.value === 'idle'" class="card p-6 space-y-5">

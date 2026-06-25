@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Sparkles, ChevronRight } from 'lucide-vue-next'
+import { Sparkles, ChevronRight, Loader2 } from 'lucide-vue-next'
 import WritingPreview from '../components/WritingPreview.vue'
 import { useNarrativeWriter } from '../composables/useNarrativeWriter'
 import { usePlotArchitect } from '../composables/usePlotArchitect'
@@ -163,22 +163,22 @@ function goToQuality(): void {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 fade-in-up">
     <div class="page-header">
       <div>
         <h1>{{ t('writer.title') }}</h1>
       </div>
       <button v-if="hasOutput" @click="goToQuality" class="btn btn-primary">
-        <ChevronRight :size="14" />
         {{ t('plot.proceed_quality') || '前往质量审稿' }}
+        <ChevronRight :size="14" />
       </button>
     </div>
 
-    <div v-if="error" class="error-banner">
+    <div v-if="error" class="error-banner fade-in-up">
       {{ error }}
     </div>
 
-    <div class="card p-4 space-y-4">
+    <div class="card p-6 space-y-6 stagger-children">
       <div class="flex items-end gap-4">
         <div class="flex-1">
           <label class="field-label">{{ t('writer.plot_outline') }}</label>
@@ -208,28 +208,29 @@ function goToQuality(): void {
         <button
           @click="handleGenerate"
           :disabled="!selectedPlotId || selectedSceneIds.size === 0 || selectedCharacterIds.size === 0 || loading"
-          class="btn btn-primary"
+          class="btn btn-primary btn-lg min-w-[140px]"
         >
-          <Sparkles :size="14" />
+          <Loader2 v-if="loading" :size="16" class="animate-spin" />
+          <Sparkles v-else :size="16" />
           {{ loading ? t('writer.generating') : t('writer.convert') }}
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
           <label class="field-label">{{ t('writer.narrative_voice') }}</label>
-          <div class="space-y-1">
+          <div class="flex flex-col gap-2">
             <button
               v-for="voice in narrativeVoices"
               :key="voice.value"
               @click="setVoice(voice.value as typeof narrativeVoice)"
-              class="w-full text-left px-3 py-2 rounded-folio text-sm transition-colors border"
-              :class="narrativeVoice === voice.value
-                ? 'bg-chop-soft border-chop text-chop'
-                : 'bg-ink-elevated border-ink-edge text-parchment-dim hover:border-chop/50'"
+              class="chip w-full justify-start text-left py-2.5 px-3"
+              :class="narrativeVoice === voice.value ? 'chip-active' : ''"
             >
-              <div class="font-medium">{{ voice.label }}</div>
-              <div class="text-xs text-muted mt-0.5">{{ voice.desc }}</div>
+              <div class="flex flex-col items-start gap-0.5">
+                <span class="font-medium text-sm">{{ voice.label }}</span>
+                <span class="text-xs opacity-70">{{ voice.desc }}</span>
+              </div>
             </button>
           </div>
         </div>
@@ -250,8 +251,8 @@ function goToQuality(): void {
             </option>
           </select>
 
-          <div class="mt-3">
-            <label class="flex items-center gap-2 cursor-pointer">
+          <div class="mt-4">
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded-folio hover:bg-ink-wash-light transition-colors">
               <input
                 type="checkbox"
                 :checked="enhanceEnabled"
@@ -262,7 +263,7 @@ function goToQuality(): void {
                 {{ t('writer.enhance') }}
               </span>
             </label>
-            <p class="text-xs text-muted mt-1">
+            <p class="text-xs text-muted mt-1 px-2">
               {{ t('writer.enhance_desc') }}
             </p>
           </div>
@@ -273,14 +274,14 @@ function goToQuality(): void {
           <div class="flex gap-2">
             <button
               @click="setFormat('novel')"
-              class="chip flex-1 justify-center"
+              class="chip flex-1 justify-center py-2.5"
               :class="format === 'novel' ? 'chip-active' : ''"
             >
               {{ t('writer.novel') }}
             </button>
             <button
               @click="setFormat('screenplay')"
-              class="chip flex-1 justify-center"
+              class="chip flex-1 justify-center py-2.5"
               :class="format === 'screenplay' ? 'chip-active' : ''"
             >
               {{ t('writer.screenplay') }}
@@ -290,7 +291,7 @@ function goToQuality(): void {
       </div>
 
       <div v-if="allScenes.length > 0">
-        <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center justify-between mb-3">
           <label class="field-label !mb-0 flex items-center gap-2">
             {{ t('writer.scenes') }}
             <span class="badge badge-accent normal-case tracking-normal">
@@ -312,7 +313,7 @@ function goToQuality(): void {
             </button>
           </div>
         </div>
-        <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+        <div class="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1">
           <button
             v-for="scene in allScenes"
             :key="scene.id"
@@ -326,7 +327,7 @@ function goToQuality(): void {
       </div>
 
       <div v-if="characters.length > 0">
-        <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center justify-between mb-3">
           <label class="field-label !mb-0 flex items-center gap-2">
             {{ t('writer.characters') }}
             <span class="badge badge-accent normal-case tracking-normal">
@@ -334,7 +335,7 @@ function goToQuality(): void {
             </span>
           </label>
         </div>
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-2 p-1">
           <button
             v-for="char in characters"
             :key="char.id"
@@ -348,19 +349,22 @@ function goToQuality(): void {
       </div>
     </div>
 
-    <div v-if="titleCandidates.length > 0" class="card p-4">
-      <h3 class="text-sm font-semibold text-parchment mb-3">{{ t('writer.title_candidates') }}</h3>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+    <div v-if="titleCandidates.length > 0" class="card p-5 fade-in-up">
+      <h3 class="text-sm font-semibold text-parchment mb-4 font-display flex items-center gap-2">
+        <span class="w-1 h-4 bg-chop rounded-full" />
+        {{ t('writer.title_candidates') }}
+      </h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <button
           v-for="candidate in titleCandidates"
           :key="candidate.title"
           @click="handleSelectTitle(candidate.title)"
-          class="text-left bg-ink-elevated rounded-lg p-3 hover:border-chop border border-ink-edge transition-colors"
-          :class="output?.title === candidate.title ? 'border-chop' : ''"
+          class="chip w-full justify-start text-left py-3 px-4 flex-col items-start gap-1"
+          :class="output?.title === candidate.title ? 'chip-active' : ''"
         >
-          <p class="text-sm font-medium text-parchment">{{ candidate.title }}</p>
-          <p v-if="candidate.subtitle" class="text-xs text-muted mt-0.5">{{ candidate.subtitle }}</p>
-          <p v-if="candidate.description" class="text-xs text-muted mt-1 line-clamp-2">{{ candidate.description }}</p>
+          <p class="text-sm font-medium font-display">{{ candidate.title }}</p>
+          <p v-if="candidate.subtitle" class="text-xs opacity-70">{{ candidate.subtitle }}</p>
+          <p v-if="candidate.description" class="text-xs opacity-60 line-clamp-2 mt-0.5">{{ candidate.description }}</p>
         </button>
       </div>
     </div>
@@ -375,3 +379,9 @@ function goToQuality(): void {
     />
   </div>
 </template>
+
+<style scoped>
+.chip {
+  transition: all var(--duration-fast) var(--ease-editorial);
+}
+</style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Check, ChevronRight, ChevronLeft } from 'lucide-vue-next'
+import { Check, ChevronRight, ChevronLeft, MessageSquare } from 'lucide-vue-next'
 import { useI18n } from '../i18n'
 import { useInteractive } from '../composables/useInteractive'
 import { useWorldBuilder } from '../composables/useWorldBuilder'
@@ -117,12 +117,20 @@ async function handleWriteNarrative(): Promise<void> {
 </script>
 
 <template>
-  <div class="space-y-6 max-w-4xl mx-auto">
+  <div class="space-y-6 max-w-4xl mx-auto fade-in-up">
     <div class="page-header">
-      <div>
-        <h1>{{ t('interactive.title') }}</h1>
-        <p>{{ t('interactive.subtitle') }}</p>
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-seal flex items-center justify-center flex-shrink-0 seal-glow-gold" style="background: var(--gradient-gold-seal);">
+          <MessageSquare :size="22" class="text-white" />
+        </div>
+        <div>
+          <h1 class="font-display">{{ t('interactive.title') }}</h1>
+          <p class="text-sm text-muted italic mt-1">{{ t('interactive.subtitle') }}</p>
+        </div>
       </div>
+    </div>
+    <div class="rule-ornament text-xs">
+      <span class="font-display small-caps tracking-widest opacity-70">INTERACTIVE</span>
     </div>
 
     <StepProgress :steps="stepLabels" :current="interactive.currentStep.value" />
@@ -166,8 +174,7 @@ async function handleWriteNarrative(): Promise<void> {
             <button
               @click="handleFinalizeWorld"
               :disabled="worldBuilder.loading.value"
-              class="btn btn-lg"
-              :class="worldBuilder.loading.value ? 'bg-ink-elevated text-muted border-ink-edge' : 'bg-editor border-editor text-white hover:bg-editor hover:border-editor'"
+              class="btn btn-primary btn-lg"
             >
               {{ worldBuilder.loading.value ? t('world.finalizing') : t('world.finalize') }}
             </button>
@@ -360,7 +367,7 @@ async function handleWriteNarrative(): Promise<void> {
             <button @click="runCurrentScene" :disabled="sceneEngine.status.value.status === 'running'" class="btn btn-primary btn-sm">
               {{ sceneEngine.status.value.status === 'running' ? t('interactive.generating') : t('scene.run') }}
             </button>
-            <button v-if="sceneEngine.status.value.status === 'completed'" @click="nextScene" class="btn btn-sm bg-editor border-editor text-white hover:bg-editor hover:border-editor">
+            <button v-if="sceneEngine.status.value.status === 'completed'" @click="nextScene" class="btn btn-primary btn-sm">
               {{ t('interactive.next') }}
             </button>
             <button @click="skipScene" :disabled="currentSceneIdx >= allScenes.length - 1" class="btn btn-secondary btn-sm">
@@ -411,7 +418,7 @@ async function handleWriteNarrative(): Promise<void> {
             <pre class="whitespace-pre-wrap text-sm text-parchment font-sans">{{ interactive.writtenOutput.value }}</pre>
           </div>
           <div class="flex gap-2">
-            <button @click="interactive.exportNarrative(outputFormat)" class="btn btn-sm bg-editor border-editor text-white hover:bg-editor hover:border-editor">
+            <button @click="interactive.exportNarrative(outputFormat)" class="btn btn-secondary btn-sm">
               {{ t('writer.export') }}
             </button>
           </div>

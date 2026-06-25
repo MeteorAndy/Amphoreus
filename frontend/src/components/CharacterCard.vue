@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Pencil, Trash2 } from 'lucide-vue-next'
 import type { CharacterProfile, Relationship } from '../types/api'
 
 const props = defineProps<{
@@ -42,45 +43,46 @@ function getRelationshipType(rel: Relationship): string {
 
 <template>
   <div
-    class="bg-ink-panel border rounded-lg p-4 cursor-pointer transition-all hover:border-chop hover:shadow-lg hover:shadow-chop/10"
-    :class="selected ? 'border-chop ring-1 ring-chop' : 'border-ink-edge'"
+    class="card p-4 cursor-pointer fade-in-up"
+    :class="selected ? 'border-chop seal-glow' : ''"
     @click="emit('select', character)"
   >
     <div class="flex items-start gap-3">
       <div
-        class="w-10 h-10 rounded-full bg-chop flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+        class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0"
+        :class="selected ? 'bg-gradient-chop text-white shadow-md' : 'bg-chop-soft text-chop-light border border-chop-border'"
       >
         {{ getInitials(character.name) }}
       </div>
       <div class="flex-1 min-w-0">
-        <h3 class="text-sm font-semibold text-parchment truncate">{{ character.name }}</h3>
-        <p class="text-xs text-parchment-dim truncate">{{ character.role }}</p>
+        <h3 class="text-base font-display font-semibold text-parchment truncate">{{ character.name }}</h3>
+        <p class="text-xs text-parchment-dim truncate font-body">{{ character.role }}</p>
       </div>
     </div>
 
-    <div v-if="character.personality?.core_traits?.length" class="mt-3 flex flex-wrap gap-1">
+    <div v-if="character.personality?.core_traits?.length" class="mt-3 flex flex-wrap gap-1.5">
       <span
         v-for="trait in character.personality.core_traits.slice(0, 4)"
         :key="trait"
-        class="px-2 py-0.5 bg-ink-elevated text-parchment-dim text-xs rounded-full"
+        class="badge badge-muted"
       >
         {{ trait }}
       </span>
       <span
         v-if="character.personality.core_traits.length > 4"
-        class="px-2 py-0.5 bg-ink-elevated text-muted text-xs rounded-full"
+        class="badge badge-muted text-muted"
       >
         +{{ character.personality.core_traits.length - 4 }}
       </span>
     </div>
 
-    <div v-if="relationships && relationships.length > 0" class="mt-3 space-y-1.5 border-t border-ink-edge pt-3">
-      <div class="text-xs text-muted mb-1">Relationships ({{ relationships.length }})</div>
+    <div v-if="relationships && relationships.length > 0" class="mt-3 space-y-2 border-t border-ink-edge pt-3">
+      <div class="text-xs text-muted font-display tracking-wide">Relationships ({{ relationships.length }})</div>
       <div class="flex flex-wrap gap-1">
         <span
           v-for="(rel, idx) in relationships.slice(0, 3)"
           :key="idx"
-          class="text-xs bg-purple-900/20 text-purple-300 px-2 py-0.5 rounded"
+          class="text-xs bg-ink-wash-light text-parchment-dim px-2 py-0.5 rounded border border-ink-edge"
           :title="rel.description"
         >
           {{ getRelationshipType(rel) }} → {{ getCharacterName(getOtherCharacterId(rel)) }}
@@ -95,20 +97,24 @@ function getRelationshipType(rel: Relationship): string {
     </div>
 
     <div v-if="selected" class="mt-3 space-y-2 text-xs text-parchment-dim border-t border-ink-edge pt-3">
-      <div v-if="character.core_desire">
-        <span class="text-muted">Desire: </span>{{ character.core_desire }}
+      <div v-if="character.core_desire" class="flex gap-1.5">
+        <span class="text-muted font-medium shrink-0">Desire:</span>
+        <span>{{ character.core_desire }}</span>
       </div>
-      <div v-if="character.deep_fear">
-        <span class="text-muted">Fear: </span>{{ character.deep_fear }}
+      <div v-if="character.deep_fear" class="flex gap-1.5">
+        <span class="text-muted font-medium shrink-0">Fear:</span>
+        <span>{{ character.deep_fear }}</span>
       </div>
-      <div v-if="character.voice_sample" class="italic text-muted">
+      <div v-if="character.voice_sample" class="italic text-muted text-xs leading-relaxed">
         "{{ character.voice_sample.slice(0, 100) }}{{ character.voice_sample.length > 100 ? '...' : '' }}"
       </div>
-      <div v-if="character.personality?.mbti">
-        <span class="text-muted">MBTI: </span>{{ character.personality.mbti }}
+      <div v-if="character.personality?.mbti" class="flex gap-1.5">
+        <span class="text-muted font-medium shrink-0">MBTI:</span>
+        <span>{{ character.personality.mbti }}</span>
       </div>
-      <div v-if="character.arc_stage">
-        <span class="text-muted">Arc: </span>{{ character.arc_stage }}
+      <div v-if="character.arc_stage" class="flex gap-1.5">
+        <span class="text-muted font-medium shrink-0">Arc:</span>
+        <span>{{ character.arc_stage }}</span>
       </div>
     </div>
 
@@ -116,19 +122,32 @@ function getRelationshipType(rel: Relationship): string {
       "{{ character.voice_sample.slice(0, 60) }}{{ character.voice_sample.length > 60 ? '...' : '' }}"
     </div>
 
-    <div class="mt-2 flex gap-2">
+    <div class="mt-3 flex gap-2 pt-2 border-t border-ink-edge/50">
       <button
         @click.stop="emit('edit', character)"
-        class="text-xs text-chop hover:text-chop transition-colors"
+        class="btn btn-ghost btn-xs flex-1 text-chop"
       >
+        <Pencil :size="12" />
         Edit
       </button>
       <button
         @click.stop="emit('delete', character.id)"
-        class="text-xs text-red-400 hover:text-red-300 transition-colors"
+        class="btn btn-ghost btn-xs flex-1 text-danger hover:text-danger"
       >
+        <Trash2 :size="12" />
         Delete
       </button>
     </div>
   </div>
 </template>
+
+<style scoped>
+.bg-gradient-chop {
+  background: var(--gradient-chop-seal);
+}
+.btn-xs {
+  padding: 0.25rem 0.5rem;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-scroll);
+}
+</style>
