@@ -106,6 +106,30 @@ class RelationshipBuilder:
 
         return relationships
 
+    async def list_all_relationships(self) -> list[Relationship]:
+        """Return all RELATES_TO edges stored in Kuzu."""
+        self._kuzu.ensure_schema()
+        rows = self._kuzu.query_cypher(
+            "MATCH (a:Character)-[r:RELATES_TO]->(b:Character) "
+            "RETURN a.name AS from_id, b.name AS to_id, r.properties AS props"
+        )
+        relationships: list[Relationship] = []
+        for row in rows:
+            props_raw: str = row.get("props", "{}")
+            try:
+                props: dict[str, Any] = json.loads(props_raw)
+            except (json.JSONDecodeError, TypeError):
+                props = {}
+            relationships.append(Relationship(
+                from_id=row.get("from_id", ""),
+                to_id=row.get("to_id", ""),
+                rel_type=props.get("rel_type", "UNKNOWN"),
+                strength=float(props.get("strength", 0.5)),
+                description=props.get("description", ""),
+                established_event=props.get("established_event", ""),
+            ))
+        return relationships
+
     async def update_relationship(
         self, from_id: str, to_id: str, changes: dict[str, Any]
     ) -> None:
@@ -130,6 +154,39 @@ class RelationshipBuilder:
         # Delete and recreate the edge with merged properties
         self._kuzu.delete_edge(from_id, to_id, _RELATES_TO)
         self._kuzu.create_edge(from_id, to_id, _RELATES_TO, current_props)
+
+    async def find_paths(
+        self, from_id: str, to_id: str, max_hops: int = 5
+    ) -> list[dict[str, Any]]:
+        """Find paths between two characters, returning node sequences and edge types."""
+        raw_paths = self._kuzu.query_paths(from_id, to_id, max_hops=max_hops)
+        results: list[dict[str, Any]] = []
+
+        for p in raw_paths:
+            node_ids: list[str] = []
+            rel_types: list[str] = []
+
+            for n in p.nodes:
+                nid = n.get("name", "")
+                if nid:
+                    node_ids.append(nid)
+
+            for e in p.edges:
+                props_raw: str = e.get("properties", "{}")
+                try:
+                    eprops: dict[str, Any] = json.loads(props_raw)
+                except (json.JSONDecodeError, TypeError):
+                    eprops = {}
+                rel_types.append(eprops.get("rel_type", e.get("rel_type", "UNKNOWN")))
+
+            if node_ids:
+                results.append({
+                    "path": node_ids,
+                    "relationship_types": rel_types,
+                    "length": len(rel_types),
+                })
+
+        return results
 
     async def get_relationship_path(
         self, from_id: str, to_id: str

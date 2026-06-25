@@ -58,24 +58,29 @@ class LLMClient:
         settings = get_settings()
         self._timeout = settings.deepseek_timeout
         self._max_retries = max(1, settings.deepseek_max_retries)
-        # Explicit per-component timeout: a bare float would collapse ALL
-        # components (the SDK default is connect=5s, read/write/pool=600s) to the
-        # single value, blowing the connect timeout out to deepseek_timeout and
-        # making a black-holed host stall ~deepseek_timeout per attempt. Keep a
-        # short connect; deepseek_timeout governs the read/idle window.
         self._http_timeout = httpx.Timeout(
             self._timeout, connect=min(5.0, self._timeout)
         )
-        self._client = AsyncOpenAI(
-            api_key=settings.deepseek_api_key_effective,
-            base_url=settings.deepseek_base_url,
-            timeout=self._http_timeout,
-            # Disable the SDK's own retry layer: LLMClient owns retry policy, so
-            # leaving it on would double-retry and obey Cloudflare's Retry-After
-            # (e.g. 120s on a 524), stalling the call for minutes.
-            max_retries=0,
-        )
+        self._api_key = settings.deepseek_api_key_effective
+        self._base_url = settings.deepseek_base_url
         self._model = settings.deepseek_model
+        self._client: AsyncOpenAI | None = None
+
+    def _ensure_client(self) -> AsyncOpenAI:
+        if self._client is None:
+            if not self._api_key:
+                raise LLMError(
+                    LLMErrorCode.AUTH_ERROR,
+                    "DeepSeek API key is not configured. Please set DEEPSEEK_API_KEY "
+                    "or configure it in ~/.amphoreus/config.json.",
+                )
+            self._client = AsyncOpenAI(
+                api_key=self._api_key,
+                base_url=self._base_url,
+                timeout=self._http_timeout,
+                max_retries=0,
+            )
+        return self._client
 
     @staticmethod
     def _classify_error(exc: Exception) -> LLMErrorCode:
@@ -132,6 +137,7 @@ class LLMClient:
         response_format: Optional[dict[str, str]] = None,
     ) -> str:
         """Send a chat completion request and return the raw text content."""
+        client = self._ensure_client()
         kwargs: dict[str, Any] = {
             "model": self._model,
             "messages": messages,
@@ -143,7 +149,7 @@ class LLMClient:
 
         for attempt in range(self._max_retries):
             try:
-                response = await self._client.chat.completions.create(**kwargs)
+                response = await client.chat.completions.create(**kwargs)
                 return response.choices[0].message.content or ""
             except Exception as exc:
                 await self._handle_retry(exc, attempt)
@@ -254,6 +260,7 @@ class LLMClient:
         cannot safely restart (the caller already consumed a partial response),
         so a mid-stream failure surfaces as an LLMError to the caller.
         """
+        client = self._ensure_client()
         kwargs: dict[str, Any] = {
             "model": self._model,
             "messages": messages,
@@ -265,7 +272,7 @@ class LLMClient:
         stream = None
         for attempt in range(self._max_retries):
             try:
-                stream = await self._client.chat.completions.create(**kwargs)
+                stream = await client.chat.completions.create(**kwargs)
                 break
             except Exception as exc:
                 await self._handle_retry(exc, attempt)

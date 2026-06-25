@@ -55,6 +55,12 @@ class PathStepData(BaseModel):
     description: str
 
 
+class PathResultData(BaseModel):
+    path: list[str]
+    relationship_types: list[str]
+    length: int
+
+
 class NetworkData(BaseModel):
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
@@ -131,7 +137,7 @@ def _to_path_step_data(step: PathStep) -> PathStepData:
 
 
 # ---------------------------------------------------------------------------
-# Character CRUD endpoints
+# Character CRUD endpoints — static paths FIRST, dynamic /{char_id} LAST
 # ---------------------------------------------------------------------------
 
 
@@ -151,6 +157,77 @@ async def list_characters(
     char_mgr: CharacterManager = Depends(_get_character_manager),
 ) -> list[CharacterProfile]:
     return await char_mgr.list_characters()
+
+
+# ---------------------------------------------------------------------------
+# Relationship endpoints — all /relationships/* routes BEFORE /{char_id}
+# ---------------------------------------------------------------------------
+
+
+@router.get("/relationships", response_model=list[RelationshipData])
+async def list_relationships(
+    rel_builder: RelationshipBuilder = Depends(_get_relationship_builder),
+) -> list[RelationshipData]:
+    """List all stored character relationships."""
+    rels = await rel_builder.list_all_relationships()
+    return [_to_relationship_data(r) for r in rels]
+
+
+@router.post("/relationships/build", response_model=list[RelationshipData])
+async def build_relationships(
+    req: BuildRelationshipsRequest,
+    rel_builder: RelationshipBuilder = Depends(_get_relationship_builder),
+    char_mgr: CharacterManager = Depends(_get_character_manager),
+    memory: MemoryManager = Depends(get_memory_manager),
+) -> list[RelationshipData]:
+    characters: list[CharacterProfile] = []
+    for cid in req.character_ids:
+        profile = await char_mgr.get_character(cid)
+        if profile is not None:
+            characters.append(profile)
+
+    if len(characters) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Need at least 2 valid character IDs to build relationships",
+        )
+
+    world = WorldState()
+    relationships = await rel_builder.build_relationships(characters, world)
+    return [_to_relationship_data(r) for r in relationships]
+
+
+@router.get("/relationships/path", response_model=list[PathResultData])
+async def relationship_path(
+    from_id: str,
+    to_id: str,
+    rel_builder: RelationshipBuilder = Depends(_get_relationship_builder),
+) -> list[PathResultData]:
+    """Find paths between two characters; each result is a node sequence with edge types."""
+    paths = await rel_builder.find_paths(from_id, to_id)
+    return [
+        PathResultData(
+            path=p["path"],
+            relationship_types=p["relationship_types"],
+            length=p["length"],
+        )
+        for p in paths
+    ]
+
+
+@router.get("/relationships/{char_id}", response_model=NetworkData)
+async def character_network(
+    char_id: str,
+    depth: int = 2,
+    rel_builder: RelationshipBuilder = Depends(_get_relationship_builder),
+) -> NetworkData:
+    network = await rel_builder.get_character_network(char_id, depth)
+    return NetworkData(nodes=network.nodes, edges=network.edges)
+
+
+# ---------------------------------------------------------------------------
+# Dynamic /{char_id} routes — MUST come after all static paths
+# ---------------------------------------------------------------------------
 
 
 @router.get("/{char_id}", response_model=CharacterProfile)
@@ -202,56 +279,3 @@ async def refine_character(
         return await char_mgr.refine_character(char_id, req.feedback)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-# ---------------------------------------------------------------------------
-# Relationship endpoints
-# ---------------------------------------------------------------------------
-
-
-@router.post("/relationships/build", response_model=list[RelationshipData])
-async def build_relationships(
-    req: BuildRelationshipsRequest,
-    rel_builder: RelationshipBuilder = Depends(_get_relationship_builder),
-    char_mgr: CharacterManager = Depends(_get_character_manager),
-    memory: MemoryManager = Depends(get_memory_manager),
-) -> list[RelationshipData]:
-    # Load characters
-    characters: list[CharacterProfile] = []
-    for cid in req.character_ids:
-        profile = await char_mgr.get_character(cid)
-        if profile is not None:
-            characters.append(profile)
-
-    if len(characters) < 2:
-        raise HTTPException(
-            status_code=400,
-            detail="Need at least 2 valid character IDs to build relationships",
-        )
-
-    # Load world from the first character's storage context
-    # (use an empty world as fallback; the caller can refine later)
-    world = WorldState()
-
-    relationships = await rel_builder.build_relationships(characters, world)
-    return [_to_relationship_data(r) for r in relationships]
-
-
-@router.get("/relationships/{char_id}", response_model=NetworkData)
-async def character_network(
-    char_id: str,
-    depth: int = 2,
-    rel_builder: RelationshipBuilder = Depends(_get_relationship_builder),
-) -> NetworkData:
-    network = await rel_builder.get_character_network(char_id, depth)
-    return NetworkData(nodes=network.nodes, edges=network.edges)
-
-
-@router.get("/relationships/path", response_model=list[PathStepData])
-async def relationship_path(
-    from_id: str,
-    to_id: str,
-    rel_builder: RelationshipBuilder = Depends(_get_relationship_builder),
-) -> list[PathStepData]:
-    steps = await rel_builder.get_relationship_path(from_id, to_id)
-    return [_to_path_step_data(s) for s in steps]
