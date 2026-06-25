@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { Play, RotateCcw, Users } from 'lucide-vue-next'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { Play, RotateCcw, Users, ChevronRight } from 'lucide-vue-next'
 import SceneFeed from '../components/SceneFeed.vue'
 import DirectorPanel from '../components/DirectorPanel.vue'
 import EnvironmentPanel from '../components/EnvironmentPanel.vue'
@@ -13,6 +14,7 @@ import type { SceneRunRequest } from '../types/api'
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
+const router = useRouter()
 
 const {
   status,
@@ -35,19 +37,18 @@ const selectedSceneId = ref('')
 const maxRounds = ref(10)
 const selectedCharacterIds = ref<string[]>([])
 
-onMounted(() => {
+onMounted(async () => {
   initPlot()
-  fetchTemplates()
+  await fetchTemplates()
   if (projectStore.currentCharacters.value.length > 0) {
     characters.value = [...projectStore.currentCharacters.value]
   } else {
-    fetchCharacters()
+    await fetchCharacters()
   }
-  if (projectStore.currentPlotId.value) {
-    selectedPlotId.value = projectStore.currentPlotId.value
-    if (projectStore.currentPlotOutline.value) {
-      selectOutline(selectedPlotId.value)
-    }
+  const plotId = projectStore.currentPlotId.value || localStorage.getItem('amphoreus-outline-id')
+  if (plotId) {
+    selectedPlotId.value = plotId
+    await selectOutline(plotId)
   }
   selectedCharacterIds.value = characters.value.map((c) => c.id)
 })
@@ -93,6 +94,15 @@ function canStart(): boolean {
 function handleReset(): void {
   reset()
 }
+
+const isCompleted = computed(() => status.value.status === 'completed')
+
+function goToWriter(): void {
+  if (selectedPlotId.value) {
+    localStorage.setItem('amphoreus-outline-id', selectedPlotId.value)
+  }
+  router.push('/writer')
+}
 </script>
 
 <template>
@@ -101,6 +111,10 @@ function handleReset(): void {
       <div>
         <h1>{{ t('scene.title') }}</h1>
       </div>
+      <button v-if="isCompleted" @click="goToWriter" class="btn btn-primary">
+        <ChevronRight :size="14" />
+        {{ t('plot.proceed_writer') || '前往叙事写作' }}
+      </button>
     </div>
 
     <div v-if="error" class="error-banner">

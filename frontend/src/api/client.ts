@@ -343,10 +343,11 @@ export async function getTitleCandidates(plotId: string): Promise<string[]> {
   return resp.titles.map((t) => t.title)
 }
 
-export async function exportOutput(content: string, format: string): Promise<Blob> {
+export async function exportOutput(content: string, writingFormat: string, exportFormat?: string): Promise<Blob> {
+  const ef = exportFormat || (writingFormat === 'screenplay' ? 'fountain' : 'md')
   return requestBlob(`${API_BASE}/api/writer/export`, {
     method: 'POST',
-    body: JSON.stringify({ content, format, export_format: format }),
+    body: JSON.stringify({ content, format: writingFormat, export_format: ef }),
   })
 }
 

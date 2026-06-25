@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
-import { Sparkles } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { Sparkles, ChevronRight } from 'lucide-vue-next'
 import WritingPreview from '../components/WritingPreview.vue'
 import { useNarrativeWriter } from '../composables/useNarrativeWriter'
 import { usePlotArchitect } from '../composables/usePlotArchitect'
@@ -11,6 +12,7 @@ import type { NarrativeFormat, SceneSpec, CharacterProfile } from '../types/api'
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
+const router = useRouter()
 
 const {
   output,
@@ -58,21 +60,21 @@ const selectedCharacterObjects = computed<CharacterProfile[]>(() => {
   return characters.value.filter((c) => selectedCharacterIds.value.has(c.id))
 })
 
-onMounted(() => {
+onMounted(async () => {
   initPlot()
-  fetchTemplates()
+  await fetchTemplates()
   if (projectStore.currentCharacters.value.length > 0) {
     characters.value = [...projectStore.currentCharacters.value]
     characters.value.forEach((c) => selectedCharacterIds.value.add(c.id))
   } else {
-    fetchCharacters()
+    await fetchCharacters()
   }
-  if (projectStore.currentPlotId.value) {
-    selectedPlotId.value = projectStore.currentPlotId.value
-    if (projectStore.currentPlotOutline.value) {
-      selectOutline(selectedPlotId.value)
-    }
+  const plotId = projectStore.currentPlotId.value || localStorage.getItem('amphoreus-outline-id')
+  if (plotId) {
+    selectedPlotId.value = plotId
+    await selectOutline(plotId)
   }
+  characters.value.forEach((c) => selectedCharacterIds.value.add(c.id))
 })
 
 watch(selectedPlotId, async (newId) => {
@@ -152,6 +154,12 @@ function handleSelectTitle(title: string): void {
     chapterTitle.value = title
   }
 }
+
+const hasOutput = computed(() => !!output.value && !!output.value.content)
+
+function goToQuality(): void {
+  router.push('/quality')
+}
 </script>
 
 <template>
@@ -160,6 +168,10 @@ function handleSelectTitle(title: string): void {
       <div>
         <h1>{{ t('writer.title') }}</h1>
       </div>
+      <button v-if="hasOutput" @click="goToQuality" class="btn btn-primary">
+        <ChevronRight :size="14" />
+        {{ t('plot.proceed_quality') || '前往质量审稿' }}
+      </button>
     </div>
 
     <div v-if="error" class="error-banner">

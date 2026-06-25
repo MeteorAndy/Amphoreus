@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Check, Globe, Sparkles, UploadCloud,
@@ -27,7 +27,12 @@ const {
   continueBuilding,
   finalizeWorld,
   resetWorld,
+  initFromProject,
 } = useWorldBuilder()
+
+onMounted(() => {
+  initFromProject()
+})
 
 const seedIdea = ref('')
 const activeEntryTab = ref<'idea' | 'upload'>('idea')
@@ -88,13 +93,20 @@ async function processFile(file: File): Promise<void> {
   uploadLoading.value = true
   uploadError.value = null
   try {
-    const state = await apiUploadDocument(file)
-    if (state.name) extractedData.value.name = state.name
-    if (state.description) extractedData.value.description = state.description
-    if (state.rules?.length) extractedData.value.rules = state.rules
-    if (state.locations?.length) extractedData.value.locations = state.locations
-    if (state.factions?.length) extractedData.value.factions = state.factions
-    if (state.timeline?.length) extractedData.value.timeline = state.timeline
+    const res = await apiUploadDocument(file)
+    const ew = res.extracted_world || (res as unknown as { rules?: unknown; locations?: unknown; factions?: unknown; timeline?: unknown })
+    if (Array.isArray(ew.rules) && ew.rules.length) {
+      extractedData.value.rules = ew.rules.filter((r): r is string => typeof r === 'string')
+    }
+    if (Array.isArray(ew.locations) && ew.locations.length) {
+      extractedData.value.locations = ew.locations as typeof extractedData.value.locations
+    }
+    if (Array.isArray(ew.factions) && ew.factions.length) {
+      extractedData.value.factions = ew.factions as typeof extractedData.value.factions
+    }
+    if (Array.isArray(ew.timeline) && ew.timeline.length) {
+      extractedData.value.timeline = ew.timeline as typeof extractedData.value.timeline
+    }
     stage.value = 'done'
     messages.value.push({
       role: 'assistant',

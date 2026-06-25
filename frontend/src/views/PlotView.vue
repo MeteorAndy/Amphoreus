@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Plus, Wand2, Trash2, X, CheckCircle, AlertCircle } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { Plus, Wand2, Trash2, X, CheckCircle, AlertCircle, ChevronRight } from 'lucide-vue-next'
 import PlotTimeline from '../components/PlotTimeline.vue'
 import { usePlotArchitect } from '../composables/usePlotArchitect'
 import { useCharacters } from '../composables/useCharacters'
+import { useProjectStore } from '../composables/useProjectStore'
 import { useI18n } from '../i18n'
 import { useToast } from '../composables/useToast'
 import type { CreateSceneRequest, SceneSpec } from '../types/api'
 
 const { t } = useI18n()
 const toast = useToast()
+const router = useRouter()
+const projectStore = useProjectStore()
 
 const {
   outlines,
@@ -66,7 +70,13 @@ onMounted(() => {
 })
 
 function getWorldId(): string | null {
-  return localStorage.getItem('amphoreus-world-id')
+  return projectStore.currentWorldId.value || localStorage.getItem('amphoreus-world-id')
+}
+
+function goToScene(): void {
+  if (!selectedOutline.value) return
+  localStorage.setItem('amphoreus-outline-id', selectedOutline.value.id)
+  router.push('/scene')
 }
 
 function getCharacterIds(): string[] {
@@ -267,6 +277,10 @@ async function handleReorder(actId: string, sceneIds: string[]): Promise<void> {
           <button @click="openRefine" class="btn btn-secondary w-full">
             <Wand2 :size="13" />
             {{ t('plot.refine_outline') }}
+          </button>
+          <button @click="goToScene" class="btn btn-primary w-full">
+            <ChevronRight :size="13" />
+            {{ t('plot.to_scene') || '前往场景编排' }}
           </button>
           <button @click="deleteOutline(selectedOutline.id)" class="btn btn-danger w-full">
             <Trash2 :size="13" />

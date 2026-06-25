@@ -258,6 +258,9 @@ const translations: Record<string, Record<Lang, string>> = {
   'plot.issues': { zh: '问题：{issues}', en: 'Issues: {issues}' },
   'plot.no_world': { zh: '未找到世界，请先构建世界。', en: 'No world found. Please build a world first.' },
   'plot.no_chars': { zh: '未找到角色，请先生成角色。', en: 'No characters found. Please generate characters first.' },
+  'plot.to_scene': { zh: '前往场景编排', en: 'Go to Scene' },
+  'plot.proceed_writer': { zh: '前往叙事写作', en: 'Proceed to Writer' },
+  'plot.proceed_quality': { zh: '前往质量审稿', en: 'Proceed to Quality' },
   // Scene view
   'scene.select_chars': { zh: '选择参与角色', en: 'Participating Characters' },
   'scene.chars_selected': { zh: '已选 {s}/{t}', en: '{s}/{t} selected' },

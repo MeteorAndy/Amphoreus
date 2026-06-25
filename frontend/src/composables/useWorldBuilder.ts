@@ -56,7 +56,10 @@ export function useWorldBuilder() {
   }
 
   async function finalizeWorld(): Promise<void> {
-    if (!sessionId.value) return
+    if (!sessionId.value) {
+      await finalizeFromUpload()
+      return
+    }
     loading.value = true
     error.value = null
     try {
@@ -64,11 +67,30 @@ export function useWorldBuilder() {
       worldState.value = state
       finalized.value = true
       await projectStore.setWorldState(state, sessionId.value)
+      localStorage.setItem('amphoreus-world-id', sessionId.value)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to finalize world'
     } finally {
       loading.value = false
     }
+  }
+
+  async function finalizeFromUpload(): Promise<void> {
+    const d = extractedData.value
+    const state: WorldState = {
+      name: d.name || '',
+      description: d.description || '',
+      rules: Array.isArray(d.rules) ? d.rules.filter((r): r is string => typeof r === 'string') : [],
+      locations: Array.isArray(d.locations) ? d.locations : [],
+      factions: Array.isArray(d.factions) ? d.factions : [],
+      timeline: Array.isArray(d.timeline) ? d.timeline : [],
+      completeness: 1.0,
+    }
+    const uploadId = `upload-${Date.now()}`
+    worldState.value = state
+    finalized.value = true
+    await projectStore.setWorldState(state, uploadId)
+    localStorage.setItem('amphoreus-world-id', uploadId)
   }
 
   function mergeExtractedDataFromResponse(res: {

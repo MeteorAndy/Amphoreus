@@ -313,7 +313,7 @@ function goToPlot(): void {
             :key="char.id"
             :character="char"
             :selected="selectedCharacter?.id === char.id"
-            :relationships="allRelationships.filter(r => r.source_id === char.id || r.target_id === char.id)"
+            :relationships="allRelationships.filter(r => r.from_id === char.id || r.to_id === char.id || r.source_id === char.id || r.target_id === char.id)"
             :all-characters="characters"
             @select="handleSelect"
             @edit="openEdit"

@@ -2,7 +2,7 @@
 import { type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  FolderOpen, Zap, Sparkles, FlaskConical, Globe,
+  FolderOpen, Zap, Sparkles, Globe,
   Users, ListTree, Drama, PenTool, ShieldCheck, Sun, Moon,
   BookOpen,
 } from 'lucide-vue-next'
@@ -44,12 +44,6 @@ const navGroups: NavGroup[] = [
       { labelKey: 'nav.scene', path: '/scene', icon: Drama },
       { labelKey: 'nav.writer', path: '/writer', icon: PenTool },
       { labelKey: 'nav.quality', path: '/quality', icon: ShieldCheck },
-    ],
-  },
-  {
-    labelKey: 'nav.group_lab',
-    items: [
-      { labelKey: 'nav.sandbox', path: '/sandbox', icon: FlaskConical },
     ],
   },
 ]
