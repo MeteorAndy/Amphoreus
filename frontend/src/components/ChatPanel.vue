@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, nextTick, watch } from 'vue'
+import { Send } from 'lucide-vue-next'
+import { useI18n } from '../i18n'
 import type { ChatMessage } from '../types/api'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   messages: ChatMessage[]
@@ -34,10 +38,10 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ink-panel rounded-lg border border-ink-edge">
+  <div class="flex flex-col h-full card">
     <div
       ref="messagesContainer"
-      class="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
+      class="flex-1 overflow-y-auto p-4 space-y-3 scroll-smooth"
     >
       <div
         v-for="(msg, idx) in messages"
@@ -46,12 +50,12 @@ watch(
         :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
       >
         <div
-          class="max-w-[80%] rounded-lg px-4 py-2 text-sm leading-relaxed whitespace-pre-wrap"
+          class="max-w-[80%] rounded-lg px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap"
           :class="
             msg.role === 'user'
               ? 'bg-chop text-white'
               : msg.role === 'system'
-                ? 'bg-ink-elevated text-parchment-dim italic'
+                ? 'bg-ink-elevated text-muted italic'
                 : 'bg-ink-elevated text-parchment'
           "
         >
@@ -59,30 +63,31 @@ watch(
         </div>
       </div>
       <div v-if="loading" class="flex justify-start">
-        <div class="bg-ink-elevated rounded-lg px-4 py-2 text-sm text-parchment-dim">
+        <div class="bg-ink-elevated rounded-lg px-3.5 py-2 text-sm text-muted">
           <span class="inline-flex gap-1">
-            <span class="w-2 h-2 bg-muted rounded-full animate-bounce" style="animation-delay: 0s" />
-            <span class="w-2 h-2 bg-muted rounded-full animate-bounce" style="animation-delay: 0.15s" />
-            <span class="w-2 h-2 bg-muted rounded-full animate-bounce" style="animation-delay: 0.3s" />
+            <span class="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" style="animation-delay: 0s" />
+            <span class="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" style="animation-delay: 0.15s" />
+            <span class="w-1.5 h-1.5 bg-muted rounded-full animate-bounce" style="animation-delay: 0.3s" />
           </span>
         </div>
       </div>
     </div>
-    <div class="border-t border-ink-edge p-4">
+    <div class="border-t border-ink-edge p-3">
       <form @submit.prevent="handleSend" class="flex gap-2">
         <input
           v-model="input"
           type="text"
-          :placeholder="placeholder || 'Type a message...'"
-          class="flex-1 bg-ink-elevated border border-ink-edge rounded-lg px-4 py-2 text-sm text-parchment placeholder-muted focus:outline-none focus:border-chop transition-colors"
+          :placeholder="placeholder || t('chat.placeholder')"
+          class="input flex-1 py-2"
           :disabled="loading"
         />
         <button
           type="submit"
           :disabled="loading || !input.trim()"
-          class="px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          class="btn btn-primary"
         >
-          Send
+          <Send :size="14" />
+          {{ t('chat.send') }}
         </button>
       </form>
     </div>

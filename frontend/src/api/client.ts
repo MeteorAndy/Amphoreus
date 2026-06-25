@@ -188,19 +188,7 @@ function normalizeRelationship(r: Relationship): Relationship {
 }
 
 export async function getRelationshipPath(fromId: string, toId: string): Promise<PathStep[]> {
-  const raw = await request<{
-    path: Array<string | { character_id: string; name?: string }>
-    [key: string]: unknown
-  }[]>(`${API_BASE}/api/characters/relationships/path?from_id=${encodeURIComponent(fromId)}&to_id=${encodeURIComponent(toId)}`)
-  return raw.map((step) => ({
-    ...step,
-    path: step.path.map((node) => {
-      if (typeof node === 'string') {
-        return node
-      }
-      return node.character_id
-    }),
-  })) as PathStep[]
+  return request<PathStep[]>(`${API_BASE}/api/characters/relationships/path?from_id=${encodeURIComponent(fromId)}&to_id=${encodeURIComponent(toId)}`)
 }
 
 export const createOutline = generatePlot
@@ -355,10 +343,11 @@ export async function getTitleCandidates(plotId: string): Promise<string[]> {
   return resp.titles.map((t) => t.title)
 }
 
-export async function exportOutput(content: string, format: string): Promise<Blob> {
+export async function exportOutput(content: string, writingFormat: string, exportFormat?: string): Promise<Blob> {
+  const ef = exportFormat || (writingFormat === 'screenplay' ? 'fountain' : 'md')
   return requestBlob(`${API_BASE}/api/writer/export`, {
     method: 'POST',
-    body: JSON.stringify({ content, format, export_format: format }),
+    body: JSON.stringify({ content, format: writingFormat, export_format: ef }),
   })
 }
 

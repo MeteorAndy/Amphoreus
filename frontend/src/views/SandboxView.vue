@@ -5,6 +5,7 @@ import { useSandbox } from '../composables/useSandbox'
 import { useCharacters } from '../composables/useCharacters'
 import { useToast } from '../composables/useToast'
 import SandboxFeedItem from '../components/SandboxFeedItem.vue'
+import { Play, Square, Send, Radio } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const sandbox = useSandbox()
@@ -63,53 +64,47 @@ async function handleStop(): Promise<void> {
 <template>
   <div class="max-w-5xl mx-auto p-6 space-y-6">
     <!-- Header -->
-    <div class="text-center">
-      <h1 class="text-3xl font-bold text-parchment dark:text-white">{{ t('sandbox.title') }}</h1>
-      <p class="mt-2 text-muted dark:text-parchment-dim">{{ t('sandbox.subtitle') }}</p>
+    <div class="text-center mb-8 pt-4">
+      <h1 class="text-2xl font-bold text-parchment mb-2">{{ t('sandbox.title') }}</h1>
+      <p class="text-sm text-muted">{{ t('sandbox.subtitle') }}</p>
     </div>
 
     <!-- SETUP STATE -->
     <div v-if="!sandbox.isRunning.value && sandbox.events.value.length === 0"
-      class="bg-white dark:bg-ink-elevated rounded-xl shadow-sm border border-ink-edge dark:border-ink-edge p-6 space-y-4">
+      class="card p-6 space-y-4">
       <div>
-        <label class="block text-sm font-medium text-parchment-dim dark:text-parchment-dim mb-2">
+        <label class="field-label">
           {{ t('sandbox.select_chars') }}
         </label>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-          <label
+        <div class="flex flex-wrap gap-2">
+          <button
             v-for="char in characters"
             :key="char.id"
-            class="flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors"
-            :class="selectedCharIds.includes(char.id)
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-              : 'border-ink-edge dark:border-ink-edge hover:border-ink-edge dark:hover:border-ink-edge text-parchment-dim dark:text-parchment-dim'"
+            type="button"
+            class="chip"
+            :class="selectedCharIds.includes(char.id) ? 'chip-active' : ''"
+            @click="toggleChar(char.id)"
           >
-            <input
-              type="checkbox"
-              :value="char.id"
-              :checked="selectedCharIds.includes(char.id)"
-              @change="toggleChar(char.id)"
-              class="rounded text-blue-600"
-            />
-            <span class="text-sm font-medium truncate">{{ char.name }}</span>
-          </label>
+            {{ char.name }}
+          </button>
         </div>
       </div>
       <div>
-        <label class="block text-sm font-medium text-parchment-dim dark:text-parchment-dim mb-1">
+        <label class="field-label">
           {{ t('sandbox.location') }}
         </label>
         <input
           v-model="location"
           type="text"
-          class="w-full rounded-lg border border-ink-edge dark:border-ink-edge bg-white dark:bg-ink-elevated px-4 py-2 text-parchment dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          class="input"
         />
       </div>
       <button
         @click="handleStart"
         :disabled="selectedCharIds.length === 0"
-        class="w-full py-3 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-muted text-white font-medium transition-colors"
+        class="btn btn-primary btn-lg w-full"
       >
+        <Play :size="16" />
         {{ t('sandbox.start') }}
       </button>
     </div>
@@ -118,13 +113,16 @@ async function handleStop(): Promise<void> {
     <div v-if="sandbox.isRunning.value || sandbox.events.value.length > 0"
       class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- LEFT: Live Feed -->
-      <div class="lg:col-span-2 bg-white dark:bg-ink-elevated rounded-xl shadow-sm border border-ink-edge dark:border-ink-edge p-6 flex flex-col">
-        <h2 class="text-sm font-semibold text-parchment-dim dark:text-parchment-dim mb-3">Live Feed</h2>
+      <div class="lg:col-span-2 card p-6 flex flex-col">
+        <h2 class="flex items-center gap-2 text-sm font-semibold text-parchment-dim mb-3">
+          <Radio :size="14" />
+          {{ t('sandbox.live_feed') }}
+        </h2>
         <div
           ref="feedContainer"
           class="flex-1 overflow-y-auto min-h-64 max-h-[60vh] space-y-0.5"
         >
-          <p v-if="sandbox.events.value.length === 0" class="text-sm text-parchment-dim dark:text-muted italic">
+          <p v-if="sandbox.events.value.length === 0" class="text-sm text-muted italic">
             {{ t('sandbox.feed_empty') }}
           </p>
           <SandboxFeedItem
@@ -136,44 +134,46 @@ async function handleStop(): Promise<void> {
       </div>
 
       <!-- RIGHT: Injection Panel -->
-      <div class="bg-white dark:bg-ink-elevated rounded-xl shadow-sm border border-ink-edge dark:border-ink-edge p-6 flex flex-col gap-4">
-        <h2 class="text-sm font-semibold text-parchment-dim dark:text-parchment-dim">{{ t('sandbox.inject') }}</h2>
+      <div class="card p-6 flex flex-col gap-4">
+        <h2 class="text-sm font-semibold text-parchment-dim">{{ t('sandbox.inject') }}</h2>
         <textarea
           v-model="customEvent"
           :placeholder="t('sandbox.inject_placeholder')"
           rows="3"
-          class="w-full rounded-lg border border-ink-edge dark:border-ink-edge bg-white dark:bg-ink-elevated px-3 py-2 text-sm text-parchment dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          class="input resize-none"
         />
         <button
           @click="handleInject(customEvent)"
           :disabled="!customEvent.trim()"
-          class="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-muted text-white font-medium px-4 py-2 text-sm transition-colors"
+          class="btn btn-primary"
         >
+          <Send :size="14" />
           {{ t('sandbox.inject') }}
         </button>
         <div class="grid grid-cols-2 gap-2">
           <button @click="handleInject(t('sandbox.quick_storm'))"
-            class="rounded-lg border border-ink-edge dark:border-ink-edge text-parchment-dim dark:text-parchment-dim hover:bg-ink-elevated dark:hover:bg-ink-elevated px-2 py-1.5 text-xs font-medium transition-colors">
+            class="btn btn-secondary text-xs">
             {{ t('sandbox.quick_storm') }}
           </button>
           <button @click="handleInject(t('sandbox.quick_npc'))"
-            class="rounded-lg border border-ink-edge dark:border-ink-edge text-parchment-dim dark:text-parchment-dim hover:bg-ink-elevated dark:hover:bg-ink-elevated px-2 py-1.5 text-xs font-medium transition-colors">
+            class="btn btn-secondary text-xs">
             {{ t('sandbox.quick_npc') }}
           </button>
           <button @click="handleInject(t('sandbox.quick_quake'))"
-            class="rounded-lg border border-ink-edge dark:border-ink-edge text-parchment-dim dark:text-parchment-dim hover:bg-ink-elevated dark:hover:bg-ink-elevated px-2 py-1.5 text-xs font-medium transition-colors">
+            class="btn btn-secondary text-xs">
             {{ t('sandbox.quick_quake') }}
           </button>
           <button @click="handleInject(t('sandbox.quick_news'))"
-            class="rounded-lg border border-ink-edge dark:border-ink-edge text-parchment-dim dark:text-parchment-dim hover:bg-ink-elevated dark:hover:bg-ink-elevated px-2 py-1.5 text-xs font-medium transition-colors">
+            class="btn btn-secondary text-xs">
             {{ t('sandbox.quick_news') }}
           </button>
         </div>
         <button
           v-if="sandbox.isRunning.value"
           @click="handleStop"
-          class="mt-auto rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 text-sm transition-colors"
+          class="mt-auto btn btn-danger"
         >
+          <Square :size="14" />
           {{ t('sandbox.stop') }}
         </button>
       </div>

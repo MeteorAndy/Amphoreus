@@ -1,6 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 import type { SceneRound, SceneStatus, SceneStreamMessage, SceneRunRequest, SceneArchive } from '../types/api'
-import { evaluateSceneIntervention, createSceneWebSocket } from '../api/client'
+import { createSceneWebSocket, interveneScene } from '../api/client'
 import { useProjectStore } from './useProjectStore'
 
 export function useSceneEngine() {
@@ -130,10 +130,9 @@ export function useSceneEngine() {
       return
     }
     try {
-      await evaluateSceneIntervention({
+      await interveneScene({
         scene_id: sceneId.value,
         intervention,
-        current_round: status.value.current_round,
       })
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to send intervention'

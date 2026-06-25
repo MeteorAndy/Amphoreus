@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { GitBranch, Users, UserPlus, Wand2, ChevronRight, X } from 'lucide-vue-next'
 import CharacterCard from '../components/CharacterCard.vue'
 import RelationshipGraph from '../components/RelationshipGraph.vue'
 import CharacterEditModal from '../components/CharacterEditModal.vue'
@@ -97,7 +98,7 @@ function getWorldId(): string | null {
 async function handleGenerate(): Promise<void> {
   const worldId = getWorldId()
   if (!worldId) {
-    error.value = 'No world found. Please build a world first.'
+    error.value = t('chars.no_world')
     return
   }
   generating.value = true
@@ -205,26 +206,27 @@ function goToPlot(): void {
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-parchment">{{ t('chars.title') }}</h1>
+    <div class="page-header">
+      <div>
+        <h1>{{ t('chars.title') }}</h1>
+      </div>
       <div class="flex gap-2">
-        <button
-          @click="openPathFinder"
-          class="px-4 py-2 bg-ink-elevated text-parchment rounded-lg text-sm font-medium hover:bg-ink-elevated border border-ink-edge transition-colors"
-        >
-          Find Path
+        <button @click="openPathFinder" class="btn btn-secondary">
+          <GitBranch :size="14" />
+          {{ t('chars.find_path') }}
         </button>
         <button
           @click="handleGenerate"
           :disabled="generating || loading"
-          class="px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 transition-colors"
+          class="btn btn-primary"
         >
+          <Wand2 :size="14" />
           {{ generating ? t('general.loading') : t('chars.generate') }}
         </button>
       </div>
     </div>
 
-    <div v-if="error" class="bg-red-900/20 border border-red-800 rounded-lg p-3 text-sm text-red-400">
+    <div v-if="error" class="error-banner">
       {{ error }}
     </div>
 
@@ -232,34 +234,29 @@ function goToPlot(): void {
       {{ t('chars.loading') }}
     </div>
 
-    <div v-if="characters.length > 0" class="bg-ink-panel rounded-lg border border-ink-edge p-4">
+    <div v-if="characters.length > 0" class="card p-4">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold text-parchment">Relationship Builder</h2>
-        <div class="flex gap-2">
-          <button
-            @click="selectAllForRelationship"
-            class="text-xs text-muted hover:text-parchment-dim transition-colors"
-          >
-            Select All
+        <h2 class="flex items-center gap-2 text-sm font-semibold text-parchment">
+          <Users :size="16" class="text-chop" />
+          {{ t('chars.rel_builder') }}
+        </h2>
+        <div class="flex gap-1">
+          <button @click="selectAllForRelationship" class="btn btn-ghost btn-sm">
+            {{ t('chars.select_all') }}
           </button>
-          <button
-            @click="clearRelationshipSelection"
-            class="text-xs text-muted hover:text-parchment-dim transition-colors"
-          >
-            Clear
+          <button @click="clearRelationshipSelection" class="btn btn-ghost btn-sm">
+            {{ t('chars.clear') }}
           </button>
         </div>
       </div>
-      <p class="text-xs text-muted mb-3">Select 2+ characters to generate relationships between them.</p>
+      <p class="text-xs text-muted mb-3">{{ t('chars.select_2plus') }}</p>
       <div class="flex flex-wrap gap-2 mb-3">
         <button
           v-for="char in characters"
           :key="char.id"
           @click="toggleForRelationship(char.id)"
-          class="px-3 py-1.5 rounded-lg text-sm transition-colors border"
-          :class="selectedForRelationship.has(char.id)
-            ? 'bg-chop/20 border-chop text-chop'
-            : 'bg-ink-elevated border-ink-edge text-parchment-dim hover:border-chop/50'"
+          class="chip"
+          :class="{ 'chip-active': selectedForRelationship.has(char.id) }"
         >
           {{ char.name }}
         </button>
@@ -267,26 +264,23 @@ function goToPlot(): void {
       <button
         @click="handleBuildRelationships"
         :disabled="!canBuildRelationships || buildingRelationships"
-        class="px-4 py-2 bg-purple-700 text-white rounded-lg text-sm font-medium hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        class="btn btn-primary"
       >
-        {{ buildingRelationships ? 'Building...' : `Build Relationships (${selectedForRelationship.size} selected)` }}
+        <UserPlus :size="14" />
+        {{ buildingRelationships ? t('chars.building') : t('chars.build_rels', { n: selectedForRelationship.size }) }}
       </button>
     </div>
 
-    <div v-if="selectedCharacter" class="bg-ink-panel rounded-lg border border-ink-edge p-4">
+    <div v-if="selectedCharacter" class="card p-4">
       <div class="flex items-center gap-3">
-        <h3 class="text-sm font-semibold text-parchment">Selected: {{ selectedCharacter.name }}</h3>
-        <button
-          @click="openRefine"
-          class="px-3 py-1.5 bg-chop/20 text-chop border border-oxblood rounded-lg text-xs font-medium hover:bg-chop/30 transition-colors"
-        >
-          Refine
+        <h3 class="text-sm font-semibold text-parchment">{{ t('chars.selected') }} {{ selectedCharacter.name }}</h3>
+        <button @click="openRefine" class="btn btn-secondary btn-sm">
+          <Wand2 :size="12" />
+          {{ t('chars.refine') }}
         </button>
-        <button
-          @click="() => { selectCharacter(null); }"
-          class="ml-auto text-xs text-muted hover:text-parchment-dim"
-        >
-          Deselect
+        <button @click="() => { selectCharacter(null); }" class="btn btn-ghost btn-sm ml-auto">
+          <X :size="12" />
+          {{ t('chars.deselect') }}
         </button>
       </div>
     </div>
@@ -294,22 +288,18 @@ function goToPlot(): void {
     <div>
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-lg font-semibold text-parchment">{{ t('chars.relationships') }}</h2>
-        <div class="flex rounded-lg overflow-hidden border border-ink-edge text-xs font-medium">
+        <div class="flex gap-1">
           <button
             @click="viewMode = 'list'"
-            :class="viewMode === 'list'
-              ? 'bg-chop text-white'
-              : 'bg-ink-elevated text-parchment-dim hover:text-parchment hover:bg-ink-elevated'"
-            class="px-3 py-1.5 transition-colors"
+            class="chip"
+            :class="{ 'chip-active': viewMode === 'list' }"
           >
             {{ t('chars.view_list') }}
           </button>
           <button
             @click="switchToGraph"
-            :class="viewMode === 'graph'
-              ? 'bg-chop text-white'
-              : 'bg-ink-elevated text-parchment-dim hover:text-parchment hover:bg-ink-elevated'"
-            class="px-3 py-1.5 transition-colors"
+            class="chip"
+            :class="{ 'chip-active': viewMode === 'graph' }"
           >
             {{ t('chars.view_graph') }}
           </button>
@@ -323,7 +313,7 @@ function goToPlot(): void {
             :key="char.id"
             :character="char"
             :selected="selectedCharacter?.id === char.id"
-            :relationships="allRelationships.filter(r => r.source_id === char.id || r.target_id === char.id)"
+            :relationships="allRelationships.filter(r => r.from_id === char.id || r.to_id === char.id || r.source_id === char.id || r.target_id === char.id)"
             :all-characters="characters"
             @select="handleSelect"
             @edit="openEdit"
@@ -350,11 +340,9 @@ function goToPlot(): void {
     </div>
 
     <div v-if="characters.length > 0" class="flex justify-center pt-4">
-      <button
-        @click="goToPlot"
-        class="px-6 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-500 transition-colors"
-      >
-        Proceed to Plot
+      <button @click="goToPlot" class="btn btn-primary bg-editor border-editor hover:bg-editor/90 hover:border-editor/90">
+        {{ t('chars.proceed_plot') }}
+        <ChevronRight :size="14" />
       </button>
     </div>
 

@@ -6,9 +6,11 @@ import {
   exportOutput as apiExport,
 } from '../api/client'
 import { useProjectStore } from './useProjectStore'
+import { useDiagnostics } from './useDiagnostics'
 
 export function useNarrativeWriter() {
   const projectStore = useProjectStore()
+  const { setReports } = useDiagnostics()
 
   const output = ref<WriterOutput | null>(null)
   const titleCandidates = ref<TitleCandidate[]>([])
@@ -51,6 +53,7 @@ export function useNarrativeWriter() {
       }
       output.value = writerOutput
       await projectStore.setWrittenOutput(writerOutput, writerOutput.id)
+      setReports(resp as unknown as Record<string, unknown>)
       return writerOutput
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to generate narrative'

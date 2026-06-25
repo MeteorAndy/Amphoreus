@@ -29,6 +29,7 @@ from app.services.narrative_writer import (
     WritingOptions,
     WrittenOutput,
 )
+from app.services.narrative.token_budget import TokenBudgetConfig
 from app.services.narrative.novel_writer import _load_scene_archive
 
 router = APIRouter(prefix="/api/writer", tags=["writer"])
@@ -53,6 +54,16 @@ class ConvertResponse(BaseModel):
     word_count: int
     scene_count: int
     export_formats: list[str]
+    cliche_report: dict | None = None
+    canon_report: dict | None = None
+    tension_report: dict | None = None
+    prop_lifecycle_report: dict | None = None
+    reader_sim_report: dict | None = None
+    budget_report: dict | None = None
+    relationship_trend_report: dict | None = None
+    entity_event_report: dict | None = None
+    graph_inference_report: dict | None = None
+    adaptive_pattern_report: dict | None = None
 
 
 class ExportRequest(BaseModel):
@@ -139,9 +150,25 @@ async def convert_scene_archives(
         narrative_voice=req.narrative_voice,
         enhance=req.enhance,
         chapter_title=req.chapter_title,
+        score_tension=True,
+        analyze_relationship_trends=True,
+        token_budget=TokenBudgetConfig(enabled=True),
+        learn_adaptive_patterns=True,
+        enable_graph_inference=True,
+        track_entity_events=True,
     )
 
     output = await writer.convert(scene_archives, characters, options)
+
+    def _report_dict(rep: object | None) -> dict | None:
+        if rep is None:
+            return None
+        to_dict = getattr(rep, "to_dict", None)
+        if callable(to_dict):
+            return to_dict()
+        if hasattr(rep, "__dict__"):
+            return {k: v for k, v in rep.__dict__.items() if not k.startswith("_")}
+        return None
 
     return ConvertResponse(
         content=output.content,
@@ -149,6 +176,16 @@ async def convert_scene_archives(
         word_count=output.word_count,
         scene_count=output.scene_count,
         export_formats=output.export_formats,
+        cliche_report=_report_dict(output.cliche_report),
+        canon_report=_report_dict(output.canon_report),
+        tension_report=_report_dict(output.tension_report),
+        prop_lifecycle_report=_report_dict(output.prop_lifecycle_report),
+        reader_sim_report=_report_dict(output.reader_sim_report),
+        budget_report=_report_dict(output.budget_report),
+        relationship_trend_report=_report_dict(output.relationship_trend_report),
+        entity_event_report=_report_dict(output.entity_event_report),
+        graph_inference_report=_report_dict(output.graph_inference_report),
+        adaptive_pattern_report=_report_dict(output.adaptive_pattern_report),
     )
 
 

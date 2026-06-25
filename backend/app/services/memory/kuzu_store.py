@@ -89,6 +89,7 @@ class KuzuStore:
 
     def create_node(self, label: str, properties: dict[str, Any]) -> str:
         """Create a node and return its name (the primary key)."""
+        self.ensure_schema()
         name = properties.get("name", "")
         if not name:
             msg = f"'name' is required in properties for label '{label}'"

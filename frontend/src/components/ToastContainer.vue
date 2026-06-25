@@ -1,29 +1,24 @@
 <script setup lang="ts">
+import { CheckCircle, XCircle, Info, AlertTriangle, X } from 'lucide-vue-next'
 import { useToast } from '../composables/useToast'
 import { useI18n } from '../i18n'
+import type { Component } from 'vue'
 
 const { toasts, dismiss } = useToast()
 const { t } = useI18n()
 
-const icons: Record<string, string> = {
-  success: '✓',
-  error: '✕',
-  info: 'ℹ',
-  warning: '⚠',
+const iconMap: Record<string, Component> = {
+  success: CheckCircle,
+  error: XCircle,
+  info: Info,
+  warning: AlertTriangle,
 }
 
-const colorClasses: Record<string, string> = {
-  success: 'bg-green-900 border-green-700 text-green-100',
-  error: 'bg-red-900 border-red-700 text-red-100',
-  info: 'bg-blue-900 border-blue-700 text-blue-100',
-  warning: 'bg-yellow-900 border-yellow-700 text-yellow-100',
-}
-
-const iconColorClasses: Record<string, string> = {
-  success: 'text-green-400',
-  error: 'text-red-400',
-  info: 'text-blue-400',
-  warning: 'text-yellow-400',
+const barColors: Record<string, string> = {
+  success: 'bg-editor',
+  error: 'bg-danger',
+  info: 'bg-chop',
+  warning: 'bg-gold',
 }
 </script>
 
@@ -32,7 +27,6 @@ const iconColorClasses: Record<string, string> = {
     <div
       class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"
       aria-live="polite"
-      aria-label="Notifications"
     >
       <TransitionGroup
         enter-active-class="transition-all duration-300 ease-out"
@@ -45,21 +39,31 @@ const iconColorClasses: Record<string, string> = {
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-lg border shadow-lg max-w-sm w-full"
-          :class="colorClasses[toast.type]"
+          class="pointer-events-auto flex items-start gap-3 pl-0 rounded-lg shadow-elevated max-w-sm w-full overflow-hidden"
+          style="background: var(--color-ink-panel); border: 1px solid var(--color-ink-edge)"
           role="alert"
         >
-          <span
-            class="flex-shrink-0 text-sm font-bold mt-0.5"
-            :class="iconColorClasses[toast.type]"
-            aria-hidden="true"
-          >{{ icons[toast.type] }}</span>
-          <span class="flex-1 text-sm leading-snug">{{ toast.message }}</span>
-          <button
-            @click="dismiss(toast.id)"
-            class="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity text-sm leading-none mt-0.5"
-            :aria-label="t('toast.dismiss')"
-          >✕</button>
+          <div :class="['w-1 self-stretch flex-shrink-0', barColors[toast.type]]" />
+          <div class="flex items-start gap-2.5 py-3 pr-3 flex-1">
+            <component
+              :is="iconMap[toast.type]"
+              :size="16"
+              :class="[
+                'flex-shrink-0 mt-0.5',
+                toast.type === 'success' ? 'text-editor' :
+                toast.type === 'error' ? 'text-danger' :
+                toast.type === 'warning' ? 'text-gold' : 'text-chop'
+              ]"
+            />
+            <span class="flex-1 text-sm leading-snug text-parchment">{{ toast.message }}</span>
+            <button
+              @click="dismiss(toast.id)"
+              class="flex-shrink-0 text-muted hover:text-parchment transition-colors"
+              :aria-label="t('toast.dismiss')"
+            >
+              <X :size="14" />
+            </button>
+          </div>
         </div>
       </TransitionGroup>
     </div>

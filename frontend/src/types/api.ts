@@ -375,6 +375,16 @@ export interface ConvertResponse {
   word_count: number
   scene_count: number
   export_formats: string[]
+  cliche_report?: Record<string, unknown>
+  canon_report?: Record<string, unknown>
+  tension_report?: Record<string, unknown>
+  prop_lifecycle_report?: Record<string, unknown>
+  reader_sim_report?: Record<string, unknown>
+  budget_report?: Record<string, unknown>
+  relationship_trend_report?: Record<string, unknown>
+  entity_event_report?: Record<string, unknown>
+  graph_inference_report?: Record<string, unknown>
+  adaptive_pattern_report?: Record<string, unknown>
 }
 
 export interface NarrativeOutput {

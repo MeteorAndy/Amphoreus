@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
+import { type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  FolderOpen, Zap, Sparkles, FlaskConical, Globe,
-  Users, List, Drama, PenTool, ShieldCheck, Sun, Moon,
+  FolderOpen, Zap, Sparkles, Globe,
+  Users, ListTree, Drama, PenTool, ShieldCheck, Sun, Moon,
+  BookOpen,
 } from 'lucide-vue-next'
 import { useI18n } from '../i18n'
 import { useTheme } from '../composables/useTheme'
@@ -20,22 +21,36 @@ interface NavItem {
   icon: Component
 }
 
-const navItems: NavItem[] = [
-  { labelKey: 'nav.projects', path: '/projects', icon: FolderOpen },
-  { labelKey: 'nav.pipeline', path: '/pipeline', icon: Zap },
-  { labelKey: 'nav.interactive', path: '/interactive', icon: Sparkles },
-  { labelKey: 'nav.sandbox', path: '/sandbox', icon: FlaskConical },
-  { labelKey: 'nav.world', path: '/world', icon: Globe },
-  { labelKey: 'nav.characters', path: '/characters', icon: Users },
-  { labelKey: 'nav.plot', path: '/plot', icon: List },
-  { labelKey: 'nav.scene', path: '/scene', icon: Drama },
-  { labelKey: 'nav.writer', path: '/writer', icon: PenTool },
-  { labelKey: 'nav.quality', path: '/quality', icon: ShieldCheck },
+interface NavGroup {
+  labelKey: string
+  items: NavItem[]
+}
+
+const navGroups: NavGroup[] = [
+  {
+    labelKey: 'nav.group_workflows',
+    items: [
+      { labelKey: 'nav.projects', path: '/projects', icon: FolderOpen },
+      { labelKey: 'nav.pipeline', path: '/pipeline', icon: Zap },
+      { labelKey: 'nav.interactive', path: '/interactive', icon: Sparkles },
+    ],
+  },
+  {
+    labelKey: 'nav.group_workbench',
+    items: [
+      { labelKey: 'nav.world', path: '/world', icon: Globe },
+      { labelKey: 'nav.characters', path: '/characters', icon: Users },
+      { labelKey: 'nav.plot', path: '/plot', icon: ListTree },
+      { labelKey: 'nav.scene', path: '/scene', icon: Drama },
+      { labelKey: 'nav.writer', path: '/writer', icon: PenTool },
+      { labelKey: 'nav.quality', path: '/quality', icon: ShieldCheck },
+    ],
+  },
 ]
 
-const activeIndex = computed(() =>
-  navItems.findIndex((item) => route.path.startsWith(item.path)),
-)
+function isActive(path: string): boolean {
+  return route.path.startsWith(path)
+}
 
 function navigate(path: string): void {
   router.push(path)
@@ -48,55 +63,64 @@ function toggleLang(): void {
 
 <template>
   <div class="flex h-screen overflow-hidden bg-ink-bg">
-    <!-- Sidebar: manuscript rail -->
-    <aside class="flex flex-col w-20 bg-ink-panel border-r border-ink-edge flex-shrink-0">
-      <!-- Masthead: vermillion seal + serif wordmark -->
-      <div class="flex flex-col items-center justify-center h-16 border-b border-ink-edge">
-        <div class="w-7 h-7 rounded-seal bg-chop flex items-center justify-center mb-0.5">
-          <span class="text-xs font-display font-bold text-ink-bg">Am</span>
+    <aside class="flex flex-col w-56 bg-ink-panel border-r border-ink-edge flex-shrink-0">
+      <div class="flex items-center gap-2.5 px-4 h-14 border-b border-ink-edge">
+        <div class="w-8 h-8 rounded-seal bg-chop flex items-center justify-center flex-shrink-0 shadow-sm">
+          <BookOpen :size="16" class="text-white" :stroke-width="2" />
+        </div>
+        <div class="min-w-0">
+          <div class="font-display font-semibold text-parchment text-sm leading-tight truncate">Amphoreus</div>
+          <div class="text-[0.65rem] text-muted leading-tight">{{ t('app.title') }}</div>
         </div>
       </div>
 
-      <!-- Navigation -->
-      <nav class="flex flex-col flex-1 py-3 overflow-y-auto">
-        <button
-          v-for="(item, idx) in navItems"
-          :key="item.path"
-          @click="navigate(item.path)"
-          class="group flex flex-col items-center gap-1 py-2.5 text-[0.65rem] transition-colors relative"
-          :class="idx === activeIndex ? 'text-chop' : 'text-muted hover:text-parchment-dim'"
-        >
-          <span
-            class="w-0.5 h-7 absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full transition-all"
-            :class="idx === activeIndex ? 'bg-chop' : 'bg-transparent group-hover:bg-ink-edge'"
-          />
-          <component :is="item.icon" :size="18" :stroke-width="1.5" />
-          <span class="leading-tight text-center">{{ t(item.labelKey) }}</span>
-        </button>
+      <nav class="flex-1 overflow-y-auto py-3 px-2">
+        <template v-for="group in navGroups" :key="group.labelKey">
+          <div class="px-2.5 pt-3 pb-1 first:pt-0">
+            <div class="text-[0.65rem] font-semibold text-muted uppercase tracking-widest">
+              {{ t(group.labelKey) }}
+            </div>
+          </div>
+          <button
+            v-for="item in group.items"
+            :key="item.path"
+            @click="navigate(item.path)"
+            class="group w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-all relative mb-0.5"
+            :class="isActive(item.path)
+              ? 'bg-chop/15 text-chop'
+              : 'text-parchment-dim hover:bg-ink-elevated hover:text-parchment'"
+          >
+            <span
+              class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-r-full transition-all"
+              :class="isActive(item.path) ? 'bg-chop' : 'bg-transparent'"
+            />
+            <component :is="item.icon" :size="15" :stroke-width="isActive(item.path) ? 2 : 1.5" class="flex-shrink-0" />
+            <span class="font-medium leading-tight">{{ t(item.labelKey) }}</span>
+          </button>
+        </template>
       </nav>
 
-      <!-- Language + theme toggles -->
-      <div class="flex flex-col items-center gap-2 py-3 border-t border-ink-edge">
+      <div class="px-3 py-3 border-t border-ink-edge flex items-center gap-2">
         <button
           @click="toggleTheme"
-          class="text-muted hover:text-parchment-dim transition-colors p-1.5 rounded hover:bg-ink-elevated"
-          :title="theme === 'ink' ? 'Paper' : 'Ink'"
+          class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs text-parchment-dim hover:bg-ink-elevated hover:text-parchment transition-colors"
+          :title="theme === 'ink' ? t('theme.paper') : t('theme.ink')"
         >
-          <component :is="theme === 'ink' ? Sun : Moon" :size="16" :stroke-width="1.5" />
+          <component :is="theme === 'ink' ? Sun : Moon" :size="14" :stroke-width="1.5" />
+          <span>{{ theme === 'ink' ? (currentLang === 'zh' ? '纸色' : 'Paper') : (currentLang === 'zh' ? '墨色' : 'Ink') }}</span>
         </button>
         <button
           @click="toggleLang"
-          class="text-[0.65rem] text-muted hover:text-parchment-dim transition-colors px-2 py-1 rounded hover:bg-ink-elevated"
+          class="flex items-center justify-center px-2 py-1.5 rounded-lg text-xs text-parchment-dim hover:bg-ink-elevated hover:text-parchment transition-colors"
           :title="t('lang.switch')"
         >
-          {{ t('lang.switch') }}
+          {{ currentLang === 'zh' ? 'EN' : '中' }}
         </button>
       </div>
     </aside>
 
-    <!-- Main content -->
     <main class="flex-1 overflow-y-auto">
-      <div class="max-w-7xl mx-auto p-6">
+      <div class="max-w-7xl mx-auto px-8 py-6">
         <slot />
       </div>
     </main>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { Play, RotateCcw, Users, ChevronRight } from 'lucide-vue-next'
 import SceneFeed from '../components/SceneFeed.vue'
 import DirectorPanel from '../components/DirectorPanel.vue'
 import EnvironmentPanel from '../components/EnvironmentPanel.vue'
@@ -12,6 +14,7 @@ import type { SceneRunRequest } from '../types/api'
 
 const { t } = useI18n()
 const projectStore = useProjectStore()
+const router = useRouter()
 
 const {
   status,
@@ -34,19 +37,18 @@ const selectedSceneId = ref('')
 const maxRounds = ref(10)
 const selectedCharacterIds = ref<string[]>([])
 
-onMounted(() => {
+onMounted(async () => {
   initPlot()
-  fetchTemplates()
+  await fetchTemplates()
   if (projectStore.currentCharacters.value.length > 0) {
     characters.value = [...projectStore.currentCharacters.value]
   } else {
-    fetchCharacters()
+    await fetchCharacters()
   }
-  if (projectStore.currentPlotId.value) {
-    selectedPlotId.value = projectStore.currentPlotId.value
-    if (projectStore.currentPlotOutline.value) {
-      selectOutline(selectedPlotId.value)
-    }
+  const plotId = projectStore.currentPlotId.value || localStorage.getItem('amphoreus-outline-id')
+  if (plotId) {
+    selectedPlotId.value = plotId
+    await selectOutline(plotId)
   }
   selectedCharacterIds.value = characters.value.map((c) => c.id)
 })
@@ -92,29 +94,42 @@ function canStart(): boolean {
 function handleReset(): void {
   reset()
 }
+
+const isCompleted = computed(() => status.value.status === 'completed')
+
+function goToWriter(): void {
+  if (selectedPlotId.value) {
+    localStorage.setItem('amphoreus-outline-id', selectedPlotId.value)
+  }
+  router.push('/writer')
+}
 </script>
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-parchment">{{ t('scene.title') }}</h1>
+    <div class="page-header">
+      <div>
+        <h1>{{ t('scene.title') }}</h1>
+      </div>
+      <button v-if="isCompleted" @click="goToWriter" class="btn btn-primary">
+        <ChevronRight :size="14" />
+        {{ t('plot.proceed_writer') || '前往叙事写作' }}
+      </button>
     </div>
 
-    <!-- Error banner -->
-    <div v-if="error" class="bg-red-900/20 border border-red-800 rounded-lg p-3 text-sm text-red-400">
+    <div v-if="error" class="error-banner">
       {{ error }}
     </div>
 
-    <!-- Configuration (idle state) -->
-    <div v-if="status.status === 'idle'" class="bg-ink-panel rounded-lg border border-ink-edge p-6 space-y-4">
+    <div v-if="status.status === 'idle'" class="card p-6 space-y-4">
       <h2 class="text-sm font-semibold text-parchment">{{ t('scene.config') }}</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs text-muted mb-1">{{ t('scene.select_plot') }}</label>
+          <label class="field-label">{{ t('scene.select_plot') }}</label>
           <select
             v-model="selectedPlotId"
             @change="handleSelectPlot(selectedPlotId)"
-            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
+            class="input"
           >
             <option value="" disabled>{{ t('writer.select_outline') }}</option>
             <option
@@ -127,10 +142,10 @@ function handleReset(): void {
           </select>
         </div>
         <div>
-          <label class="block text-xs text-muted mb-1">{{ t('scene.select_scene') }}</label>
+          <label class="field-label">{{ t('scene.select_scene') }}</label>
           <select
             v-model="selectedSceneId"
-            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
+            class="input"
           >
             <option value="" disabled>{{ t('scene.select_scene') }}</option>
             <template v-if="selectedOutline">
@@ -154,44 +169,57 @@ function handleReset(): void {
           </select>
         </div>
         <div>
-          <label class="block text-xs text-muted mb-1">{{ t('scene.max_rounds') }}</label>
+          <label class="field-label">{{ t('scene.max_rounds') }}</label>
           <input
             v-model.number="maxRounds"
             type="number"
             min="1"
             max="50"
-            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment focus:outline-none focus:border-chop"
+            class="input"
           />
         </div>
       </div>
 
       <div v-if="characters.length > 0">
-        <label class="block text-xs text-muted mb-2">选择参与角色 ({{ selectedCharacterIds.length }}/{{ characters.length }})</label>
+        <label class="field-label flex items-center gap-1.5">
+          <Users :size="12" />
+          {{ t('scene.select_chars') }}
+          <span class="font-normal text-muted normal-case tracking-normal ml-1">
+            {{ t('scene.chars_selected', { s: selectedCharacterIds.length, t: characters.length }) }}
+          </span>
+        </label>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="char in characters"
             :key="char.id"
             @click="toggleCharacter(char.id)"
-            class="px-3 py-1.5 rounded-lg text-sm transition-colors border"
-            :class="selectedCharacterIds.includes(char.id)
-              ? 'bg-chop/20 border-chop text-chop'
-              : 'bg-ink-elevated border-ink-edge text-parchment-dim hover:border-chop/50'"
+            class="chip"
+            :class="selectedCharacterIds.includes(char.id) ? 'chip-active' : ''"
           >
             {{ char.name }}
           </button>
         </div>
       </div>
 
-      <button
-        @click="handleStartScene"
-        :disabled="!canStart()"
-        class="px-6 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        {{ t('scene.run') }}
-      </button>
+      <div class="flex gap-2">
+        <button
+          @click="handleStartScene"
+          :disabled="!canStart()"
+          class="btn btn-primary"
+        >
+          <Play :size="14" />
+          {{ t('scene.run') }}
+        </button>
+        <button
+          @click="handleReset"
+          class="btn btn-secondary"
+        >
+          <RotateCcw :size="14" />
+          {{ t('scene.reset') }}
+        </button>
+      </div>
     </div>
 
-    <!-- Running / completed scene -->
     <div v-if="status.status !== 'idle'" class="grid grid-cols-1 lg:grid-cols-4 gap-4" style="height: calc(100vh - 12rem)">
       <div class="lg:col-span-3 h-full flex flex-col gap-4">
         <div class="flex-1 min-h-0">
