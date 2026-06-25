@@ -32,7 +32,9 @@ const activeCharacters = computed(() => {
   if (!props.rounds || props.rounds.length === 0) return []
   const seen = new Set<string>()
   for (const r of props.rounds) {
-    if (r.character) seen.add(r.character)
+    const name = (r as { actor_name?: string; character?: string }).actor_name ||
+      (r as { actor_name?: string; character?: string }).character
+    if (name) seen.add(name)
   }
   return [...seen]
 })

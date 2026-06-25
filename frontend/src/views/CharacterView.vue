@@ -1,45 +1,59 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import CharacterCard from '../components/CharacterCard.vue'
 import RelationshipGraph from '../components/RelationshipGraph.vue'
 import CharacterEditModal from '../components/CharacterEditModal.vue'
 import CharacterRefineModal from '../components/CharacterRefineModal.vue'
+import RelationshipPathPanel from '../components/RelationshipPathPanel.vue'
 import { useCharacters } from '../composables/useCharacters'
+import { useProjectStore } from '../composables/useProjectStore'
 import { useI18n } from '../i18n'
-import { listRelationships } from '../api/client'
-import type { CharacterProfile, Relationship } from '../types/api'
+import { listRelationships, getRelationshipPath } from '../api/client'
+import type { CharacterProfile, Relationship, PathStep } from '../types/api'
 
 const { t } = useI18n()
 const router = useRouter()
+const projectStore = useProjectStore()
 
 const {
   characters,
   loading,
   error,
   selectedCharacter,
+  buildingRelationships,
   fetchCharacters,
   generateCharacters,
   updateCharacter,
   removeCharacter,
   refineCharacter,
+  fetchCharacterNetwork,
+  generateRelationships,
   selectCharacter,
 } = useCharacters()
 
-// ── View toggle: list vs graph ────────────────────────────────────────────────
 type ViewMode = 'list' | 'graph'
 const viewMode = ref<ViewMode>('list')
 
-// ── All relationships (for graph view) ───────────────────────────────────────
 const allRelationships = ref<Relationship[]>([])
 const relationshipsLoading = ref(false)
+const selectedForRelationship = ref<Set<string>>(new Set())
+const pathSource = ref<string>('')
+const pathTarget = ref<string>('')
+const pathResult = ref<PathStep[] | null>(null)
+const pathLoading = ref(false)
+const showPathPanel = ref(false)
+
+const selectedForRelationshipList = computed(() => Array.from(selectedForRelationship.value))
+
+const canBuildRelationships = computed(() => selectedForRelationship.value.size >= 2)
 
 async function fetchAllRelationships(): Promise<void> {
   relationshipsLoading.value = true
   try {
     allRelationships.value = await listRelationships()
   } catch {
-    allRelationships.value = []
+    allRelationships.value = projectStore.currentRelationships.value
   } finally {
     relationshipsLoading.value = false
   }
@@ -58,12 +72,26 @@ const generating = ref(false)
 const refining = ref(false)
 
 onMounted(() => {
-  fetchCharacters()
+  if (projectStore.currentCharacters.value.length > 0) {
+    characters.value = [...projectStore.currentCharacters.value]
+  } else {
+    fetchCharacters()
+  }
   fetchAllRelationships()
+  allRelationships.value = projectStore.currentRelationships.value
 })
 
+watch(
+  () => projectStore.currentRelationships.value,
+  (rels) => {
+    if (rels.length > 0) {
+      allRelationships.value = rels
+    }
+  },
+)
+
 function getWorldId(): string | null {
-  return localStorage.getItem('amphoreus-world-id')
+  return projectStore.currentWorldId.value || localStorage.getItem('amphoreus-world-id')
 }
 
 async function handleGenerate(): Promise<void> {
@@ -76,6 +104,7 @@ async function handleGenerate(): Promise<void> {
   error.value = null
   try {
     await generateCharacters(worldId, generateCount.value)
+    await fetchAllRelationships()
   } finally {
     generating.value = false
   }
@@ -94,10 +123,14 @@ async function saveCharacter(data: Partial<CharacterProfile>): Promise<void> {
 
 async function deleteCharacterById(id: string): Promise<void> {
   await removeCharacter(id)
+  selectedForRelationship.value.delete(id)
 }
 
 function handleSelect(char: CharacterProfile): void {
   selectCharacter(char)
+  if (char) {
+    fetchCharacterNetwork(char.id)
+  }
 }
 
 function handleGraphSelect(characterId: string): void {
@@ -120,6 +153,51 @@ async function handleRefine(feedback: string): Promise<void> {
   }
 }
 
+function toggleForRelationship(charId: string): void {
+  if (selectedForRelationship.value.has(charId)) {
+    selectedForRelationship.value.delete(charId)
+  } else {
+    selectedForRelationship.value.add(charId)
+  }
+}
+
+function selectAllForRelationship(): void {
+  characters.value.forEach((c) => selectedForRelationship.value.add(c.id))
+}
+
+function clearRelationshipSelection(): void {
+  selectedForRelationship.value.clear()
+}
+
+async function handleBuildRelationships(): Promise<void> {
+  if (!canBuildRelationships.value) return
+  const rels = await generateRelationships(selectedForRelationshipList.value)
+  if (rels.length > 0) {
+    allRelationships.value = rels
+  } else {
+    await fetchAllRelationships()
+  }
+}
+
+function openPathFinder(): void {
+  pathSource.value = selectedCharacter?.value?.id || ''
+  pathTarget.value = ''
+  pathResult.value = null
+  showPathPanel.value = true
+}
+
+async function findPath(): Promise<void> {
+  if (!pathSource.value || !pathTarget.value) return
+  pathLoading.value = true
+  try {
+    pathResult.value = await getRelationshipPath(pathSource.value, pathTarget.value)
+  } catch {
+    pathResult.value = []
+  } finally {
+    pathLoading.value = false
+  }
+}
+
 function goToPlot(): void {
   router.push('/plot')
 }
@@ -131,6 +209,12 @@ function goToPlot(): void {
       <h1 class="text-xl font-bold text-parchment">{{ t('chars.title') }}</h1>
       <div class="flex gap-2">
         <button
+          @click="openPathFinder"
+          class="px-4 py-2 bg-ink-elevated text-parchment rounded-lg text-sm font-medium hover:bg-ink-elevated border border-ink-edge transition-colors"
+        >
+          Find Path
+        </button>
+        <button
           @click="handleGenerate"
           :disabled="generating || loading"
           class="px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 transition-colors"
@@ -140,29 +224,73 @@ function goToPlot(): void {
       </div>
     </div>
 
-    <!-- Error banner -->
     <div v-if="error" class="bg-red-900/20 border border-red-800 rounded-lg p-3 text-sm text-red-400">
       {{ error }}
     </div>
 
-    <!-- Loading -->
     <div v-if="loading && characters.length === 0" class="flex items-center justify-center h-32 text-muted text-sm">
       {{ t('chars.loading') }}
     </div>
 
-    <!-- Selected character actions -->
+    <div v-if="characters.length > 0" class="bg-ink-panel rounded-lg border border-ink-edge p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-parchment">Relationship Builder</h2>
+        <div class="flex gap-2">
+          <button
+            @click="selectAllForRelationship"
+            class="text-xs text-muted hover:text-parchment-dim transition-colors"
+          >
+            Select All
+          </button>
+          <button
+            @click="clearRelationshipSelection"
+            class="text-xs text-muted hover:text-parchment-dim transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+      <p class="text-xs text-muted mb-3">Select 2+ characters to generate relationships between them.</p>
+      <div class="flex flex-wrap gap-2 mb-3">
+        <button
+          v-for="char in characters"
+          :key="char.id"
+          @click="toggleForRelationship(char.id)"
+          class="px-3 py-1.5 rounded-lg text-sm transition-colors border"
+          :class="selectedForRelationship.has(char.id)
+            ? 'bg-chop/20 border-chop text-chop'
+            : 'bg-ink-elevated border-ink-edge text-parchment-dim hover:border-chop/50'"
+        >
+          {{ char.name }}
+        </button>
+      </div>
+      <button
+        @click="handleBuildRelationships"
+        :disabled="!canBuildRelationships || buildingRelationships"
+        class="px-4 py-2 bg-purple-700 text-white rounded-lg text-sm font-medium hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {{ buildingRelationships ? 'Building...' : `Build Relationships (${selectedForRelationship.size} selected)` }}
+      </button>
+    </div>
+
     <div v-if="selectedCharacter" class="bg-ink-panel rounded-lg border border-ink-edge p-4">
-      <div class="flex items-center gap-3 mb-3">
+      <div class="flex items-center gap-3">
+        <h3 class="text-sm font-semibold text-parchment">Selected: {{ selectedCharacter.name }}</h3>
         <button
           @click="openRefine"
           class="px-3 py-1.5 bg-chop/20 text-chop border border-oxblood rounded-lg text-xs font-medium hover:bg-chop/30 transition-colors"
         >
           Refine
         </button>
+        <button
+          @click="() => { selectCharacter(null); }"
+          class="ml-auto text-xs text-muted hover:text-parchment-dim"
+        >
+          Deselect
+        </button>
       </div>
     </div>
 
-    <!-- Relationships section with List / Graph toggle -->
     <div>
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-lg font-semibold text-parchment">{{ t('chars.relationships') }}</h2>
@@ -188,7 +316,6 @@ function goToPlot(): void {
         </div>
       </div>
 
-      <!-- List view: character grid -->
       <template v-if="viewMode === 'list'">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <CharacterCard
@@ -196,6 +323,8 @@ function goToPlot(): void {
             :key="char.id"
             :character="char"
             :selected="selectedCharacter?.id === char.id"
+            :relationships="allRelationships.filter(r => r.source_id === char.id || r.target_id === char.id)"
+            :all-characters="characters"
             @select="handleSelect"
             @edit="openEdit"
             @delete="deleteCharacterById"
@@ -206,7 +335,6 @@ function goToPlot(): void {
         </div>
       </template>
 
-      <!-- Graph view: d3-force relationship graph -->
       <template v-else>
         <div v-if="relationshipsLoading" class="flex items-center justify-center h-32 text-muted text-sm">
           {{ t('general.loading') }}
@@ -215,12 +343,12 @@ function goToPlot(): void {
           v-else
           :characters="characters"
           :relationships="allRelationships"
+          :selected-character-id="selectedCharacter?.id"
           @select-character="handleGraphSelect"
         />
       </template>
     </div>
 
-    <!-- Proceed to Plot -->
     <div v-if="characters.length > 0" class="flex justify-center pt-4">
       <button
         @click="goToPlot"
@@ -230,7 +358,6 @@ function goToPlot(): void {
       </button>
     </div>
 
-    <!-- Edit Modal -->
     <CharacterEditModal
       v-if="showEditModal && editingCharacter"
       :character="editingCharacter"
@@ -238,13 +365,25 @@ function goToPlot(): void {
       @close="showEditModal = false"
     />
 
-    <!-- Refine Modal -->
     <CharacterRefineModal
       v-if="showRefineModal"
       :character-name="selectedCharacter?.name ?? ''"
       :refining="refining"
       @refine="handleRefine"
       @close="showRefineModal = false"
+    />
+
+    <RelationshipPathPanel
+      v-if="showPathPanel"
+      :characters="characters"
+      :path-source="pathSource"
+      :path-target="pathTarget"
+      :path-result="pathResult"
+      :loading="pathLoading"
+      @update:path-source="pathSource = $event"
+      @update:path-target="pathTarget = $event"
+      @find-path="findPath"
+      @close="showPathPanel = false"
     />
   </div>
 </template>

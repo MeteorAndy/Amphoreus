@@ -1,26 +1,33 @@
 import type {
   CharacterProfile,
-  ChatRequest,
-  ChatResponse,
-  ConvertRequest,
-  ConvertResponse,
-  GuardianValidationRequest,
-  GuardianValidationResult,
-  InterventionRequest,
-  NarrativeFormat,
   NetworkData,
   PathStep,
   PlotOutlineResponse,
   Relationship,
-  RelationshipRequest,
+  BuildRelationshipsRequest,
   SceneRunRequest,
-  SceneStatus,
-  TemplatesResponse,
-  TitleCandidate,
+  ConvertRequest,
+  ConvertResponse,
+  GuardianEvaluateRequest,
+  GuardianSceneInterventionRequest,
+  GuardianResult,
+  InterventionRequest,
+  InterventionResponse,
   WorldState,
   WorldBuildResponse,
   SandboxStartRequest,
   SandboxStartResponse,
+  DocumentParseResponse,
+  FormatsResponse,
+  PlotConsistencyCheck,
+  PlotTemplates,
+  AddSceneRequest,
+  SceneArchive,
+  RoundEntry,
+  Project,
+  ProjectState,
+  CreateProjectRequest,
+  PipelineConfig,
 } from '../types/api'
 
 export class ApiError extends Error {
@@ -56,55 +63,64 @@ async function requestBlob(url: string, options: RequestInit = {}): Promise<Blob
   return res.blob()
 }
 
+const API_BASE = ''
+
+// ---------------------------------------------------------------------------
 // World Builder API
-export async function worldChat(req: ChatRequest): Promise<ChatResponse> {
-  const url = req.world_id ? '/api/world/build/continue' : '/api/world/build/start'
-  const body = req.world_id
-    ? JSON.stringify({ session_id: req.world_id, user_input: req.message })
-    : JSON.stringify({ seed_idea: req.message })
-  return request<ChatResponse>(url, { method: 'POST', body })
-}
-
-export async function uploadDocument(file: File): Promise<WorldState> {
-  const formData = new FormData()
-  formData.append('file', file)
-  return request<WorldState>('/api/world/parse', {
-    method: 'POST',
-    body: formData,
-  })
-}
-
-export async function getWorldState(sessionId?: string): Promise<WorldState> {
-  if (!sessionId) return Promise.reject(new Error('No session ID'))
-  return request<WorldState>(`/api/world/build/${sessionId}`)
-}
-
-export async function resetWorld(sessionId: string): Promise<void> {
-  return request<void>('/api/world/build/finalize', {
-    method: 'POST',
-    body: JSON.stringify({ session_id: sessionId }),
-  })
-}
+// ---------------------------------------------------------------------------
 
 export async function startWorldBuild(seedIdea: string): Promise<WorldBuildResponse> {
-  return request<WorldBuildResponse>('/api/world/build/start', {
+  return request<WorldBuildResponse>(`${API_BASE}/api/world/build/start`, {
     method: 'POST',
     body: JSON.stringify({ seed_idea: seedIdea }),
   })
 }
 
 export async function continueWorldBuild(sessionId: string, userInput: string): Promise<WorldBuildResponse> {
-  return request<WorldBuildResponse>('/api/world/build/continue', {
+  return request<WorldBuildResponse>(`${API_BASE}/api/world/build/continue`, {
     method: 'POST',
     body: JSON.stringify({ session_id: sessionId, user_input: userInput }),
   })
 }
 
+export async function getWorldBuildSession(sessionId: string): Promise<WorldBuildResponse> {
+  return request<WorldBuildResponse>(`${API_BASE}/api/world/build/${sessionId}`)
+}
+
 export async function finalizeWorldBuild(sessionId: string): Promise<WorldState> {
-  return request<WorldState>('/api/world/build/finalize', {
+  return request<WorldState>(`${API_BASE}/api/world/build/finalize`, {
     method: 'POST',
     body: JSON.stringify({ session_id: sessionId }),
   })
+}
+
+export async function uploadDocument(file: File): Promise<DocumentParseResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request<DocumentParseResponse>(`${API_BASE}/api/world/parse`, {
+    method: 'POST',
+    body: formData,
+  })
+}
+
+export async function getSupportedFormats(): Promise<FormatsResponse> {
+  return request<FormatsResponse>(`${API_BASE}/api/world/formats`)
+}
+
+export async function getWorldRules(): Promise<Array<{ path: string; l0: string; score: number }>> {
+  return request(`${API_BASE}/api/world/rules`)
+}
+
+export async function getWorldLocations(): Promise<Array<Record<string, unknown>>> {
+  return request(`${API_BASE}/api/world/locations`)
+}
+
+export async function getWorldFactions(): Promise<Array<Record<string, unknown>>> {
+  return request(`${API_BASE}/api/world/factions`)
+}
+
+export async function getWorldTimeline(): Promise<Array<Record<string, unknown>>> {
+  return request(`${API_BASE}/api/world/timeline`)
 }
 
 // ---------------------------------------------------------------------------
@@ -112,124 +128,150 @@ export async function finalizeWorldBuild(sessionId: string): Promise<WorldState>
 // ---------------------------------------------------------------------------
 
 export async function generateCharacters(worldId: string, count: number = 5): Promise<CharacterProfile[]> {
-  return request<CharacterProfile[]>('/api/characters/generate', {
+  return request<CharacterProfile[]>(`${API_BASE}/api/characters/generate`, {
     method: 'POST',
     body: JSON.stringify({ world_id: worldId, count }),
   })
 }
 
 export async function listCharacters(): Promise<CharacterProfile[]> {
-  return request<CharacterProfile[]>('/api/characters')
+  return request<CharacterProfile[]>(`${API_BASE}/api/characters`)
 }
 
 export async function getCharacter(id: string): Promise<CharacterProfile> {
-  return request<CharacterProfile>(`/api/characters/${id}`)
+  return request<CharacterProfile>(`${API_BASE}/api/characters/${id}`)
 }
 
 export async function updateCharacter(id: string, data: Partial<CharacterProfile>): Promise<CharacterProfile> {
-  return request<CharacterProfile>(`/api/characters/${id}`, {
+  return request<CharacterProfile>(`${API_BASE}/api/characters/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   })
 }
 
 export async function deleteCharacter(id: string): Promise<void> {
-  return request<void>(`/api/characters/${id}`, { method: 'DELETE' })
+  return request<void>(`${API_BASE}/api/characters/${id}`, { method: 'DELETE' })
 }
 
 export async function refineCharacter(charId: string, feedback: string): Promise<CharacterProfile> {
-  return request<CharacterProfile>(`/api/characters/${charId}/refine`, {
+  return request<CharacterProfile>(`${API_BASE}/api/characters/${charId}/refine`, {
     method: 'POST',
     body: JSON.stringify({ feedback }),
   })
 }
 
-export async function listRelationships(): Promise<Relationship[]> {
-  return request<Relationship[]>('/api/characters/relationships')
+export async function buildRelationships(characterIds: string[]): Promise<Relationship[]> {
+  const req: BuildRelationshipsRequest = { character_ids: characterIds }
+  const raw = await request<Relationship[]>(`${API_BASE}/api/characters/relationships/build`, {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
+  return raw.map(normalizeRelationship)
 }
 
-export async function getCharacterNetwork(charId: string): Promise<NetworkData> {
-  return request<NetworkData>(`/api/characters/relationships/${charId}`)
+export async function getCharacterNetwork(charId: string, depth: number = 2): Promise<NetworkData> {
+  return request<NetworkData>(`${API_BASE}/api/characters/relationships/${charId}?depth=${depth}`)
+}
+
+export async function listRelationships(): Promise<Relationship[]> {
+  const raw = await request<Relationship[]>(`${API_BASE}/api/characters/relationships`)
+  return raw.map(normalizeRelationship)
+}
+
+function normalizeRelationship(r: Relationship): Relationship {
+  return {
+    ...r,
+    from_id: r.from_id || r.source_id || '',
+    to_id: r.to_id || r.target_id || '',
+    strength: r.strength ?? 1,
+  }
 }
 
 export async function getRelationshipPath(fromId: string, toId: string): Promise<PathStep[]> {
-  return request<PathStep[]>(`/api/characters/relationships/path?from_id=${encodeURIComponent(fromId)}&to_id=${encodeURIComponent(toId)}`)
+  const raw = await request<{
+    path: Array<string | { character_id: string; name?: string }>
+    [key: string]: unknown
+  }[]>(`${API_BASE}/api/characters/relationships/path?from_id=${encodeURIComponent(fromId)}&to_id=${encodeURIComponent(toId)}`)
+  return raw.map((step) => ({
+    ...step,
+    path: step.path.map((node) => {
+      if (typeof node === 'string') {
+        return node
+      }
+      return node.character_id
+    }),
+  })) as PathStep[]
 }
 
-export async function createRelationship(data: RelationshipRequest): Promise<Relationship> {
-  return request<Relationship>('/api/characters/relationships/build', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-}
+export const createOutline = generatePlot
 
 // ---------------------------------------------------------------------------
 // Plot API
 // ---------------------------------------------------------------------------
 
-export async function getPlotTemplates(): Promise<TemplatesResponse> {
-  return request<TemplatesResponse>('/api/plot/templates')
+export async function getPlotTemplates(): Promise<string[]> {
+  try {
+    const resp = await request<PlotTemplates | string[]>(`${API_BASE}/api/plot/templates`)
+    if (Array.isArray(resp)) return resp
+    return Object.keys(resp.templates || {})
+  } catch {
+    return ['three_act', 'heros_journey', 'save_the_cat', 'five_act']
+  }
 }
 
-export async function createOutline(data: {
+export async function generatePlot(data: {
   world_id: string
   structure: string
   character_ids: string[]
 }): Promise<PlotOutlineResponse> {
-  return request<PlotOutlineResponse>('/api/plot/generate', {
+  return request<PlotOutlineResponse>(`${API_BASE}/api/plot/generate`, {
     method: 'POST',
     body: JSON.stringify(data),
   })
 }
 
 export async function getPlot(plotId: string): Promise<PlotOutlineResponse> {
-  return request<PlotOutlineResponse>(`/api/plot/${plotId}`)
+  return request<PlotOutlineResponse>(`${API_BASE}/api/plot/${plotId}`)
 }
 
-export async function updatePlot(plotId: string, data: { acts?: Record<string, unknown>[]; character_arcs?: Record<string, string[]> }): Promise<PlotOutlineResponse> {
-  return request<PlotOutlineResponse>(`/api/plot/${plotId}`, {
+export async function updatePlot(plotId: string, data: {
+  acts?: Record<string, unknown>[]
+  character_arcs?: Record<string, string[]>
+}): Promise<PlotOutlineResponse> {
+  return request<PlotOutlineResponse>(`${API_BASE}/api/plot/${plotId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   })
 }
 
 export async function deletePlot(plotId: string): Promise<void> {
-  return request<void>(`/api/plot/${plotId}`, { method: 'DELETE' })
+  return request<void>(`${API_BASE}/api/plot/${plotId}`, { method: 'DELETE' })
 }
 
 export async function refinePlot(plotId: string, feedback: string): Promise<PlotOutlineResponse> {
-  return request<PlotOutlineResponse>('/api/plot/refine', {
+  return request<PlotOutlineResponse>(`${API_BASE}/api/plot/refine`, {
     method: 'POST',
     body: JSON.stringify({ plot_id: plotId, feedback }),
   })
 }
 
-export async function addScene(plotId: string, data: {
-  title: string
-  location: string
-  cast: string[]
-  conflict: string
-  goal: string
-  expected_outcome: string
-  causal_chain?: string[]
-}): Promise<PlotOutlineResponse> {
-  return request<PlotOutlineResponse>(`/api/plot/${plotId}/scenes`, {
+export async function addScene(plotId: string, data: AddSceneRequest): Promise<PlotOutlineResponse> {
+  return request<PlotOutlineResponse>(`${API_BASE}/api/plot/${plotId}/scenes`, {
     method: 'POST',
     body: JSON.stringify(data),
   })
 }
 
+export const addSceneToPlot = addScene
+
 export async function deleteScene(plotId: string, sceneId: string): Promise<PlotOutlineResponse> {
-  return request<PlotOutlineResponse>(`/api/plot/${plotId}/scenes/${sceneId}`, { method: 'DELETE' })
+  return request<PlotOutlineResponse>(`${API_BASE}/api/plot/${plotId}/scenes/${sceneId}`, { method: 'DELETE' })
 }
 
-export async function checkPlotConsistency(plotId: string, sceneId: string): Promise<{
-  scene_id: string
-  consistent: boolean
-  issues: string[]
-  suggested_fixes: string[]
-}> {
-  return request('/api/plot/check', {
+export const deleteSceneFromPlot = deleteScene
+
+export async function checkPlotConsistency(plotId: string, sceneId: string): Promise<PlotConsistencyCheck> {
+  return request<PlotConsistencyCheck>(`${API_BASE}/api/plot/check`, {
     method: 'POST',
     body: JSON.stringify({ plot_id: plotId, scene_id: sceneId }),
   })
@@ -239,34 +281,51 @@ export async function checkPlotConsistency(plotId: string, sceneId: string): Pro
 // Scene Engine API
 // ---------------------------------------------------------------------------
 
-export async function getSceneStatus(): Promise<SceneStatus> {
-  return request<SceneStatus>('/api/scene/status')
-}
-
-export async function startScene(req: SceneRunRequest): Promise<SceneStatus> {
-  return request<SceneStatus>('/api/scene/run', {
+export async function runScene(req: SceneRunRequest): Promise<SceneArchive> {
+  return request<SceneArchive>(`${API_BASE}/api/scene/run`, {
     method: 'POST',
     body: JSON.stringify(req),
   })
 }
 
-export async function interveneScene(req: InterventionRequest): Promise<unknown> {
-  return request<unknown>('/api/scene/intervene', {
+export async function getSceneArchive(sceneId: string): Promise<SceneArchive> {
+  return request<SceneArchive>(`${API_BASE}/api/scene/${sceneId}/archive`)
+}
+
+export async function getSceneRounds(sceneId: string): Promise<RoundEntry[]> {
+  return request<RoundEntry[]>(`${API_BASE}/api/scene/${sceneId}/rounds`)
+}
+
+export async function getSceneRound(sceneId: string, roundNum: number): Promise<RoundEntry> {
+  return request<RoundEntry>(`${API_BASE}/api/scene/${sceneId}/rounds/${roundNum}`)
+}
+
+export async function interveneScene(req: InterventionRequest): Promise<InterventionResponse> {
+  return request<InterventionResponse>(`${API_BASE}/api/scene/intervene`, {
     method: 'POST',
     body: JSON.stringify(req),
   })
 }
 
-export async function endScene(): Promise<void> {
-  return request<void>('/api/scene/end', { method: 'POST' })
+export function createSceneWebSocket(): WebSocket {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const host = window.location.host
+  return new WebSocket(`${protocol}//${host}${API_BASE}/api/scene/ws/run`)
 }
 
 // ---------------------------------------------------------------------------
 // Guardian API
 // ---------------------------------------------------------------------------
 
-export async function validateContent(req: GuardianValidationRequest): Promise<GuardianValidationResult> {
-  return request<GuardianValidationResult>('/api/guardian/evaluate', {
+export async function evaluatePlot(req: GuardianEvaluateRequest): Promise<GuardianResult> {
+  return request<GuardianResult>(`${API_BASE}/api/guardian/evaluate`, {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
+}
+
+export async function evaluateSceneIntervention(req: GuardianSceneInterventionRequest): Promise<GuardianResult> {
+  return request<GuardianResult>(`${API_BASE}/api/guardian/evaluate/scene`, {
     method: 'POST',
     body: JSON.stringify(req),
   })
@@ -277,30 +336,84 @@ export async function validateContent(req: GuardianValidationRequest): Promise<G
 // ---------------------------------------------------------------------------
 
 export async function generateNarrative(req: ConvertRequest): Promise<ConvertResponse> {
-  return request<ConvertResponse>('/api/writer/convert', {
+  return request<ConvertResponse>(`${API_BASE}/api/writer/convert`, {
     method: 'POST',
     body: JSON.stringify(req),
   })
 }
 
-export async function getTitleCandidates(plotId: string): Promise<TitleCandidate[]> {
-  return request<TitleCandidate[]>(`/api/writer/titles?plot_id=${plotId}`)
+export const convertScenesToNarrative = generateNarrative
+
+export async function getWriterFormats(): Promise<FormatsResponse> {
+  return request<FormatsResponse>(`${API_BASE}/api/writer/formats`)
 }
 
-export async function exportOutput(content: string, format: NarrativeFormat): Promise<Blob> {
-  return requestBlob('/api/writer/export', {
+export async function getTitleCandidates(plotId: string): Promise<string[]> {
+  const resp = await request<{ titles: { title: string; subtitle?: string; description?: string }[] }>(
+    `${API_BASE}/api/writer/titles?plot_id=${encodeURIComponent(plotId)}`,
+  )
+  return resp.titles.map((t) => t.title)
+}
+
+export async function exportOutput(content: string, format: string): Promise<Blob> {
+  return requestBlob(`${API_BASE}/api/writer/export`, {
     method: 'POST',
     body: JSON.stringify({ content, format, export_format: format }),
   })
 }
 
+export const exportNarrative = exportOutput
+
 // ---------------------------------------------------------------------------
-// WebSocket for scene execution
+// Pipeline API
 // ---------------------------------------------------------------------------
 
-export function createSceneWebSocket(): WebSocket {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return new WebSocket(`${protocol}//${window.location.host}/api/scene/ws/run`)
+export function startPipeline(config: PipelineConfig): EventSource {
+  const params = new URLSearchParams()
+  Object.entries(config).forEach(([key, value]) => {
+    if (value !== null && value !== undefined) {
+      params.set(key, String(value))
+    }
+  })
+  return new EventSource(`${API_BASE}/api/pipeline/run?${params.toString()}`)
+}
+
+export async function startPipelinePost(config: PipelineConfig): Promise<Response> {
+  return fetch(`${API_BASE}/api/pipeline/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Projects API
+// ---------------------------------------------------------------------------
+
+export async function listProjects(): Promise<{ projects: Project[] }> {
+  return request<{ projects: Project[] }>(`${API_BASE}/api/projects`)
+}
+
+export async function createProject(req: CreateProjectRequest): Promise<{ id: string; name: string; created_at: string }> {
+  return request(`${API_BASE}/api/projects`, {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
+}
+
+export async function getProject(projectId: string): Promise<ProjectState> {
+  return request<ProjectState>(`${API_BASE}/api/projects/${projectId}`)
+}
+
+export async function updateProject(projectId: string, data: Partial<ProjectState>): Promise<ProjectState> {
+  return request<ProjectState>(`${API_BASE}/api/projects/${projectId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteProject(projectId: string): Promise<void> {
+  return request<void>(`${API_BASE}/api/projects/${projectId}`, { method: 'DELETE' })
 }
 
 // ---------------------------------------------------------------------------
@@ -308,22 +421,26 @@ export function createSceneWebSocket(): WebSocket {
 // ---------------------------------------------------------------------------
 
 export async function startSandbox(req: SandboxStartRequest): Promise<SandboxStartResponse> {
-  return request<SandboxStartResponse>('/api/sandbox/start', {
+  return request<SandboxStartResponse>(`${API_BASE}/api/sandbox/start`, {
     method: 'POST',
     body: JSON.stringify(req),
   })
 }
 
-export async function injectSandboxEvent(sessionId: string, event: string): Promise<void> {
-  return request<void>('/api/sandbox/inject', {
+export async function injectSandboxEvent(sessionId: string, event: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`${API_BASE}/api/sandbox/inject`, {
     method: 'POST',
     body: JSON.stringify({ session_id: sessionId, event }),
   })
 }
 
 export async function stopSandbox(sessionId: string): Promise<{ ok: boolean; rounds: number }> {
-  return request<{ ok: boolean; rounds: number }>('/api/sandbox/stop', {
+  return request<{ ok: boolean; rounds: number }>(`${API_BASE}/api/sandbox/stop`, {
     method: 'POST',
     body: JSON.stringify({ session_id: sessionId }),
   })
+}
+
+export function createSandboxEventSource(sessionId: string): EventSource {
+  return new EventSource(`${API_BASE}/api/sandbox/${sessionId}/feed`)
 }
