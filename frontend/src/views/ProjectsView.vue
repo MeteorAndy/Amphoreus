@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '../i18n'
 import { useProjects } from '../composables/useProjects'
-import { FolderPlus, Trash2, Clock, Calendar, BookOpen, FolderOpen } from 'lucide-vue-next'
+import { FolderPlus, Trash2, Clock, Calendar, BookOpen } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -14,6 +14,8 @@ const newName = ref('')
 const newSeedIdea = ref('')
 const creating = ref(false)
 const createError = ref('')
+
+const hasProjects = computed(() => !loading.value && projects.value.length > 0)
 
 onMounted(() => {
   fetchProjects()
@@ -95,20 +97,34 @@ function stageBadgeClass(stage: string): string {
 
 <template>
   <div class="projects-view">
-    <section class="hero-section corner-flourish fade-in-up">
+    <section
+      class="hero-section corner-flourish fade-in-up"
+      :class="{ 'hero-compact': hasProjects }"
+    >
       <div class="stagger-children">
-        <div class="hero-icon-wrapper">
+        <div v-if="!hasProjects" class="hero-icon-wrapper">
           <div class="hero-icon">
             <BookOpen :size="40" />
           </div>
         </div>
-        <h1 class="hero-title font-display">{{ t('projects.title') }}</h1>
-        <div class="rule-ornament rule-ornament-diamond">
-          <span class="hero-subtitle">{{ t('app.title') }}</span>
+        <div v-else class="hero-icon-wrapper hero-icon-small">
+          <div class="hero-icon hero-icon-seal">
+            <BookOpen :size="24" />
+          </div>
         </div>
-        <p class="hero-tagline">{{ t('projects.empty') }}</p>
-        <button @click="openCreateDialog" class="btn btn-primary btn-lg hero-cta">
+        <h1 class="hero-title font-display" :class="{ 'hero-title-compact': hasProjects }">
+          {{ t('projects.title') }}
+        </h1>
+        <div class="rule-ornament" :class="hasProjects ? 'rule-ornament-line' : 'rule-ornament-diamond'">
+          <span v-if="!hasProjects" class="hero-subtitle">{{ t('app.title') }}</span>
+        </div>
+        <p v-if="!hasProjects" class="hero-tagline">{{ t('projects.empty') }}</p>
+        <button v-if="!hasProjects" @click="openCreateDialog" class="btn btn-primary btn-lg hero-cta">
           <FolderPlus :size="18" />
+          {{ t('projects.new') }}
+        </button>
+        <button v-else @click="openCreateDialog" class="btn btn-primary hero-cta-compact">
+          <FolderPlus :size="16" />
           {{ t('projects.new') }}
         </button>
       </div>
@@ -126,17 +142,6 @@ function stageBadgeClass(stage: string): string {
         <div class="skeleton-line w-1/2"></div>
         <div class="skeleton-line w-1/3"></div>
       </div>
-    </div>
-
-    <div v-else-if="!loading && projects.length === 0" class="empty-state fade-in-up">
-      <div class="empty-state-icon-wrapper">
-        <FolderOpen :size="56" class="empty-state-folder-icon" />
-      </div>
-      <p class="empty-state-text">{{ t('projects.empty') }}</p>
-      <button @click="openCreateDialog" class="btn btn-primary btn-lg">
-        <FolderPlus :size="18" />
-        {{ t('projects.new') }}
-      </button>
     </div>
 
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger-children">
@@ -247,6 +252,34 @@ function stageBadgeClass(stage: string): string {
   position: relative;
 }
 
+.hero-section.hero-compact {
+  text-align: left;
+  padding: 0 0 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-ink-edge);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hero-section.hero-compact .stagger-children {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+}
+
+.hero-section.hero-compact.corner-flourish::before,
+.hero-section.hero-compact.corner-flourish::after {
+  display: none;
+}
+
+.hero-section.hero-compact .stagger-children > * {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 .hero-icon-wrapper {
   margin-bottom: 1.25rem;
 }
@@ -305,6 +338,35 @@ function stageBadgeClass(stage: string): string {
 
 .hero-cta {
   margin-top: 0.5rem;
+}
+
+.hero-icon-small {
+  margin-bottom: 0 !important;
+}
+
+.hero-icon-seal {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: var(--radius-folio) !important;
+}
+
+.hero-icon-seal::before {
+  display: none;
+}
+
+.hero-title-compact {
+  font-size: var(--text-2xl) !important;
+  margin: 0 !important;
+  flex: 1;
+  text-align: left;
+}
+
+.hero-cta-compact {
+  flex-shrink: 0;
+}
+
+.rule-ornament-line {
+  display: none;
 }
 
 .project-card {
@@ -464,23 +526,6 @@ function stageBadgeClass(stage: string): string {
   }
 }
 
-.empty-state-icon-wrapper {
-  width: 6rem;
-  height: 6rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--color-ink-wash-light);
-  border: 1px solid var(--color-ink-edge);
-  margin-bottom: 1.25rem;
-}
-
-.empty-state-folder-icon {
-  color: var(--color-muted);
-  opacity: 0.6;
-}
-
 .modal-header {
   display: flex;
   align-items: center;
@@ -555,13 +600,12 @@ html[data-theme="paper"] .skeleton-shimmer {
   );
 }
 
-html[data-theme="paper"] .empty-state-icon-wrapper {
-  background: rgba(26, 21, 16, 0.03);
-  border-color: var(--color-paper-edge);
-}
-
 html[data-theme="paper"] .project-meta {
   border-top-color: var(--color-paper-edge);
+}
+
+html[data-theme="paper"] .hero-compact {
+  border-bottom-color: var(--color-paper-edge);
 }
 
 @media (prefers-reduced-motion: reduce) {
