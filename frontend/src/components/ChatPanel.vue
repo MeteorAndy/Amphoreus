@@ -10,6 +10,7 @@ const props = defineProps<{
   messages: ChatMessage[]
   loading: boolean
   placeholder?: string
+  embedded?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -38,7 +39,7 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col h-full card overflow-hidden">
+  <div class="flex flex-col h-full overflow-hidden" :class="embedded ? 'chat-embedded' : 'card'">
     <div
       ref="messagesContainer"
       class="flex-1 overflow-y-auto p-5 space-y-4 scroll-smooth"
@@ -72,7 +73,7 @@ watch(
         </div>
       </div>
     </div>
-    <div class="border-t border-ink-edge/70 p-4 bg-ink-bg-deep/30">
+    <div class="p-4 bg-ink-bg-deep/30" :class="embedded ? 'chat-embedded-input' : 'border-t border-ink-edge/70'">
       <form @submit.prevent="handleSend" class="flex gap-2.5">
         <input
           v-model="input"
@@ -98,6 +99,18 @@ watch(
   background: var(--gradient-chop-seal);
   box-shadow: 0 2px 8px rgba(200, 66, 59, 0.25),
               inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.chat-embedded {
+  background: transparent;
+}
+
+.chat-embedded-input {
+  border-top: 1px solid var(--color-ink-edge);
+}
+
+html[data-theme="paper"] .chat-embedded-input {
+  border-top-color: var(--color-paper-edge);
 }
 
 .message-bubble {

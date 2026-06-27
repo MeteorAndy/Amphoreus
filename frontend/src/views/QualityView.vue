@@ -123,7 +123,7 @@ function reportSummary(key: string): { metric: string; level: 'pass' | 'warn' | 
 </script>
 
 <template>
-  <div class="quality-view fade-in-up">
+  <div class="quality-view flex-1 min-h-0 overflow-y-auto fade-in-up pr-1">
     <!-- Masthead - Page header style -->
     <header class="quality-masthead">
       <div class="masthead-inner">

@@ -150,7 +150,7 @@ function goToCharacters(): void {
 </script>
 
 <template>
-  <div class="space-y-6 fade-in-up">
+  <div class="flex-1 min-h-0 overflow-y-auto space-y-6 fade-in-up pr-1">
     <div class="page-header">
       <div class="flex items-start gap-4">
         <div class="w-12 h-12 rounded-seal flex items-center justify-center flex-shrink-0 seal-glow" style="background: var(--gradient-chop-seal);">

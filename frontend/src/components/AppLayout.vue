@@ -1,17 +1,27 @@
 <script setup lang="ts">
-import { type Component } from 'vue'
+import { type Component, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   FolderOpen, Zap, Sparkles, Globe,
   Users, ListTree, Drama, PenTool, ShieldCheck, Sun, Moon,
-  BookOpen,
+  BookOpen, PanelLeftClose, MessageSquare,
 } from 'lucide-vue-next'
 import { useI18n } from '../i18n'
 import { useTheme } from '../composables/useTheme'
+import { useWorkbench } from '../composables/useWorkbench'
+import PanelResizeHandle from './PanelResizeHandle.vue'
 import ToastContainer from './ToastContainer.vue'
 
 const { t, setLang, currentLang } = useI18n()
 const { theme, toggle: toggleTheme } = useTheme()
+const {
+  rightPanelVisible,
+  rightPanelWidth,
+  toggleRightPanel,
+  setRightPanelWidth,
+  DEFAULT_RIGHT_PANEL_WIDTH,
+  setDefaultForRoute,
+} = useWorkbench()
 const route = useRoute()
 const router = useRouter()
 
@@ -59,6 +69,28 @@ function navigate(path: string): void {
 function toggleLang(): void {
   setLang(currentLang.value === 'zh' ? 'en' : 'zh')
 }
+
+function handleResize(delta: number): void {
+  setRightPanelWidth(rightPanelWidth.value + delta)
+}
+
+function resetPanelWidth(): void {
+  setRightPanelWidth(DEFAULT_RIGHT_PANEL_WIDTH)
+}
+
+function expandPanel(): void {
+  if (!rightPanelVisible.value) {
+    toggleRightPanel()
+  }
+}
+
+watch(
+  () => route.path,
+  (path) => {
+    setDefaultForRoute(path)
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -105,10 +137,10 @@ function toggleLang(): void {
                   :style="{ animationDelay: `${(groupIndex * 3 + itemIndex + 1) * 60}ms` }"
                 >
                   <span class="nav-indicator absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-r-full transition-all"></span>
-                  <component 
-                    :is="item.icon" 
-                    :size="16" 
-                    :stroke-width="isActive(item.path) ? 2 : 1.5" 
+                  <component
+                    :is="item.icon"
+                    :size="16"
+                    :stroke-width="isActive(item.path) ? 2 : 1.5"
                     class="nav-icon flex-shrink-0 transition-all"
                   />
                   <span class="nav-text font-medium leading-tight">{{ t(item.labelKey) }}</span>
@@ -132,6 +164,14 @@ function toggleLang(): void {
               <span>{{ theme === 'ink' ? (currentLang === 'zh' ? '纸色' : 'Paper') : (currentLang === 'zh' ? '墨色' : 'Ink') }}</span>
             </button>
             <button
+              @click="toggleRightPanel"
+              class="control-btn"
+              :class="{ 'control-btn--active': rightPanelVisible }"
+              :title="rightPanelVisible ? '折叠AI面板' : '展开AI面板'"
+            >
+              <MessageSquare :size="14" :stroke-width="1.5" />
+            </button>
+            <button
               @click="toggleLang"
               class="control-btn lang-btn flex items-center justify-center"
               :title="t('lang.switch')"
@@ -143,11 +183,46 @@ function toggleLang(): void {
       </div>
     </aside>
 
-    <main class="main-content flex-1 overflow-y-auto">
-      <div class="main-inner max-w-7xl mx-auto px-8 py-6">
+    <main class="main-content flex-1 min-w-0 overflow-hidden flex flex-col">
+      <div
+        class="main-inner flex-1 min-h-0 flex flex-col"
+        :class="rightPanelVisible
+          ? 'px-4 py-4'
+          : 'max-w-7xl mx-auto px-8 py-6 overflow-y-auto'"
+      >
         <slot />
       </div>
     </main>
+
+    <template v-if="rightPanelVisible">
+      <PanelResizeHandle @resize="handleResize" @reset="resetPanelWidth" />
+      <aside
+        class="right-panel flex flex-col flex-shrink-0"
+        :style="{ width: `${rightPanelWidth}px` }"
+      >
+        <div class="right-panel__inner flex flex-col h-full">
+          <div class="right-panel-header flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2">
+              <MessageSquare :size="15" :stroke-width="1.5" class="text-chop" />
+              <span class="text-sm font-semibold font-display text-parchment-bright">AI 助手</span>
+            </div>
+            <button
+              @click="toggleRightPanel"
+              class="panel-collapse-btn"
+              title="折叠面板"
+            >
+              <PanelLeftClose :size="15" :stroke-width="1.5" />
+            </button>
+          </div>
+          <div class="right-panel-divider" />
+          <div class="right-panel-content flex-1 overflow-hidden">
+            <slot name="right-panel" />
+          </div>
+        </div>
+      </aside>
+    </template>
+
+    <div v-else class="right-panel-edge" @click="expandPanel" title="展开AI面板" />
 
     <ToastContainer />
   </div>
@@ -160,7 +235,7 @@ function toggleLang(): void {
 
 .sidebar {
   background: var(--color-ink-panel);
-  background-image: 
+  background-image:
     linear-gradient(180deg, rgba(237, 228, 211, 0.02) 0%, transparent 20%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.025'/%3E%3C/svg%3E");
   border-right: 1px solid transparent;
@@ -212,7 +287,7 @@ function toggleLang(): void {
 
 .seal {
   background: var(--gradient-chop-seal);
-  box-shadow: 
+  box-shadow:
     0 2px 8px rgba(200, 66, 59, 0.4),
     0 0 20px rgba(200, 66, 59, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.25),
@@ -226,7 +301,7 @@ function toggleLang(): void {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: 
+  background:
     radial-gradient(ellipse at 20% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 40%),
     radial-gradient(ellipse at 80% 70%, rgba(0, 0, 0, 0.12) 0%, transparent 40%);
   z-index: 1;
@@ -418,7 +493,7 @@ function toggleLang(): void {
 
 .divider-line {
   height: 1px;
-  background: linear-gradient(90deg, 
+  background: linear-gradient(90deg,
     transparent 0%,
     var(--color-ink-edge) 20%,
     var(--color-muted-soft) 50%,
@@ -453,6 +528,13 @@ function toggleLang(): void {
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+.control-btn--active {
+  color: var(--color-chop-light);
+  border-color: var(--color-chop-border);
+  background: linear-gradient(180deg, var(--color-chop-soft), rgba(200, 66, 59, 0.05));
+  box-shadow: 0 0 8px var(--color-chop-glow), var(--shadow-inset);
+}
+
 .lang-btn {
   min-width: 36px;
   font-family: var(--font-display);
@@ -462,6 +544,7 @@ function toggleLang(): void {
 
 .main-content {
   animation: mainFadeIn 0.5s var(--ease-page);
+  position: relative;
 }
 
 @keyframes mainFadeIn {
@@ -479,14 +562,114 @@ function toggleLang(): void {
   min-height: 100%;
 }
 
+/* Right panel */
+.right-panel {
+  background: var(--color-ink-panel);
+  background-image:
+    linear-gradient(180deg, rgba(237, 228, 211, 0.02) 0%, transparent 20%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.025'/%3E%3C/svg%3E");
+  position: relative;
+  overflow: hidden;
+}
+
+.right-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--color-chop-border) 15%,
+    var(--color-ink-edge) 50%,
+    var(--color-chop-border) 85%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.right-panel__inner {
+  position: relative;
+  z-index: 1;
+}
+
+.right-panel-header {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.right-panel-divider {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--color-ink-edge) 20%,
+    var(--color-muted-soft) 50%,
+    var(--color-ink-edge) 80%,
+    transparent 100%
+  );
+  margin: 0 12px;
+}
+
+.right-panel-content {
+  position: relative;
+}
+
+.panel-collapse-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-scroll);
+  color: var(--color-parchment-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-editorial);
+}
+
+.panel-collapse-btn:hover {
+  background: var(--color-ink-wash-light);
+  color: var(--color-parchment);
+  border-color: var(--color-ink-edge);
+}
+
+/* Collapsed edge strip */
+.right-panel-edge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 3px;
+  z-index: 20;
+  cursor: pointer;
+  background: transparent;
+  transition: background var(--duration-fast) var(--ease-editorial);
+}
+
+.right-panel-edge:hover {
+  background: linear-gradient(180deg,
+    transparent 0%,
+    var(--color-chop-border) 20%,
+    var(--color-chop) 50%,
+    var(--color-chop-border) 80%,
+    transparent 100%
+  );
+  width: 4px;
+}
+
+/* Paper theme overrides */
 html[data-theme="paper"] .sidebar {
-  background-image: 
+  background-image:
     linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 20%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.04'/%3E%3C/svg%3E");
 }
 
 html[data-theme="paper"] .seal {
-  box-shadow: 
+  box-shadow:
     0 2px 8px rgba(168, 54, 47, 0.3),
     0 0 16px rgba(168, 54, 47, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
@@ -513,6 +696,23 @@ html[data-theme="paper"] .control-btn {
 html[data-theme="paper"] .control-btn:hover {
   background: linear-gradient(180deg, #fffdf8, var(--color-paper-warm));
   border-color: var(--color-paper-edge);
+}
+
+html[data-theme="paper"] .control-btn--active {
+  color: var(--color-chop);
+  border-color: var(--color-chop-border);
+  background: linear-gradient(180deg, var(--color-chop-soft), rgba(168, 54, 47, 0.04));
+}
+
+html[data-theme="paper"] .right-panel {
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 20%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+html[data-theme="paper"] .panel-collapse-btn:hover {
+  background: rgba(26, 21, 16, 0.04);
+  color: var(--color-ink-on-paper);
 }
 
 @media (prefers-reduced-motion: reduce) {

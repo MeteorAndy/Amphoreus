@@ -53,7 +53,7 @@ function stageStatus(idx: number): 'done' | 'current' | 'upcoming' {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto fade-in-up">
+  <div class="flex-1 min-h-0 overflow-y-auto max-w-3xl mx-auto fade-in-up pr-1">
     <div class="page-header text-center pb-6 mb-6">
       <div class="flex flex-col items-center gap-3 w-full">
         <div class="w-14 h-14 rounded-seal flex items-center justify-center seal-glow" style="background: var(--gradient-chop-seal);">

@@ -62,7 +62,7 @@ async function handleStop(): Promise<void> {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto p-6 space-y-6 fade-in-up">
+  <div class="flex-1 min-h-0 overflow-y-auto max-w-5xl mx-auto p-6 space-y-6 fade-in-up pr-1">
     <div class="page-header text-center pb-6 mb-6">
       <div class="flex flex-col items-center gap-3 w-full">
         <div class="w-14 h-14 rounded-seal flex items-center justify-center seal-glow-gold" style="background: var(--gradient-gold-seal);">
