@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from '../i18n'
 import { useProjects } from '../composables/useProjects'
+import { useAssistant } from '../composables/useAssistant'
 import { FolderPlus, Trash2, Clock, Calendar, BookOpen } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const router = useRouter()
 const { projects, loading, error, fetchProjects, createProject, deleteProject } = useProjects()
+const assistant = useAssistant()
 
 const showCreateDialog = ref(false)
 const newName = ref('')
@@ -17,8 +19,34 @@ const createError = ref('')
 
 const hasProjects = computed(() => !loading.value && projects.value.length > 0)
 
+let unregisterActions: Array<() => void> = []
+
 onMounted(() => {
   fetchProjects()
+  unregisterActions.push(
+    assistant.registerPageAction({
+      id: 'create-project',
+      label: '新建项目',
+      description: '创建一个新的故事项目',
+      primary: true,
+      handler: () => {
+        openCreateDialog()
+      },
+    }),
+    assistant.registerPageSuggestion({
+      text: '直接开始一键生成',
+      action: () => router.push('/pipeline'),
+    }),
+    assistant.registerPageSuggestion({
+      text: '开始互动创作引导',
+      action: () => router.push('/interactive'),
+    }),
+  )
+})
+
+onUnmounted(() => {
+  unregisterActions.forEach((fn) => fn())
+  unregisterActions = []
 })
 
 function openCreateDialog() {

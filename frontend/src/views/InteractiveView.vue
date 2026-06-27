@@ -1,20 +1,26 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { Check, ChevronRight, ChevronLeft, MessageSquare } from 'lucide-vue-next'
 import { useI18n } from '../i18n'
 import { useInteractive } from '../composables/useInteractive'
 import { useWorldBuilder } from '../composables/useWorldBuilder'
 import { useSceneEngine } from '../composables/useSceneEngine'
+import { useAssistant } from '../composables/useAssistant'
 import StepProgress from '../components/StepProgress.vue'
 import ChatPanel from '../components/ChatPanel.vue'
 import CharacterCard from '../components/CharacterCard.vue'
 import type { CharacterProfile, SceneSpec } from '../types/api'
 
 const { t } = useI18n()
+const router = useRouter()
 
 const interactive = useInteractive()
 const worldBuilder = useWorldBuilder()
 const sceneEngine = useSceneEngine()
+const assistant = useAssistant()
+
+let unregisterActions: Array<() => void> = []
 
 const seedIdea = ref('')
 
@@ -114,6 +120,210 @@ function nextScene(): void {
 async function handleWriteNarrative(): Promise<void> {
   await interactive.writeNarrative(outputFormat.value)
 }
+
+function updateAssistantActions(): void {
+  unregisterActions.forEach((fn) => fn())
+  unregisterActions = []
+
+  const step = interactive.currentStep.value
+
+  unregisterActions.push(
+    assistant.registerPageSuggestion({
+      text: '改用一键生成',
+      action: () => router.push('/pipeline'),
+    }),
+  )
+
+  if (step === 1) {
+    if (!worldBuilder.finalized.value) {
+      unregisterActions.push(
+        assistant.registerPageAction({
+          id: 'interactive-world-start',
+          label: '开始构建世界',
+          description: '从你的灵感种子开始对话构建世界观',
+          primary: true,
+          handler: () => {
+            if (seedIdea.value.trim() || worldBuilder.sessionId.value) {
+              handleWorldSend(seedIdea.value)
+            } else {
+              assistant.triggerEvent('focus-world-input')
+            }
+          },
+        }),
+      )
+      if (worldBuilder.isDone.value) {
+        unregisterActions.push(
+          assistant.registerPageAction({
+            id: 'interactive-world-finalize',
+            label: '确认世界设定',
+            description: '完成世界观构建进入下一步',
+            primary: true,
+            handler: handleFinalizeWorld,
+          }),
+        )
+      }
+    } else {
+      unregisterActions.push(
+        assistant.registerPageAction({
+          id: 'interactive-next-characters',
+          label: '进入角色生成',
+          description: '基于世界设定生成角色',
+          primary: true,
+          handler: () => interactive.nextStep(),
+        }),
+      )
+    }
+  } else if (step === 2) {
+    if (interactive.characters.value.length === 0) {
+      unregisterActions.push(
+        assistant.registerPageAction({
+          id: 'interactive-gen-chars',
+          label: '生成角色',
+          description: '自动生成故事角色',
+          primary: true,
+          handler: handleGenerateCharacters,
+        }),
+      )
+    } else {
+      unregisterActions.push(
+        assistant.registerPageAction({
+          id: 'interactive-regen-chars',
+          label: '重新生成角色',
+          description: '重新生成角色档案',
+          handler: handleGenerateCharacters,
+        }),
+        assistant.registerPageAction({
+          id: 'interactive-next-plot',
+          label: '进入剧情架构',
+          description: '角色完成后开始搭建剧情',
+          primary: true,
+          handler: () => interactive.nextStep(),
+        }),
+      )
+    }
+    unregisterActions.push(
+      assistant.registerPageAction({
+        id: 'interactive-back-world',
+        label: '返回世界构建',
+        handler: () => interactive.prevStep(),
+      }),
+    )
+  } else if (step === 3) {
+    if (!interactive.plotOutline.value) {
+      unregisterActions.push(
+        assistant.registerPageAction({
+          id: 'interactive-gen-plot',
+          label: '生成剧情大纲',
+          description: '基于世界和角色生成剧情结构',
+          primary: true,
+          handler: handleGeneratePlot,
+        }),
+      )
+    } else {
+      unregisterActions.push(
+        assistant.registerPageAction({
+          id: 'interactive-next-scenes',
+          label: '进入场景演绎',
+          description: '开始逐场景模拟角色对话',
+          primary: true,
+          handler: () => interactive.nextStep(),
+        }),
+      )
+    }
+    unregisterActions.push(
+      assistant.registerPageAction({
+        id: 'interactive-back-chars',
+        label: '返回角色管理',
+        handler: () => interactive.prevStep(),
+      }),
+    )
+  } else if (step === 4) {
+    unregisterActions.push(
+      assistant.registerPageAction({
+        id: 'interactive-run-scene',
+        label: '演绎当前场景',
+        description: 'AI模拟此场景的角色对话',
+        primary: true,
+        handler: runCurrentScene,
+      }),
+    )
+    if (sceneEngine.status.value.status === 'completed') {
+      unregisterActions.push(
+        assistant.registerPageAction({
+          id: 'interactive-next-scene',
+          label: '下一场景',
+          handler: nextScene,
+        }),
+      )
+    }
+    unregisterActions.push(
+      assistant.registerPageAction({
+        id: 'interactive-skip-scene',
+        label: '跳过此场景',
+        handler: skipScene,
+      }),
+      assistant.registerPageAction({
+        id: 'interactive-next-writing',
+        label: '直接进入写作',
+        description: '跳过场景演绎直接生成正文',
+        primary: true,
+        handler: () => interactive.nextStep(),
+      }),
+      assistant.registerPageAction({
+        id: 'interactive-back-plot',
+        label: '返回剧情架构',
+        handler: () => interactive.prevStep(),
+      }),
+    )
+  } else if (step === 5) {
+    if (!interactive.writtenOutput.value) {
+      unregisterActions.push(
+        assistant.registerPageAction({
+          id: 'interactive-write',
+          label: '生成叙事正文',
+          description: '将剧情大纲转换成小说/剧本',
+          primary: true,
+          handler: handleWriteNarrative,
+        }),
+      )
+    } else {
+      unregisterActions.push(
+        assistant.registerPageAction({
+          id: 'interactive-export',
+          label: '导出作品',
+          description: '导出为Markdown或Fountain格式',
+          primary: true,
+          handler: () => interactive.exportNarrative(outputFormat.value),
+        }),
+        assistant.registerPageAction({
+          id: 'interactive-goto-quality',
+          label: '前往质量审稿',
+          handler: () => router.push('/quality'),
+        }),
+      )
+    }
+    unregisterActions.push(
+      assistant.registerPageAction({
+        id: 'interactive-back-scenes',
+        label: '返回场景演绎',
+        handler: () => interactive.prevStep(),
+      }),
+    )
+  }
+}
+
+onMounted(() => {
+  updateAssistantActions()
+  watch(
+    () => [interactive.currentStep.value, worldBuilder.finalized.value, worldBuilder.isDone.value, interactive.characters.value.length, interactive.plotOutline.value?.id, sceneEngine.status.value.status, interactive.writtenOutput.value],
+    updateAssistantActions,
+  )
+})
+
+onUnmounted(() => {
+  unregisterActions.forEach((fn) => fn())
+  unregisterActions = []
+})
 </script>
 
 <template>

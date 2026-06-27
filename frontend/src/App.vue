@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import AppLayout from './components/AppLayout.vue'
 import ChatPanel from './components/ChatPanel.vue'
-import { useGlobalChat } from './composables/useGlobalChat'
+import { useAssistant } from './composables/useAssistant'
 
-const { messages, loading, sendMessage } = useGlobalChat()
+const assistant = useAssistant()
 </script>
 
 <template>
@@ -15,11 +15,14 @@ const { messages, loading, sendMessage } = useGlobalChat()
     </router-view>
     <template #right-panel>
       <ChatPanel
-        :messages="messages"
-        :loading="loading"
+        :messages="assistant.messages.value"
+        :loading="assistant.loading.value"
+        :suggestions="assistant.suggestions.value"
         :embedded="true"
-        placeholder="有什么可以帮助你的？"
-        @send="sendMessage"
+        :context-title="assistant.currentContext.value.title"
+        placeholder="问我任何关于创作的问题，或点击下方建议..."
+        @send="assistant.sendMessage"
+        @clear="assistant.clearMessages"
       />
     </template>
   </AppLayout>
