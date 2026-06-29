@@ -11,28 +11,56 @@ import TensionCurve from '../components/TensionCurve.vue'
 const { t } = useI18n()
 const { diagnostics, hasReports } = useDiagnostics()
 
+type ReportTone = 'chop' | 'editor' | 'gold' | 'ink'
+
 interface ReportMeta {
   key: string
   icon: Component
+  tone: ReportTone
 }
 
 const REPORT_META: ReportMeta[] = [
-  { key: 'cliche_report', icon: Type },
-  { key: 'canon_report', icon: CheckCircle },
-  { key: 'tension_report', icon: TrendingUp },
-  { key: 'prop_lifecycle_report', icon: Package },
-  { key: 'reader_sim_report', icon: Eye },
-  { key: 'budget_report', icon: Coins },
-  { key: 'relationship_trend_report', icon: Heart },
-  { key: 'entity_event_report', icon: Activity },
-  { key: 'graph_inference_report', icon: Network },
-  { key: 'adaptive_pattern_report', icon: Sparkle },
+  { key: 'cliche_report', icon: Type, tone: 'chop' },
+  { key: 'canon_report', icon: CheckCircle, tone: 'editor' },
+  { key: 'tension_report', icon: TrendingUp, tone: 'gold' },
+  { key: 'prop_lifecycle_report', icon: Package, tone: 'gold' },
+  { key: 'reader_sim_report', icon: Eye, tone: 'chop' },
+  { key: 'budget_report', icon: Coins, tone: 'gold' },
+  { key: 'relationship_trend_report', icon: Heart, tone: 'editor' },
+  { key: 'entity_event_report', icon: Activity, tone: 'ink' },
+  { key: 'graph_inference_report', icon: Network, tone: 'chop' },
+  { key: 'adaptive_pattern_report', icon: Sparkle, tone: 'gold' },
 ]
 
-const dotColor = {
-  pass: 'var(--color-editor)',
-  warn: '#e8a838',
-  fail: 'var(--color-danger)',
+const toneMap = {
+  chop: {
+    bg: 'var(--color-chop-soft)',
+    border: 'var(--color-chop-border)',
+    text: 'var(--color-chop-light)',
+    gradient: 'var(--gradient-chop-seal)',
+    glow: 'var(--color-chop-glow)',
+  },
+  editor: {
+    bg: 'var(--color-editor-soft)',
+    border: 'rgba(90, 138, 79, 0.35)',
+    text: 'var(--color-editor-light)',
+    gradient: 'var(--gradient-editor-seal)',
+    glow: 'rgba(90, 138, 79, 0.2)',
+  },
+  gold: {
+    bg: 'var(--color-gold-soft)',
+    border: 'rgba(201, 148, 74, 0.35)',
+    text: 'var(--color-gold-light)',
+    gradient: 'var(--gradient-gold-seal)',
+    glow: 'rgba(201, 148, 74, 0.2)',
+  },
+  ink: {
+    bg: 'var(--color-ink-wash-light)',
+    border: 'var(--color-ink-edge)',
+    text: 'var(--color-parchment-dim)',
+    gradient: 'linear-gradient(135deg, var(--color-parchment-dim), var(--color-muted))',
+    glow: 'rgba(0,0,0,0.1)',
+  },
 } as const
 
 function reportSummary(key: string): { metric: string; level: 'pass' | 'warn' | 'fail' } {
@@ -95,64 +123,481 @@ function reportSummary(key: string): { metric: string; level: 'pass' | 'warn' | 
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- Masthead -->
-    <header class="flex items-center gap-3 pb-4 border-b border-ink-edge">
-      <div class="w-10 h-10 rounded-seal bg-chop/15 border border-chop/40 flex items-center justify-center">
-        <ShieldCheck :size="20" class="text-chop" :stroke-width="1.5" />
+  <div class="quality-view flex-1 min-h-0 overflow-y-auto fade-in-up pr-1">
+    <!-- Masthead - Page header style -->
+    <header class="quality-masthead">
+      <div class="masthead-inner">
+        <div class="masthead-seal seal-glow">
+          <div class="seal-gradient">
+            <ShieldCheck :size="22" class="seal-icon" :stroke-width="1.5" />
+          </div>
+        </div>
+        <div class="masthead-text">
+          <h1 class="masthead-title font-display">
+            {{ t('quality.title') }}
+          </h1>
+          <p class="masthead-subtitle">
+            {{ hasReports ? t('quality.subtitle_ready') : t('quality.subtitle_empty') }}
+          </p>
+        </div>
       </div>
-      <div>
-        <h1 class="text-xl text-parchment">
-          {{ t('quality.title') }}
-        </h1>
-        <p class="text-sm text-muted mt-0.5">
-          {{ hasReports ? t('quality.subtitle_ready') : t('quality.subtitle_empty') }}
-        </p>
+      <div class="rule-ornament rule-ornament-diamond masthead-rule">
+        <span class="rule-diamond">◆</span>
       </div>
     </header>
 
     <!-- Reports grid -->
-    <div v-if="hasReports" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div
+    <div v-if="hasReports" class="reports-grid stagger-children">
+      <article
         v-for="meta in REPORT_META.filter(m => diagnostics[m.key])"
         :key="meta.key"
-        class="card p-4 hover:border-ink-elevated transition-colors"
+        class="report-card"
+        :data-tone="meta.tone"
       >
-        <div class="flex items-start justify-between mb-3">
-          <div class="flex items-center gap-2">
-            <component :is="meta.icon" :size="16" :stroke-width="1.5" class="text-parchment-dim" />
-            <h3 class="text-sm font-medium text-parchment">
+        <div class="card-color-bar" :style="{ background: toneMap[meta.tone].gradient }" />
+        <div class="card-body">
+          <div class="card-header">
+            <div class="card-icon-wrap" :style="{ background: toneMap[meta.tone].bg, borderColor: toneMap[meta.tone].border }">
+              <component 
+                :is="meta.icon" 
+                :size="16" 
+                :stroke-width="1.5" 
+                :style="{ color: toneMap[meta.tone].text }" 
+              />
+            </div>
+            <h3 class="card-title font-display">
               {{ t(`quality.${meta.key}`) }}
             </h3>
+            <span 
+              class="status-dot"
+              :class="`dot-${reportSummary(meta.key).level}`"
+            />
           </div>
-          <span
-            class="w-2 h-2 rounded-full flex-shrink-0 mt-1"
-            :style="{ backgroundColor: dotColor[reportSummary(meta.key).level] }"
-          />
+          <p class="card-metric font-display">
+            {{ reportSummary(meta.key).metric }}
+          </p>
         </div>
-        <p class="text-sm text-muted font-mono">
-          {{ reportSummary(meta.key).metric }}
-        </p>
-      </div>
+      </article>
     </div>
 
     <!-- Tension curve visualization -->
-    <div
+    <article
       v-if="hasReports && (diagnostics.tension_report as Record<string, unknown> | undefined)?.chapters"
-      class="card p-4 mt-4"
+      class="tension-card card"
     >
-      <h3 class="text-sm font-medium text-parchment mb-3">
-        {{ t('quality.tension_curve') }}
-      </h3>
-      <TensionCurve :chapters="(diagnostics.tension_report as Record<string, unknown>).chapters as Array<Record<string, unknown>>" />
-    </div>
+      <header class="tension-header">
+        <div class="tension-title-wrap">
+          <div class="tension-icon gold-icon-wrap">
+            <TrendingUp :size="18" :stroke-width="1.5" class="text-gold-light" />
+          </div>
+          <h3 class="tension-title font-display">
+            {{ t('quality.tension_curve') }}
+          </h3>
+        </div>
+      </header>
+      <div class="tension-chart-wrap">
+        <TensionCurve :chapters="(diagnostics.tension_report as Record<string, unknown>).chapters as Array<Record<string, unknown>>" />
+      </div>
+    </article>
 
     <!-- Empty state -->
-    <div v-if="!hasReports" class="card p-12 text-center">
-      <ShieldCheck :size="32" :stroke-width="1" class="text-muted mx-auto mb-4" />
-      <p class="text-parchment-dim text-sm leading-relaxed max-w-md mx-auto">
+    <div v-if="!hasReports" class="empty-state">
+      <div class="empty-icon-wrap">
+        <ShieldCheck :size="56" :stroke-width="1" class="empty-icon" />
+      </div>
+      <div class="empty-rule" />
+      <p class="empty-text">
         {{ t('quality.empty_desc') }}
       </p>
+      <div class="empty-rule" />
     </div>
   </div>
 </template>
+
+<style scoped>
+.quality-view {
+  max-width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Masthead - Page header style with seal
+   ═══════════════════════════════════════════════════════════════════════ */
+.quality-masthead {
+  margin-bottom: var(--space-section);
+}
+
+.masthead-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-block);
+  padding-bottom: var(--space-block);
+}
+
+.masthead-seal {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-seal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.seal-gradient {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-seal);
+  background: var(--gradient-chop-seal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2px 4px rgba(255,255,255,0.2),
+              inset 0 -2px 4px rgba(0,0,0,0.2);
+  position: relative;
+}
+
+.seal-icon {
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+}
+
+.masthead-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.masthead-title {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-parchment-bright);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.masthead-subtitle {
+  font-size: var(--text-base);
+  color: var(--color-parchment-muted);
+  margin: var(--space-compact) 0 0;
+  font-style: italic;
+  font-family: var(--font-display);
+  opacity: 0.8;
+}
+
+.masthead-rule {
+  color: var(--color-chop);
+  font-size: var(--text-xs);
+  opacity: 0.6;
+}
+
+.rule-diamond {
+  letter-spacing: 0.5em;
+  padding: 0 0.25em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Reports grid
+   ═══════════════════════════════════════════════════════════════════════ */
+.reports-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: var(--space-block);
+  margin-bottom: var(--space-section);
+}
+
+@media (min-width: 640px) {
+  .reports-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .reports-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.report-card {
+  background: var(--color-ink-panel);
+  background-image: linear-gradient(180deg, rgba(237, 228, 211, 0.03) 0%, rgba(237, 228, 211, 0.01) 40%, transparent 100%);
+  border: 1px solid var(--color-ink-edge);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card),
+              var(--shadow-inset);
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--duration-fast) var(--ease-editorial),
+              box-shadow var(--duration-fast) var(--ease-editorial),
+              transform var(--duration-fast) var(--ease-editorial);
+  isolation: isolate;
+}
+
+.report-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 30%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.report-card:hover {
+  transform: translateY(-3px);
+}
+
+.report-card[data-tone="chop"]:hover {
+  border-color: var(--color-chop-border);
+  box-shadow: 0 6px 20px rgba(200, 66, 59, 0.15),
+              var(--shadow-elevated),
+              var(--shadow-inset);
+}
+
+.report-card[data-tone="editor"]:hover {
+  border-color: rgba(90, 138, 79, 0.4);
+  box-shadow: 0 6px 20px rgba(90, 138, 79, 0.12),
+              var(--shadow-elevated),
+              var(--shadow-inset);
+}
+
+.report-card[data-tone="gold"]:hover {
+  border-color: rgba(201, 148, 74, 0.4);
+  box-shadow: 0 6px 20px rgba(201, 148, 74, 0.12),
+              var(--shadow-elevated),
+              var(--shadow-inset);
+}
+
+.report-card[data-tone="ink"]:hover {
+  border-color: var(--color-ink-highlight);
+  box-shadow: var(--shadow-elevated),
+              var(--shadow-inset);
+}
+
+.card-color-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  opacity: 0.85;
+}
+
+.card-body {
+  padding: var(--space-block);
+  padding-top: calc(var(--space-block) + 3px);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-element);
+  margin-bottom: var(--space-element);
+}
+
+.card-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-seal);
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.card-title {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-parchment);
+  margin: 0;
+  letter-spacing: 0.01em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.card-metric {
+  font-size: var(--text-lg);
+  font-weight: 500;
+  color: var(--color-parchment-dim);
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Tension curve card
+   ═══════════════════════════════════════════════════════════════════════ */
+.tension-card {
+  padding: var(--space-block);
+  margin-bottom: var(--space-section);
+}
+
+.tension-header {
+  margin-bottom: var(--space-block);
+}
+
+.tension-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-element);
+}
+
+.gold-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-seal);
+  background: var(--color-gold-soft);
+  border: 1px solid rgba(201, 148, 74, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tension-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-parchment);
+  margin: 0;
+}
+
+.tension-chart-wrap {
+  min-height: 240px;
+  position: relative;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Empty state
+   ═══════════════════════════════════════════════════════════════════════ */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  text-align: center;
+  color: var(--color-muted);
+  position: relative;
+}
+
+.empty-icon-wrap {
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius-seal);
+  background: var(--color-ink-wash-light);
+  border: 1px solid var(--color-ink-edge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-block);
+  opacity: 0.6;
+}
+
+.empty-icon {
+  color: var(--color-parchment-dim);
+}
+
+.empty-rule {
+  width: 80px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--color-ink-edge), transparent);
+}
+
+.empty-rule:first-of-type {
+  margin-bottom: var(--space-block);
+}
+
+.empty-rule:last-of-type {
+  margin-top: var(--space-block);
+}
+
+.empty-text {
+  font-size: var(--text-base);
+  color: var(--color-parchment-muted);
+  max-width: 42ch;
+  line-height: 1.8;
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Paper theme (light mode) adjustments
+   ═══════════════════════════════════════════════════════════════════════ */
+:global(html[data-theme="paper"]) .report-card {
+  background: var(--color-paper-cream);
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.15) 40%, transparent 100%);
+  box-shadow: var(--shadow-card-paper),
+              var(--shadow-inset-paper);
+  border-color: var(--color-paper-edge-soft);
+}
+
+:global(html[data-theme="paper"]) .report-card::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, transparent 30%);
+}
+
+:global(html[data-theme="paper"]) .report-card[data-tone="chop"]:hover {
+  box-shadow: 0 6px 20px rgba(168, 54, 47, 0.12),
+              var(--shadow-elevated-paper),
+              var(--shadow-inset-paper);
+}
+
+:global(html[data-theme="paper"]) .report-card[data-tone="editor"]:hover {
+  box-shadow: 0 6px 20px rgba(61, 107, 50, 0.1),
+              var(--shadow-elevated-paper),
+              var(--shadow-inset-paper);
+}
+
+:global(html[data-theme="paper"]) .report-card[data-tone="gold"]:hover {
+  box-shadow: 0 6px 20px rgba(154, 115, 48, 0.1),
+              var(--shadow-elevated-paper),
+              var(--shadow-inset-paper);
+}
+
+:global(html[data-theme="paper"]) .masthead-title {
+  color: var(--color-ink-on-paper);
+}
+
+:global(html[data-theme="paper"]) .masthead-subtitle {
+  color: var(--color-ink-on-paper-muted);
+}
+
+:global(html[data-theme="paper"]) .card-title {
+  color: var(--color-ink-on-paper);
+}
+
+:global(html[data-theme="paper"]) .card-metric {
+  color: var(--color-ink-on-paper-dim);
+}
+
+:global(html[data-theme="paper"]) .tension-title {
+  color: var(--color-ink-on-paper);
+}
+
+:global(html[data-theme="paper"]) .empty-icon-wrap {
+  background: rgba(26, 21, 16, 0.03);
+  border-color: var(--color-paper-edge);
+}
+
+:global(html[data-theme="paper"]) .empty-icon {
+  color: var(--color-ink-on-paper-dim);
+}
+
+:global(html[data-theme="paper"]) .empty-text {
+  color: var(--color-ink-on-paper-muted);
+}
+
+:global(html[data-theme="paper"]) .empty-rule {
+  background: linear-gradient(90deg, transparent, var(--color-paper-edge), transparent);
+}
+</style>

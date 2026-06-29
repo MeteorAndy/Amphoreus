@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { Clapperboard, Play, RotateCcw, Zap, Send, Square, CircleDot, Users, Radio } from 'lucide-vue-next'
 import type { SceneStatus, SceneRound } from '../types/api'
 import { useI18n } from '../i18n'
 import { useToast } from '../composables/useToast'
@@ -21,12 +22,10 @@ const emit = defineEmits<{
   reset: []
 }>()
 
-// --- State ---
 const intervention = ref('')
 const showEndConfirm = ref(false)
 const directorLog = ref<{ text: string; ts: string }[]>([])
 
-// --- Computed ---
 const isRunning = computed(() => props.status.status === 'running')
 const activeCharacters = computed(() => {
   if (!props.rounds || props.rounds.length === 0) return []
@@ -46,13 +45,12 @@ const quickActions = computed(() => [
   { key: 'reveal', label: t('scene.quick_reveal') },
 ])
 
-// --- Methods ---
-function getStatusColor(): string {
+function getStatusBadge() {
   switch (props.status.status) {
-    case 'running': return 'text-green-400'
-    case 'completed': return 'text-blue-400'
-    case 'error': return 'text-red-400'
-    default: return 'text-parchment-dim'
+    case 'running': return { class: 'badge-editor', text: props.status.current_round ? `Round ${props.status.current_round}` : 'Running' }
+    case 'completed': return { class: 'badge-accent', text: 'Completed' }
+    case 'error': return { class: '', text: 'Error' }
+    default: return { class: 'badge-muted', text: 'Idle' }
   }
 }
 
@@ -83,120 +81,141 @@ function doEndScene(): void {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-ink-panel rounded-lg border border-ink-edge overflow-hidden">
-    <!-- Header -->
+  <div class="flex flex-col h-full card overflow-hidden">
     <div class="px-4 py-3 border-b border-ink-edge flex items-center justify-between shrink-0">
-      <h3 class="text-sm font-semibold text-parchment">{{ t('scene.director_panel') }}</h3>
-      <span class="text-xs font-medium" :class="getStatusColor()">
-        {{ props.status.status === 'running'
-          ? `Round ${props.status.current_round}`
-          : props.status.status }}
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-chop-soft flex items-center justify-center">
+          <Clapperboard :size="15" class="text-chop-light" />
+        </div>
+        <h3 class="text-sm font-display font-semibold text-parchment">{{ t('scene.director_panel') }}</h3>
+      </div>
+      <span class="badge" :class="getStatusBadge().class">
+        {{ getStatusBadge().text }}
       </span>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-4 space-y-4">
-      <!-- Status block -->
-      <div class="bg-ink-elevated/50 rounded-lg p-3 space-y-1.5">
+    <div class="flex-1 overflow-y-auto p-4 space-y-4 stagger-children">
+      <div class="bg-ink-bg-deep/50 rounded-lg p-3 space-y-2.5 border border-ink-edge">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-muted">Status</span>
-          <span class="text-xs font-medium" :class="getStatusColor()">{{ props.status.status }}</span>
+          <span class="text-xs text-muted font-display tracking-wide">Status</span>
+          <span class="text-xs font-medium" :class="{
+            'text-editor': props.status.status === 'running',
+            'text-chop-light': props.status.status === 'completed',
+            'text-danger': props.status.status === 'error',
+            'text-parchment-dim': !['running', 'completed', 'error'].includes(props.status.status)
+          }">{{ props.status.status }}</span>
         </div>
         <div v-if="activeCharacters.length > 0" class="flex items-start justify-between gap-2">
-          <span class="text-xs text-muted shrink-0">Characters</span>
+          <span class="text-xs text-muted font-display tracking-wide shrink-0 flex items-center gap-1">
+            <Users :size="11" />
+            Characters
+          </span>
           <div class="flex flex-wrap gap-1 justify-end">
             <span
               v-for="char in activeCharacters"
               :key="char"
-              class="text-xs text-chop bg-chop/20/30 px-1.5 py-0.5 rounded"
+              class="badge badge-accent text-[10px] py-0.5"
             >{{ char }}</span>
           </div>
         </div>
         <div v-if="sceneId" class="flex items-center justify-between">
-          <span class="text-xs text-muted">Scene ID</span>
+          <span class="text-xs text-muted font-display tracking-wide">Scene ID</span>
           <span class="text-xs text-parchment-dim font-mono">{{ sceneId.slice(0, 8) }}…</span>
         </div>
         <div class="flex items-center justify-between">
-          <span class="text-xs text-muted">WS</span>
-          <span class="text-xs" :class="connected ? 'text-green-400' : 'text-muted'">
+          <span class="text-xs text-muted font-display tracking-wide flex items-center gap-1">
+            <Radio :size="11" />
+            WS
+          </span>
+          <span class="flex items-center gap-1.5 text-xs" :class="connected ? 'text-editor' : 'text-muted'">
+            <span class="w-1.5 h-1.5 rounded-full" :class="connected ? 'bg-editor animate-pulse' : 'bg-muted'"></span>
             {{ connected ? 'Connected' : 'Disconnected' }}
           </span>
         </div>
       </div>
 
-      <!-- Idle / completed / error actions -->
       <div v-if="!isRunning">
         <button
           v-if="status.status === 'idle'"
           @click="emit('startScene')"
-          class="w-full px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop transition-colors"
+          class="btn btn-primary w-full"
         >
+          <Play :size="14" />
           {{ t('scene.run') }}
         </button>
         <button
           v-else
           @click="emit('reset')"
-          class="w-full px-4 py-2 bg-ink-elevated text-parchment rounded-lg text-sm font-medium hover:bg-ink-elevated transition-colors"
+          class="btn btn-secondary w-full"
         >
+          <RotateCcw :size="14" />
           Reset
         </button>
       </div>
 
-      <!-- Running: quick actions + inject + end -->
       <template v-if="isRunning">
-        <!-- Quick Actions -->
         <div class="space-y-2">
-          <p class="text-xs text-muted">Quick Actions</p>
+          <p class="text-xs text-muted font-display tracking-wide flex items-center gap-1.5">
+            <Zap :size="11" class="text-gold" />
+            Quick Actions
+          </p>
           <div class="grid grid-cols-2 gap-1.5">
             <button
               v-for="action in quickActions"
               :key="action.key"
               @click="handleQuickAction(action.label)"
-              class="px-2 py-1.5 bg-ink-elevated border border-ink-edge rounded text-xs text-parchment-dim hover:bg-ink-elevated hover:border-chop transition-colors text-left truncate"
+              class="chip text-xs py-1.5 justify-center truncate"
             >
               {{ action.label }}
             </button>
           </div>
         </div>
 
-        <!-- Custom inject -->
         <div class="space-y-2">
-          <label class="block text-xs text-muted">{{ t('scene.inject_event') }}</label>
+          <label class="field-label flex items-center gap-1.5">
+            <Send :size="11" />
+            {{ t('scene.inject_event') }}
+          </label>
           <textarea
             v-model="intervention"
             :placeholder="t('scene.inject_placeholder')"
             rows="3"
-            class="w-full bg-ink-elevated border border-ink-edge rounded-lg px-3 py-2 text-sm text-parchment placeholder-muted focus:outline-none focus:border-chop transition-colors resize-none"
+            class="input resize-none"
           />
           <button
             @click="handleIntervene"
             :disabled="!intervention.trim()"
-            class="w-full px-4 py-2 bg-chop text-white rounded-lg text-sm font-medium hover:bg-chop disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            class="btn btn-primary w-full"
           >
+            <Send :size="14" />
             {{ t('scene.inject_event') }}
           </button>
         </div>
 
-        <!-- End Scene -->
         <div>
           <button
             v-if="!showEndConfirm"
             @click="confirmEndScene"
-            class="w-full px-4 py-2 bg-red-600/20 text-red-400 border border-red-800 rounded-lg text-sm font-medium hover:bg-red-600/30 transition-colors"
+            class="btn btn-danger w-full"
           >
+            <Square :size="14" />
             {{ t('scene.end_scene') }}
           </button>
-          <div v-else class="space-y-2 bg-red-900/20 border border-red-800 rounded-lg p-3">
-            <p class="text-xs text-red-300">{{ t('scene.end_confirm') }}</p>
+          <div v-else class="bg-danger-soft border border-chop-border rounded-lg p-3 space-y-3">
+            <div class="flex items-start gap-2">
+              <CircleDot :size="14" class="text-danger mt-0.5 shrink-0" />
+              <p class="text-xs text-danger leading-relaxed">{{ t('scene.end_confirm') }}</p>
+            </div>
             <div class="flex gap-2">
               <button
                 @click="doEndScene"
-                class="flex-1 px-3 py-1.5 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-500 transition-colors"
+                class="btn btn-danger flex-1 btn-sm"
               >
                 {{ t('general.confirm') }}
               </button>
               <button
                 @click="showEndConfirm = false"
-                class="flex-1 px-3 py-1.5 bg-ink-elevated text-parchment-dim rounded text-xs font-medium hover:bg-ink-elevated transition-colors"
+                class="btn btn-secondary flex-1 btn-sm"
               >
                 {{ t('general.cancel') }}
               </button>
@@ -205,17 +224,16 @@ function doEndScene(): void {
         </div>
       </template>
 
-      <!-- Director Log -->
       <div v-if="directorLog.length > 0" class="space-y-2">
-        <p class="text-xs text-muted">Director Log</p>
-        <div class="space-y-1 max-h-40 overflow-y-auto">
+        <p class="text-xs text-muted font-display tracking-wide">Director Log</p>
+        <div class="space-y-1.5 max-h-40 overflow-y-auto">
           <div
             v-for="(entry, i) in directorLog"
             :key="i"
-            class="bg-ink-elevated/50 rounded px-2 py-1.5"
+            class="bg-ink-bg-deep/50 rounded-lg px-3 py-2 border border-ink-edge"
           >
             <p class="text-xs text-parchment-dim leading-snug">{{ entry.text }}</p>
-            <p class="text-xs text-muted mt-0.5">{{ entry.ts }}</p>
+            <p class="text-[10px] text-muted mt-0.5 font-mono">{{ entry.ts }}</p>
           </div>
         </div>
       </div>
@@ -223,3 +241,10 @@ function doEndScene(): void {
   </div>
 </template>
 
+<style scoped>
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+</style>

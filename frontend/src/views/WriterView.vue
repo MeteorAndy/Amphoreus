@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Sparkles, ChevronRight } from 'lucide-vue-next'
+import { Sparkles, ChevronRight, Loader2 } from 'lucide-vue-next'
 import WritingPreview from '../components/WritingPreview.vue'
 import { useNarrativeWriter } from '../composables/useNarrativeWriter'
 import { usePlotArchitect } from '../composables/usePlotArchitect'
@@ -163,95 +163,119 @@ function goToQuality(): void {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="page-header">
-      <div>
-        <h1>{{ t('writer.title') }}</h1>
-      </div>
-      <button v-if="hasOutput" @click="goToQuality" class="btn btn-primary">
-        <ChevronRight :size="14" />
-        {{ t('plot.proceed_quality') || '前往质量审稿' }}
-      </button>
-    </div>
-
-    <div v-if="error" class="error-banner">
-      {{ error }}
-    </div>
-
-    <div class="card p-4 space-y-4">
-      <div class="flex items-end gap-4">
-        <div class="flex-1">
-          <label class="field-label">{{ t('writer.plot_outline') }}</label>
-          <select
-            v-model="selectedPlotId"
-            class="input"
-          >
-            <option value="" disabled>{{ t('writer.select_outline') }}</option>
-            <option
-              v-for="outline in outlines"
-              :key="outline.id"
-              :value="outline.id"
-            >
-              {{ outline.title }}
-            </option>
-          </select>
+  <div class="writer-view flex-1 min-h-0 flex gap-3 overflow-hidden">
+    <div class="writer-controls w-[340px] flex-shrink-0 flex flex-col gap-3 overflow-y-auto pr-1">
+      <div class="page-header !mb-0">
+        <div>
+          <h1>{{ t('writer.title') }}</h1>
         </div>
-        <div class="flex-1">
-          <label class="field-label">{{ t('writer.chapter_title') }}</label>
-          <input
-            v-model="chapterTitle"
-            type="text"
-            :placeholder="t('writer.chapter_placeholder')"
-            class="input"
-          />
-        </div>
-        <button
-          @click="handleGenerate"
-          :disabled="!selectedPlotId || selectedSceneIds.size === 0 || selectedCharacterIds.size === 0 || loading"
-          class="btn btn-primary"
-        >
-          <Sparkles :size="14" />
-          {{ loading ? t('writer.generating') : t('writer.convert') }}
+        <button v-if="hasOutput" @click="goToQuality" class="btn btn-primary btn-sm">
+          {{ t('plot.proceed_quality') || '质量审稿' }}
+          <ChevronRight :size="14" />
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label class="field-label">{{ t('writer.narrative_voice') }}</label>
-          <div class="space-y-1">
-            <button
-              v-for="voice in narrativeVoices"
-              :key="voice.value"
-              @click="setVoice(voice.value as typeof narrativeVoice)"
-              class="w-full text-left px-3 py-2 rounded-folio text-sm transition-colors border"
-              :class="narrativeVoice === voice.value
-                ? 'bg-chop-soft border-chop text-chop'
-                : 'bg-ink-elevated border-ink-edge text-parchment-dim hover:border-chop/50'"
+      <div v-if="error" class="error-banner">
+        {{ error }}
+      </div>
+
+      <div class="card p-5 space-y-5">
+        <div class="flex items-end gap-3">
+          <div class="flex-1">
+            <label class="field-label">{{ t('writer.plot_outline') }}</label>
+            <select
+              v-model="selectedPlotId"
+              class="input"
             >
-              <div class="font-medium">{{ voice.label }}</div>
-              <div class="text-xs text-muted mt-0.5">{{ voice.desc }}</div>
-            </button>
+              <option value="" disabled>{{ t('writer.select_outline') }}</option>
+              <option
+                v-for="outline in outlines"
+                :key="outline.id"
+                :value="outline.id"
+              >
+                {{ outline.title }}
+              </option>
+            </select>
           </div>
+          <div class="flex-1">
+            <label class="field-label">{{ t('writer.chapter_title') }}</label>
+            <input
+              v-model="chapterTitle"
+              type="text"
+              :placeholder="t('writer.chapter_placeholder')"
+              class="input"
+            />
+          </div>
+          <button
+            @click="handleGenerate"
+            :disabled="!selectedPlotId || selectedSceneIds.size === 0 || selectedCharacterIds.size === 0 || loading"
+            class="btn btn-primary min-w-[120px]"
+          >
+            <Loader2 v-if="loading" :size="16" class="animate-spin" />
+            <Sparkles v-else :size="16" />
+            {{ loading ? t('writer.generating') : t('writer.convert') }}
+          </button>
         </div>
 
-        <div>
-          <label class="field-label">{{ t('writer.pov_char') }}</label>
-          <select
-            v-model="povCharacterId"
-            class="input"
-          >
-            <option value="">{{ t('writer.pov_all') }}</option>
-            <option
-              v-for="char in selectedCharacterObjects"
-              :key="char.id"
-              :value="char.id"
-            >
-              {{ char.name }}
-            </option>
-          </select>
+        <div class="grid grid-cols-1 gap-4">
+          <div>
+            <label class="field-label">{{ t('writer.narrative_voice') }}</label>
+            <div class="flex flex-col gap-2">
+              <button
+                v-for="voice in narrativeVoices"
+                :key="voice.value"
+                @click="setVoice(voice.value as typeof narrativeVoice)"
+                class="chip w-full justify-start text-left py-2 px-3"
+                :class="narrativeVoice === voice.value ? 'chip-active' : ''"
+              >
+                <div class="flex flex-col items-start gap-0.5">
+                  <span class="font-medium text-sm">{{ voice.label }}</span>
+                  <span class="text-xs opacity-70">{{ voice.desc }}</span>
+                </div>
+              </button>
+            </div>
+          </div>
 
-          <div class="mt-3">
-            <label class="flex items-center gap-2 cursor-pointer">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="field-label">{{ t('writer.pov_char') }}</label>
+              <select
+                v-model="povCharacterId"
+                class="input"
+              >
+                <option value="">{{ t('writer.pov_all') }}</option>
+                <option
+                  v-for="char in selectedCharacterObjects"
+                  :key="char.id"
+                  :value="char.id"
+                >
+                  {{ char.name }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">{{ t('writer.format') }}</label>
+              <div class="flex gap-2">
+                <button
+                  @click="setFormat('novel')"
+                  class="chip flex-1 justify-center py-2"
+                  :class="format === 'novel' ? 'chip-active' : ''"
+                >
+                  {{ t('writer.novel') }}
+                </button>
+                <button
+                  @click="setFormat('screenplay')"
+                  class="chip flex-1 justify-center py-2"
+                  :class="format === 'screenplay' ? 'chip-active' : ''"
+                >
+                  {{ t('writer.screenplay') }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded-folio hover:bg-ink-wash-light transition-colors">
               <input
                 type="checkbox"
                 :checked="enhanceEnabled"
@@ -262,116 +286,144 @@ function goToQuality(): void {
                 {{ t('writer.enhance') }}
               </span>
             </label>
-            <p class="text-xs text-muted mt-1">
+            <p class="text-xs text-muted mt-1 px-2">
               {{ t('writer.enhance_desc') }}
             </p>
           </div>
         </div>
 
-        <div>
-          <label class="field-label">{{ t('writer.format') }}</label>
-          <div class="flex gap-2">
+        <div v-if="allScenes.length > 0">
+          <div class="flex items-center justify-between mb-3">
+            <label class="field-label !mb-0 flex items-center gap-2">
+              {{ t('writer.scenes') }}
+              <span class="badge badge-accent normal-case tracking-normal">
+                {{ t('writer.scenes_selected', { s: selectedSceneIds.size, t: allScenes.length }) }}
+              </span>
+            </label>
+            <div class="flex gap-2">
+              <button
+                @click="selectAllScenes"
+                class="btn btn-ghost btn-sm"
+              >
+                {{ t('writer.select_all') }}
+              </button>
+              <button
+                @click="clearSceneSelection"
+                class="btn btn-ghost btn-sm"
+              >
+                {{ t('chars.clear') }}
+              </button>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1">
             <button
-              @click="setFormat('novel')"
-              class="chip flex-1 justify-center"
-              :class="format === 'novel' ? 'chip-active' : ''"
+              v-for="scene in allScenes"
+              :key="scene.id"
+              @click="toggleScene(scene.id)"
+              class="chip"
+              :class="selectedSceneIds.has(scene.id) ? 'chip-active' : ''"
             >
-              {{ t('writer.novel') }}
+              {{ scene.order }}. {{ scene.title }}
             </button>
+          </div>
+        </div>
+
+        <div v-if="characters.length > 0">
+          <div class="flex items-center justify-between mb-3">
+            <label class="field-label !mb-0 flex items-center gap-2">
+              {{ t('writer.characters') }}
+              <span class="badge badge-accent normal-case tracking-normal">
+                {{ t('writer.characters_selected', { s: selectedCharacterIds.size, t: characters.length }) }}
+              </span>
+            </label>
+          </div>
+          <div class="flex flex-wrap gap-2 p-1">
             <button
-              @click="setFormat('screenplay')"
-              class="chip flex-1 justify-center"
-              :class="format === 'screenplay' ? 'chip-active' : ''"
+              v-for="char in characters"
+              :key="char.id"
+              @click="toggleCharacter(char.id)"
+              class="chip"
+              :class="selectedCharacterIds.has(char.id) ? 'chip-active' : ''"
             >
-              {{ t('writer.screenplay') }}
+              {{ char.name }}
             </button>
           </div>
         </div>
       </div>
 
-      <div v-if="allScenes.length > 0">
-        <div class="flex items-center justify-between mb-2">
-          <label class="field-label !mb-0 flex items-center gap-2">
-            {{ t('writer.scenes') }}
-            <span class="badge badge-accent normal-case tracking-normal">
-              {{ t('writer.scenes_selected', { s: selectedSceneIds.size, t: allScenes.length }) }}
-            </span>
-          </label>
-          <div class="flex gap-2">
-            <button
-              @click="selectAllScenes"
-              class="btn btn-ghost btn-sm"
-            >
-              {{ t('writer.select_all') }}
-            </button>
-            <button
-              @click="clearSceneSelection"
-              class="btn btn-ghost btn-sm"
-            >
-              {{ t('chars.clear') }}
-            </button>
-          </div>
-        </div>
-        <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+      <div v-if="titleCandidates.length > 0" class="card p-5">
+        <h3 class="text-sm font-semibold text-parchment mb-4 font-display flex items-center gap-2">
+          <span class="w-1 h-4 bg-chop rounded-full" />
+          {{ t('writer.title_candidates') }}
+        </h3>
+        <div class="grid grid-cols-1 gap-2">
           <button
-            v-for="scene in allScenes"
-            :key="scene.id"
-            @click="toggleScene(scene.id)"
-            class="chip"
-            :class="selectedSceneIds.has(scene.id) ? 'chip-active' : ''"
+            v-for="candidate in titleCandidates"
+            :key="candidate.title"
+            @click="handleSelectTitle(candidate.title)"
+            class="chip w-full justify-start text-left py-2.5 px-3 flex-col items-start gap-0.5"
+            :class="output?.title === candidate.title ? 'chip-active' : ''"
           >
-            {{ scene.order }}. {{ scene.title }}
-          </button>
-        </div>
-      </div>
-
-      <div v-if="characters.length > 0">
-        <div class="flex items-center justify-between mb-2">
-          <label class="field-label !mb-0 flex items-center gap-2">
-            {{ t('writer.characters') }}
-            <span class="badge badge-accent normal-case tracking-normal">
-              {{ t('writer.characters_selected', { s: selectedCharacterIds.size, t: characters.length }) }}
-            </span>
-          </label>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="char in characters"
-            :key="char.id"
-            @click="toggleCharacter(char.id)"
-            class="chip"
-            :class="selectedCharacterIds.has(char.id) ? 'chip-active' : ''"
-          >
-            {{ char.name }}
+            <p class="text-sm font-medium font-display">{{ candidate.title }}</p>
+            <p v-if="candidate.subtitle" class="text-xs opacity-70">{{ candidate.subtitle }}</p>
+            <p v-if="candidate.description" class="text-xs opacity-60 line-clamp-2">{{ candidate.description }}</p>
           </button>
         </div>
       </div>
     </div>
 
-    <div v-if="titleCandidates.length > 0" class="card p-4">
-      <h3 class="text-sm font-semibold text-parchment mb-3">{{ t('writer.title_candidates') }}</h3>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        <button
-          v-for="candidate in titleCandidates"
-          :key="candidate.title"
-          @click="handleSelectTitle(candidate.title)"
-          class="text-left bg-ink-elevated rounded-lg p-3 hover:border-chop border border-ink-edge transition-colors"
-          :class="output?.title === candidate.title ? 'border-chop' : ''"
-        >
-          <p class="text-sm font-medium text-parchment">{{ candidate.title }}</p>
-          <p v-if="candidate.subtitle" class="text-xs text-muted mt-0.5">{{ candidate.subtitle }}</p>
-          <p v-if="candidate.description" class="text-xs text-muted mt-1 line-clamp-2">{{ candidate.description }}</p>
-        </button>
-      </div>
+    <div class="writer-preview flex-1 min-w-0 h-full flex flex-col">
+      <WritingPreview
+        :output="output"
+        :format="format"
+        :loading="loading"
+        @toggle-format="handleToggleFormat"
+        @export="handleExport"
+        @select-title="handleSelectTitle"
+      />
     </div>
-
-    <WritingPreview
-      :output="output"
-      :format="format"
-      :loading="loading"
-      @toggle-format="handleToggleFormat"
-      @export="handleExport"
-      @select-title="handleSelectTitle"
-    />
   </div>
 </template>
+
+<style scoped>
+.writer-view {
+  animation: writerFadeIn 0.5s var(--ease-page);
+}
+
+@keyframes writerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.writer-controls::-webkit-scrollbar {
+  width: 4px;
+}
+
+.writer-controls::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.writer-controls::-webkit-scrollbar-thumb {
+  background: var(--color-ink-edge);
+  border-radius: var(--radius-seal);
+}
+
+.writer-controls::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-soft);
+}
+
+.writer-preview {
+  position: relative;
+  min-width: 0;
+}
+
+.chip {
+  transition: all var(--duration-fast) var(--ease-editorial);
+}
+</style>

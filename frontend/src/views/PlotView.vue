@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Wand2, Trash2, X, CheckCircle, AlertCircle, ChevronRight } from 'lucide-vue-next'
+import { Plus, Wand2, Trash2, X, CheckCircle, AlertCircle, ChevronRight, GitBranch } from 'lucide-vue-next'
 import PlotTimeline from '../components/PlotTimeline.vue'
 import { usePlotArchitect } from '../composables/usePlotArchitect'
 import { useCharacters } from '../composables/useCharacters'
@@ -221,15 +221,23 @@ async function handleReorder(actId: string, sceneIds: string[]): Promise<void> {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="flex-1 min-h-0 overflow-y-auto space-y-6 fade-in-up pr-1">
     <div class="page-header">
-      <div>
-        <h1>{{ t('plot.title') }}</h1>
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-seal flex items-center justify-center flex-shrink-0 seal-glow" style="background: var(--gradient-chop-seal);">
+          <GitBranch :size="22" class="text-white" />
+        </div>
+        <div>
+          <h1 class="font-display">{{ t('plot.title') }}</h1>
+        </div>
       </div>
       <button @click="showCreateModal = true" class="btn btn-primary">
         <Plus :size="14" />
         {{ t('plot.new_outline') }}
       </button>
+    </div>
+    <div class="rule-ornament rule-ornament-diamond text-xs">
+      <span class="font-display small-caps tracking-widest opacity-70">PLOT ARCHITECT</span>
     </div>
 
     <div v-if="error" class="error-banner">
