@@ -150,11 +150,16 @@ function goToCharacters(): void {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="flex-1 min-h-0 overflow-y-auto space-y-6 fade-in-up pr-1">
     <div class="page-header">
-      <div>
-        <h1>{{ t('world.title') }}</h1>
-        <p class="text-sm text-muted mt-0.5">{{ t('world.page_subtitle') }}</p>
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-seal flex items-center justify-center flex-shrink-0 seal-glow" style="background: var(--gradient-chop-seal);">
+          <Globe :size="22" class="text-white" />
+        </div>
+        <div>
+          <h1 class="font-display">{{ t('world.title') }}</h1>
+          <p class="text-sm text-muted italic mt-1">{{ t('world.page_subtitle') }}</p>
+        </div>
       </div>
       <button
         v-if="(sessionId || hasExtractedData) && !finalized"
@@ -163,6 +168,9 @@ function goToCharacters(): void {
       >
         {{ t('world.reset') }}
       </button>
+    </div>
+    <div class="rule-ornament rule-ornament-diamond text-xs">
+      <span class="font-display small-caps tracking-widest opacity-70">WORLD BUILDING</span>
     </div>
 
     <div v-if="error" class="error-banner">
@@ -535,7 +543,7 @@ function goToCharacters(): void {
         <button
           @click="finalizeWorld"
           :disabled="loading"
-          class="btn btn-lg bg-editor border-editor text-white hover:bg-editor hover:border-editor"
+          class="btn btn-primary btn-lg"
         >
           <Check :size="16" />
           {{ loading ? t('world.finalizing') : t('world.finalize') }}

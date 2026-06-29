@@ -205,10 +205,15 @@ function goToPlot(): void {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="flex-1 min-h-0 overflow-y-auto space-y-6 fade-in-up pr-1">
     <div class="page-header">
-      <div>
-        <h1>{{ t('chars.title') }}</h1>
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-seal flex items-center justify-center flex-shrink-0 seal-glow" style="background: var(--gradient-chop-seal);">
+          <Users :size="22" class="text-white" />
+        </div>
+        <div>
+          <h1 class="font-display">{{ t('chars.title') }}</h1>
+        </div>
       </div>
       <div class="flex gap-2">
         <button @click="openPathFinder" class="btn btn-secondary">
@@ -224,6 +229,9 @@ function goToPlot(): void {
           {{ generating ? t('general.loading') : t('chars.generate') }}
         </button>
       </div>
+    </div>
+    <div class="rule-ornament rule-ornament-diamond text-xs">
+      <span class="font-display small-caps tracking-widest opacity-70">CHARACTERS</span>
     </div>
 
     <div v-if="error" class="error-banner">
@@ -340,7 +348,7 @@ function goToPlot(): void {
     </div>
 
     <div v-if="characters.length > 0" class="flex justify-center pt-4">
-      <button @click="goToPlot" class="btn btn-primary bg-editor border-editor hover:bg-editor/90 hover:border-editor/90">
+      <button @click="goToPlot" class="btn btn-primary">
         {{ t('chars.proceed_plot') }}
         <ChevronRight :size="14" />
       </button>

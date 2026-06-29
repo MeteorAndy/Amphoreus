@@ -5,7 +5,7 @@ import { useSandbox } from '../composables/useSandbox'
 import { useCharacters } from '../composables/useCharacters'
 import { useToast } from '../composables/useToast'
 import SandboxFeedItem from '../components/SandboxFeedItem.vue'
-import { Play, Square, Send, Radio } from 'lucide-vue-next'
+import { Play, Square, Send, Radio, FlaskConical } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const sandbox = useSandbox()
@@ -62,11 +62,20 @@ async function handleStop(): Promise<void> {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto p-6 space-y-6">
-    <!-- Header -->
-    <div class="text-center mb-8 pt-4">
-      <h1 class="text-2xl font-bold text-parchment mb-2">{{ t('sandbox.title') }}</h1>
-      <p class="text-sm text-muted">{{ t('sandbox.subtitle') }}</p>
+  <div class="flex-1 min-h-0 overflow-y-auto max-w-5xl mx-auto p-6 space-y-6 fade-in-up pr-1">
+    <div class="page-header text-center pb-6 mb-6">
+      <div class="flex flex-col items-center gap-3 w-full">
+        <div class="w-14 h-14 rounded-seal flex items-center justify-center seal-glow-gold" style="background: var(--gradient-gold-seal);">
+          <FlaskConical :size="26" class="text-white" />
+        </div>
+        <div>
+          <h1 class="font-display text-2xl mb-1">{{ t('sandbox.title') }}</h1>
+          <p class="text-sm text-muted italic">{{ t('sandbox.subtitle') }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="rule-ornament text-xs mb-8">
+      <span class="font-display small-caps tracking-widest opacity-70">EXPERIMENTAL</span>
     </div>
 
     <!-- SETUP STATE -->

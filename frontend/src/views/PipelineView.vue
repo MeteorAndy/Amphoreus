@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from '../i18n'
 import { usePipeline, type PipelineConfig } from '../composables/usePipeline'
-import { Zap, FileText, Film, Users, BookOpen, Sparkles, Square, RotateCcw, Check, Globe, Drama, PenTool } from 'lucide-vue-next'
+import { useAssistant } from '../composables/useAssistant'
+import { Workflow, FileText, Film, Users, BookOpen, Sparkles, Square, RotateCcw, Check, Globe, Drama, PenTool } from 'lucide-vue-next'
 
 const { t, currentLang } = useI18n()
+const router = useRouter()
 const pipeline = usePipeline()
+const assistant = useAssistant()
+
+let unregisterActions: Array<() => void> = []
 
 const seedIdea = ref('')
 const outputFormat = ref<'novel' | 'screenplay'>('novel')
@@ -34,7 +40,7 @@ function handleStart() {
 }
 
 const stages = ['world', 'characters', 'relationships', 'plot', 'scenes', 'writing']
-const stageIcons: Record<string, typeof Zap> = {
+const stageIcons: Record<string, typeof Workflow> = {
   world: Globe,
   characters: Users,
   relationships: Users,
@@ -50,16 +56,96 @@ function stageStatus(idx: number): 'done' | 'current' | 'upcoming' {
   if (idx === currentIdx) return 'current'
   return 'upcoming'
 }
+
+function updateAssistantActions(): void {
+  unregisterActions.forEach((fn) => fn())
+  unregisterActions = []
+
+  if (pipeline.status.value === 'idle') {
+    unregisterActions.push(
+      assistant.registerPageAction({
+        id: 'pipeline-start',
+        label: '开始一键生成',
+        description: '输入灵感后点击开始全自动创作',
+        primary: true,
+        handler: () => {
+          if (seedIdea.value.trim()) {
+            handleStart()
+          } else {
+            assistant.triggerEvent('focus-seed-input')
+          }
+        },
+      }),
+      assistant.registerPageSuggestion({
+        text: '改用互动创作模式',
+        action: () => router.push('/interactive'),
+      }),
+    )
+  } else if (pipeline.isRunning.value) {
+    unregisterActions.push(
+      assistant.registerPageAction({
+        id: 'pipeline-stop',
+        label: '停止生成',
+        description: '暂停当前自动流水线',
+        primary: true,
+        handler: () => pipeline.stop(),
+      }),
+    )
+  } else if (pipeline.status.value === 'completed') {
+    unregisterActions.push(
+      assistant.registerPageAction({
+        id: 'goto-writer',
+        label: '进入叙事写作',
+        description: '去润色和导出正文',
+        primary: true,
+        handler: () => router.push('/writer'),
+      }),
+      assistant.registerPageAction({
+        id: 'pipeline-reset',
+        label: '重新开始',
+        description: '重置流水线生成新故事',
+        handler: () => pipeline.reset(),
+      }),
+    )
+  } else {
+    unregisterActions.push(
+      assistant.registerPageAction({
+        id: 'pipeline-reset',
+        label: '重新开始',
+        description: '重置流水线',
+        primary: true,
+        handler: () => pipeline.reset(),
+      }),
+    )
+  }
+}
+
+onMounted(() => {
+  updateAssistantActions()
+  watch(() => pipeline.status.value, updateAssistantActions)
+})
+
+onUnmounted(() => {
+  unregisterActions.forEach((fn) => fn())
+  unregisterActions = []
+})
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto">
-    <div class="text-center mb-8 pt-4">
-      <div class="inline-flex items-center justify-center w-14 h-14 rounded-seal bg-chop/15 mb-4">
-        <Zap :size="24" class="text-chop" />
+  <div class="flex-1 min-h-0 overflow-y-auto max-w-3xl mx-auto fade-in-up pr-1">
+    <div class="page-header text-center pb-6 mb-6">
+      <div class="flex flex-col items-center gap-3 w-full">
+        <div class="w-14 h-14 rounded-seal flex items-center justify-center seal-glow" style="background: var(--gradient-chop-seal);">
+          <Workflow :size="26" class="text-white" />
+        </div>
+        <div>
+          <h1 class="font-display text-2xl mb-1">{{ t('pipeline.title') }}</h1>
+          <p class="text-sm text-muted italic">{{ t('pipeline.subtitle') }}</p>
+        </div>
       </div>
-      <h1 class="text-2xl font-bold text-parchment mb-2">{{ t('pipeline.title') }}</h1>
-      <p class="text-sm text-muted">{{ t('pipeline.subtitle') }}</p>
+    </div>
+    <div class="rule-ornament rule-ornament-diamond text-xs mb-8">
+      <span class="font-display small-caps tracking-widest opacity-70">PIPELINE</span>
     </div>
 
     <div v-if="pipeline.status.value === 'idle'" class="card p-6 space-y-5">

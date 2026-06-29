@@ -19,12 +19,13 @@ describe('StepProgress', () => {
     expect(circles[1].classes()).toContain('bg-chop')
   })
 
-  it('marks completed steps with a check mark and green background', () => {
+  it('marks completed steps with a check icon and editor green background', () => {
     const wrapper = mount(StepProgress, { props: { steps, current: 3 } })
     const circles = wrapper.findAll('.rounded-full')
-    expect(circles[0].classes()).toContain('bg-green-600')
-    expect(circles[0].text()).toBe('✓')
-    expect(circles[1].classes()).toContain('bg-green-600')
+    expect(circles[0].classes()).toContain('bg-editor')
+    expect(circles[0].find('svg').exists()).toBe(true)
+    expect(circles[0].text()).not.toBe('1')
+    expect(circles[1].classes()).toContain('bg-editor')
   })
 
   it('marks upcoming steps as muted and shows their index number', () => {
