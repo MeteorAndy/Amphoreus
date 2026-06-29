@@ -135,6 +135,7 @@ onUnmounted(() => {
           </div>
 
           <div class="toast-gloss" />
+          <div class="toast-corners" />
         </div>
       </TransitionGroup>
     </div>
@@ -143,134 +144,171 @@ onUnmounted(() => {
 
 <style scoped>
 .toast-item {
-  background: var(--color-ink-panel);
-  border: 1px solid var(--color-ink-edge);
+  --ease-ink: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 180ms;
+  --radius-card: 8px;
+
+  background: rgba(20, 24, 50, 0.95);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(212, 168, 67, 0.2);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-elevated),
-              0 0 0 1px rgba(237, 228, 211, 0.03);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(212, 168, 67, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .toast-success {
-  border-color: rgba(90, 138, 79, 0.3);
-  box-shadow: var(--shadow-elevated),
-              0 0 0 1px rgba(237, 228, 211, 0.03),
-              0 0 20px rgba(90, 138, 79, 0.15);
+  border-color: rgba(52, 211, 153, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(52, 211, 153, 0.12),
+    0 0 0 1px rgba(52, 211, 153, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .toast-error {
-  border-color: var(--color-chop-border);
-  box-shadow: var(--shadow-elevated),
-              0 0 0 1px rgba(237, 228, 211, 0.03),
-              0 0 20px var(--color-chop-glow);
+  border-color: rgba(248, 113, 113, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(248, 113, 113, 0.15),
+    0 0 0 1px rgba(248, 113, 113, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .toast-info {
-  border-color: var(--color-chop-border);
-  box-shadow: var(--shadow-elevated),
-              0 0 0 1px rgba(237, 228, 211, 0.03),
-              0 0 20px var(--color-chop-glow);
+  border-color: rgba(74, 127, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(74, 127, 255, 0.15),
+    0 0 0 1px rgba(74, 127, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .toast-warning {
-  border-color: rgba(201, 148, 74, 0.3);
-  box-shadow: var(--shadow-elevated),
-              0 0 0 1px rgba(237, 228, 211, 0.03),
-              0 0 20px rgba(201, 148, 74, 0.12);
+  border-color: rgba(212, 168, 67, 0.4);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(212, 168, 67, 0.15),
+    0 0 0 1px rgba(212, 168, 67, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .toast-progress-track {
   position: absolute;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 2px;
   z-index: 10;
-  background: var(--color-ink-edge);
+  background: rgba(212, 168, 67, 0.12);
+  overflow: hidden;
 }
 .toast-progress-fill {
   height: 100%;
   transition: width 100ms linear;
   border-radius: 0 1px 1px 0;
+  background: linear-gradient(90deg, #d4a843 0%, #f0d78c 50%, #d4a843 100%);
+  box-shadow: 0 0 8px rgba(212, 168, 67, 0.6), 0 0 16px rgba(212, 168, 67, 0.25);
 }
 
-.toast-success .toast-bar,
-.toast-success .toast-progress-fill { background: var(--gradient-editor-seal); }
-.toast-error .toast-bar,
-.toast-error .toast-progress-fill { background: var(--gradient-danger-seal); }
-.toast-info .toast-bar,
-.toast-info .toast-progress-fill { background: var(--gradient-chop-seal); }
-.toast-warning .toast-bar,
-.toast-warning .toast-progress-fill { background: var(--gradient-gold-seal); }
+.toast-bar {
+  width: 3px;
+  align-self: stretch;
+  flex-shrink: 0;
+  border-radius: 999px;
+  opacity: 1;
+  margin-right: 0.25rem;
+}
+.toast-success .toast-bar {
+  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
+}
+.toast-error .toast-bar {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.5);
+}
+.toast-info .toast-bar {
+  background: linear-gradient(180deg, #4a7fff 0%, #2563eb 100%);
+  box-shadow: 0 0 8px rgba(74, 127, 255, 0.5);
+}
+.toast-warning .toast-bar {
+  background: linear-gradient(180deg, #f0d78c 0%, #d4a843 100%);
+  box-shadow: 0 0 8px rgba(212, 168, 67, 0.5);
+}
 
 .toast-body {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.75rem;
-}
-
-.toast-bar {
-  width: 4px;
-  align-self: stretch;
-  flex-shrink: 0;
-  border-radius: 999px;
-  opacity: 0.85;
+  position: relative;
+  z-index: 1;
 }
 
 .toast-icon-wrap {
   flex-shrink: 0;
   width: 1.75rem;
   height: 1.75rem;
-  border-radius: 9999px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-top: 0.125rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .toast-success .toast-icon-wrap {
-  background: var(--color-editor-soft);
-  border: 1px solid rgba(90, 138, 79, 0.3);
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.25);
 }
 .toast-error .toast-icon-wrap {
-  background: var(--color-danger-soft);
-  border: 1px solid var(--color-chop-border);
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.25);
 }
 .toast-info .toast-icon-wrap {
-  background: var(--color-chop-soft);
-  border: 1px solid var(--color-chop-border);
+  background: rgba(74, 127, 255, 0.1);
+  border-color: rgba(74, 127, 255, 0.25);
 }
 .toast-warning .toast-icon-wrap {
-  background: var(--color-gold-soft);
-  border: 1px solid rgba(201, 148, 74, 0.3);
+  background: rgba(212, 168, 67, 0.1);
+  border-color: rgba(212, 168, 67, 0.3);
 }
 
-.toast-success .toast-icon { color: var(--color-editor-light); }
-.toast-error .toast-icon { color: var(--color-chop-light); }
-.toast-info .toast-icon { color: var(--color-chop-light); }
-.toast-warning .toast-icon { color: var(--color-gold-light); }
+.toast-success .toast-icon { color: #34d399; }
+.toast-error .toast-icon { color: #f87171; }
+.toast-info .toast-icon { color: #4a7fff; }
+.toast-warning .toast-icon { color: #d4a843; }
 
 .toast-message {
   flex: 1;
-  font-size: var(--text-sm);
+  font-size: 0.875rem;
   line-height: 1.5;
   padding-top: 0.25rem;
   padding-right: 0.25rem;
-  color: var(--color-parchment);
+  color: #e2e8f0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.01em;
 }
 
 .toast-close {
   flex-shrink: 0;
   width: 1.5rem;
   height: 1.5rem;
-  border-radius: 9999px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-top: 0.125rem;
-  color: var(--color-muted);
+  color: rgba(226, 232, 240, 0.5);
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-editorial);
 }
 .toast-close:hover {
-  background: var(--color-ink-wash-light);
-  color: var(--color-parchment);
+  background: rgba(212, 168, 67, 0.15);
+  color: #f0d78c;
+  border-color: rgba(212, 168, 67, 0.3);
 }
 .toast-close:active {
   transform: scale(0.9);
@@ -281,40 +319,53 @@ onUnmounted(() => {
   inset: 0;
   pointer-events: none;
   border-radius: var(--radius-card);
-  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 30%);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 30%,
+    transparent 60%
+  );
 }
 
-/* Paper theme overrides */
-html[data-theme="paper"] .toast-item {
-  background: var(--color-paper-cream);
-  background-image: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.15) 40%, transparent 100%);
-  box-shadow: var(--shadow-card),
-              var(--shadow-inset-paper),
-              inset 0 0 0 1px rgba(255,255,255,0.3);
+.toast-corners {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(135deg, rgba(212, 168, 67, 0.4) 0%, transparent 12%) top left / 8px 8px no-repeat,
+    linear-gradient(225deg, rgba(212, 168, 67, 0.4) 0%, transparent 12%) top right / 8px 8px no-repeat,
+    linear-gradient(315deg, rgba(212, 168, 67, 0.4) 0%, transparent 12%) bottom right / 8px 8px no-repeat,
+    linear-gradient(45deg, rgba(212, 168, 67, 0.4) 0%, transparent 12%) bottom left / 8px 8px no-repeat;
+  z-index: 2;
+  opacity: 0.6;
 }
-html[data-theme="paper"] .toast-success {
-  border-color: rgba(61, 107, 50, 0.25);
-  box-shadow: 0 2px 8px rgba(61, 107, 50, 0.1),
-              var(--shadow-card),
-              var(--shadow-inset-paper);
+.toast-success .toast-corners {
+  background:
+    linear-gradient(135deg, rgba(52, 211, 153, 0.5) 0%, transparent 12%) top left / 8px 8px no-repeat,
+    linear-gradient(225deg, rgba(52, 211, 153, 0.5) 0%, transparent 12%) top right / 8px 8px no-repeat,
+    linear-gradient(315deg, rgba(52, 211, 153, 0.5) 0%, transparent 12%) bottom right / 8px 8px no-repeat,
+    linear-gradient(45deg, rgba(52, 211, 153, 0.5) 0%, transparent 12%) bottom left / 8px 8px no-repeat;
 }
-html[data-theme="paper"] .toast-error,
-html[data-theme="paper"] .toast-info {
-  border-color: rgba(168, 54, 47, 0.3);
-  box-shadow: 0 2px 8px rgba(168, 54, 47, 0.1),
-              var(--shadow-card),
-              var(--shadow-inset-paper);
+.toast-error .toast-corners {
+  background:
+    linear-gradient(135deg, rgba(248, 113, 113, 0.5) 0%, transparent 12%) top left / 8px 8px no-repeat,
+    linear-gradient(225deg, rgba(248, 113, 113, 0.5) 0%, transparent 12%) top right / 8px 8px no-repeat,
+    linear-gradient(315deg, rgba(248, 113, 113, 0.5) 0%, transparent 12%) bottom right / 8px 8px no-repeat,
+    linear-gradient(45deg, rgba(248, 113, 113, 0.5) 0%, transparent 12%) bottom left / 8px 8px no-repeat;
 }
-html[data-theme="paper"] .toast-warning {
-  border-color: rgba(154, 115, 48, 0.25);
-  box-shadow: 0 2px 8px rgba(154, 115, 48, 0.1),
-              var(--shadow-card),
-              var(--shadow-inset-paper);
+.toast-info .toast-corners {
+  background:
+    linear-gradient(135deg, rgba(74, 127, 255, 0.5) 0%, transparent 12%) top left / 8px 8px no-repeat,
+    linear-gradient(225deg, rgba(74, 127, 255, 0.5) 0%, transparent 12%) top right / 8px 8px no-repeat,
+    linear-gradient(315deg, rgba(74, 127, 255, 0.5) 0%, transparent 12%) bottom right / 8px 8px no-repeat,
+    linear-gradient(45deg, rgba(74, 127, 255, 0.5) 0%, transparent 12%) bottom left / 8px 8px no-repeat;
 }
-html[data-theme="paper"] .toast-gloss {
-  background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, transparent 30%);
-}
-html[data-theme="paper"] .toast-progress-track {
-  background: var(--color-paper-edge);
+.toast-warning .toast-corners {
+  background:
+    linear-gradient(135deg, rgba(240, 215, 140, 0.5) 0%, transparent 12%) top left / 8px 8px no-repeat,
+    linear-gradient(225deg, rgba(240, 215, 140, 0.5) 0%, transparent 12%) top right / 8px 8px no-repeat,
+    linear-gradient(315deg, rgba(240, 215, 140, 0.5) 0%, transparent 12%) bottom right / 8px 8px no-repeat,
+    linear-gradient(45deg, rgba(240, 215, 140, 0.5) 0%, transparent 12%) bottom left / 8px 8px no-repeat;
 }
 </style>

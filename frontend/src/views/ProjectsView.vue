@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from '../i18n'
 import { useProjects } from '../composables/useProjects'
 import { useAssistant } from '../composables/useAssistant'
-import { FolderPlus, Trash2, Clock, Calendar, BookOpen } from 'lucide-vue-next'
+import { FolderPlus, Trash2, Clock, Calendar, Orbit } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -113,103 +113,109 @@ function stageLabel(stage: string): string {
 
 function stageBadgeClass(stage: string): string {
   const classMap: Record<string, string> = {
-    world: 'badge-globe',
-    characters: 'badge-accent',
+    world: 'badge-blue',
+    characters: 'badge-purple',
     plot: 'badge-gold',
-    scenes: 'badge-editor',
-    writing: 'badge-accent',
+    scenes: 'badge-cyan',
+    writing: 'badge-gold',
   }
-  return classMap[stage] || 'badge-muted'
+  return classMap[stage] || 'badge-offline'
 }
 </script>
 
 <template>
   <div class="projects-view">
     <section
-      class="hero-section corner-flourish fade-in-up"
-      :class="{ 'hero-compact': hasProjects }"
+      class="hero-section-hsr"
+      :class="{ 'hero-compact-hsr': hasProjects }"
     >
-      <div class="stagger-children">
-        <div v-if="!hasProjects" class="hero-icon-wrapper">
-          <div class="hero-icon">
-            <BookOpen :size="40" />
+      <div class="hero-content-hsr">
+        <div v-if="!hasProjects" class="hero-icon-wrapper-hsr">
+          <div class="hero-icon-hsr animate-float">
+            <Orbit :size="40" />
           </div>
         </div>
-        <div v-else class="hero-icon-wrapper hero-icon-small">
-          <div class="hero-icon hero-icon-seal">
-            <BookOpen :size="24" />
+        <div v-else class="hero-icon-wrapper-hsr hero-icon-small-hsr">
+          <div class="hero-icon-hsr hero-icon-seal-hsr">
+            <Orbit :size="22" />
           </div>
         </div>
-        <h1 class="hero-title font-display" :class="{ 'hero-title-compact': hasProjects }">
+        <h1 class="hero-title-hsr text-gold-gradient text-glow-gold" :class="{ 'hero-title-compact-hsr': hasProjects }">
           {{ t('projects.title') }}
         </h1>
-        <div class="rule-ornament" :class="hasProjects ? 'rule-ornament-line' : 'rule-ornament-diamond'">
-          <span v-if="!hasProjects" class="hero-subtitle">{{ t('app.title') }}</span>
+        <div v-if="!hasProjects" class="divider-hsr hero-divider-hsr">
+          <span class="hero-subtitle-hsr">{{ t('app.title') }}</span>
         </div>
-        <p v-if="!hasProjects" class="hero-tagline">{{ t('projects.empty') }}</p>
-        <button v-if="!hasProjects" @click="openCreateDialog" class="btn btn-primary btn-lg hero-cta">
+        <p v-if="!hasProjects" class="hero-tagline-hsr">{{ t('projects.empty') }}</p>
+        <button v-if="!hasProjects" @click="openCreateDialog" class="btn-hsr-primary hero-cta-hsr">
           <FolderPlus :size="18" />
           {{ t('projects.new') }}
         </button>
-        <button v-else @click="openCreateDialog" class="btn btn-primary hero-cta-compact">
+        <button v-else @click="openCreateDialog" class="btn-hsr-primary hero-cta-compact-hsr">
           <FolderPlus :size="16" />
           {{ t('projects.new') }}
         </button>
       </div>
     </section>
 
-    <div v-if="error" class="error-banner mb-6 fade-in-up">
+    <div v-if="error" class="error-banner-hsr">
       {{ error }}
     </div>
 
-    <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      <div v-for="n in 6" :key="n" class="skeleton-card">
-        <div class="skeleton-shimmer"></div>
-        <div class="skeleton-icon"></div>
-        <div class="skeleton-line w-3/4"></div>
-        <div class="skeleton-line w-1/2"></div>
-        <div class="skeleton-line w-1/3"></div>
+    <div v-if="loading" class="projects-grid-hsr">
+      <div v-for="n in 6" :key="n" class="skeleton-card-hsr">
+        <div class="skeleton-shimmer-hsr"></div>
+        <div class="skeleton-icon-hsr"></div>
+        <div class="skeleton-line-hsr w-3/4"></div>
+        <div class="skeleton-line-hsr w-1/2"></div>
+        <div class="skeleton-line-hsr w-1/3"></div>
       </div>
     </div>
 
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 stagger-children">
+    <div v-else-if="projects.length === 0" class="empty-hsr">
+      <Orbit :size="64" class="empty-hsr-icon" />
+      <p class="empty-hsr-title">{{ t('projects.title') }}</p>
+      <p class="empty-hsr-desc">{{ t('projects.empty') }}</p>
+    </div>
+
+    <div v-else class="projects-grid-hsr">
       <div
         v-for="project in projects"
         :key="project.id"
-        class="project-card card group relative"
+        class="glass-card project-card-hsr"
         @click="openProject(project.id)"
       >
         <button
-          class="delete-btn"
+          class="delete-btn-hsr"
           @click="handleDelete(project.id, project.name, $event)"
           :title="t('general.delete')"
         >
           <Trash2 :size="14" />
         </button>
 
-        <div class="flex items-start gap-3 mb-4 pr-8">
-          <div class="project-icon seal-glow flex-shrink-0">
-            <BookOpen :size="20" />
+        <div class="project-card-header-hsr">
+          <div class="project-icon-hsr">
+            <Orbit :size="18" />
           </div>
-          <div class="min-w-0 flex-1">
-            <h3 class="project-name font-display truncate">{{ project.name }}</h3>
-            <p v-if="project.seed_idea" class="project-seed line-clamp-2">{{ project.seed_idea }}</p>
+          <div class="project-info-hsr">
+            <h3 class="project-name-hsr">{{ project.name }}</h3>
+            <p v-if="project.seed_idea" class="project-seed-hsr">{{ project.seed_idea }}</p>
           </div>
         </div>
 
-        <div v-if="project.last_stage && project.last_stage !== 'idle'" class="mb-4">
-          <span :class="['badge', stageBadgeClass(project.last_stage)]">
+        <div v-if="project.last_stage && project.last_stage !== 'idle'" class="project-badge-hsr">
+          <span :class="['badge-hsr', stageBadgeClass(project.last_stage)]">
             {{ stageLabel(project.last_stage) }}
           </span>
         </div>
 
-        <div class="project-meta">
-          <div v-if="project.updated_at" class="meta-item">
-            <Clock :size="12" class="meta-icon" />
+        <div class="project-meta-hsr">
+          <div v-if="project.updated_at" class="meta-item-hsr">
+            <Clock :size="12" class="meta-icon-hsr" />
             <span>{{ formatDate(project.updated_at) }}</span>
           </div>
-          <div v-if="project.created_at" class="meta-item">
-            <Calendar :size="12" class="meta-icon" />
+          <div v-if="project.created_at" class="meta-item-hsr">
+            <Calendar :size="12" class="meta-icon-hsr" />
             <span>{{ formatDate(project.created_at) }}</span>
           </div>
         </div>
@@ -217,18 +223,18 @@ function stageBadgeClass(stage: string): string {
     </div>
 
     <Teleport to="body">
-      <div v-if="showCreateDialog" class="modal-overlay" @click.self="closeCreateDialog">
-        <div class="modal-panel fade-in-up">
-          <div class="modal-header">
-            <div class="modal-icon">
+      <div v-if="showCreateDialog" class="modal-overlay-hsr" @click.self="closeCreateDialog">
+        <div class="modal-panel-hsr modal-content-hsr">
+          <div class="modal-header-hsr">
+            <div class="modal-icon-hsr">
               <FolderPlus :size="20" />
             </div>
-            <h2 class="modal-title font-display">{{ t('projects.new') }}</h2>
+            <h2 class="modal-title-hsr">{{ t('projects.new') }}</h2>
           </div>
 
-          <div class="space-y-5">
-            <div>
-              <label class="field-label">{{ t('projects.name') }}</label>
+          <div class="modal-body-hsr">
+            <div class="field-group-hsr">
+              <label class="field-label-hsr">{{ t('projects.name') }}</label>
               <input
                 v-model="newName"
                 type="text"
@@ -239,8 +245,8 @@ function stageBadgeClass(stage: string): string {
               />
             </div>
 
-            <div>
-              <label class="field-label">{{ t('projects.seed_idea') }}</label>
+            <div class="field-group-hsr">
+              <label class="field-label-hsr">{{ t('projects.seed_idea') }}</label>
               <textarea
                 v-model="newSeedIdea"
                 :placeholder="t('projects.seed_idea_placeholder')"
@@ -249,14 +255,14 @@ function stageBadgeClass(stage: string): string {
               />
             </div>
 
-            <div v-if="createError" class="error-banner">{{ createError }}</div>
+            <div v-if="createError" class="error-banner-hsr">{{ createError }}</div>
           </div>
 
-          <div class="flex justify-end gap-3 mt-7">
-            <button @click="closeCreateDialog" class="btn btn-secondary">
+          <div class="modal-footer-hsr">
+            <button @click="closeCreateDialog" class="btn-hsr-secondary">
               {{ t('general.cancel') }}
             </button>
-            <button @click="handleCreate" :disabled="creating || !newName.trim()" class="btn btn-primary">
+            <button @click="handleCreate" :disabled="creating || !newName.trim()" class="btn-hsr-primary">
               {{ creating ? t('projects.creating') : t('general.create') }}
             </button>
           </div>
@@ -270,214 +276,245 @@ function stageBadgeClass(stage: string): string {
 .projects-view {
   max-width: 1200px;
   margin: 0 auto;
-  padding: var(--space-section) var(--space-page);
+  padding: 2rem 1.5rem;
+  position: relative;
+  z-index: 1;
 }
 
-.hero-section {
+.hero-section-hsr {
   text-align: center;
   padding: 3rem 1.5rem 2.5rem;
   margin-bottom: 2.5rem;
   position: relative;
 }
 
-.hero-section.hero-compact {
+.hero-section-hsr.hero-compact-hsr {
   text-align: left;
   padding: 0 0 1.5rem;
   margin-bottom: 1.5rem;
-  border-bottom: 1px solid var(--color-ink-edge);
+  border-bottom: 1px solid rgba(212, 168, 67, 0.15);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.hero-section.hero-compact .stagger-children {
+.hero-section-hsr.hero-compact-hsr .hero-content-hsr {
   display: flex;
   align-items: center;
   gap: 0.875rem;
   width: 100%;
 }
 
-.hero-section.hero-compact.corner-flourish::before,
-.hero-section.hero-compact.corner-flourish::after {
-  display: none;
-}
-
-.hero-section.hero-compact .stagger-children > * {
-  animation: none !important;
-  opacity: 1 !important;
-  transform: none !important;
-}
-
-.hero-icon-wrapper {
+.hero-icon-wrapper-hsr {
   margin-bottom: 1.25rem;
 }
 
-.hero-icon {
+.hero-icon-hsr {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 72px;
   height: 72px;
-  border-radius: var(--radius-card);
-  background: var(--gradient-chop-seal);
-  color: #fff;
-  box-shadow: var(--shadow-chop-glow),
-              var(--shadow-elevated),
-              inset 0 1px 0 rgba(255,255,255,0.2),
-              inset 0 -1px 0 rgba(0,0,0,0.1);
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(212, 168, 67, 0.15), rgba(240, 208, 120, 0.08));
+  color: #d4a843;
+  border: 1px solid rgba(212, 168, 67, 0.3);
+  box-shadow: 0 0 30px rgba(212, 168, 67, 0.2),
+              inset 0 1px 0 rgba(255,255,255,0.1);
   position: relative;
 }
 
-.hero-icon::before {
+.hero-icon-hsr::before {
   content: '';
   position: absolute;
-  inset: -4px;
-  border-radius: calc(var(--radius-card) + 4px);
-  border: 1px solid var(--color-chop-border);
-  opacity: 0.5;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 168, 67, 0.15);
+  animation: ringPulse 3s ease-in-out infinite;
 }
 
-.hero-title {
+@keyframes ringPulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+.hero-title-hsr {
   font-size: clamp(2rem, 5vw, 2.75rem);
   font-weight: 700;
-  color: var(--color-parchment-bright);
   margin: 0 0 0.75rem;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
-.hero-subtitle {
-  font-family: var(--font-display);
-  font-size: var(--text-sm);
-  color: var(--color-muted);
-  font-style: italic;
-  letter-spacing: 0.08em;
-  padding: 0 1rem;
-  white-space: nowrap;
+.hero-divider-hsr {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1rem auto;
+  max-width: 300px;
 }
 
-.hero-tagline {
-  font-size: var(--text-base);
-  color: var(--color-parchment-dim);
+.hero-subtitle-hsr {
+  font-size: 0.8125rem;
+  color: #6b6780;
+  letter-spacing: 0.12em;
+  padding: 0 1rem;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.hero-tagline-hsr {
+  font-size: 0.9375rem;
+  color: #a09cb8;
   margin: 1rem auto 1.5rem;
   max-width: 40ch;
   line-height: 1.7;
 }
 
-.hero-cta {
+.hero-cta-hsr {
   margin-top: 0.5rem;
+  padding: 12px 32px;
+  font-size: 0.9375rem;
 }
 
-.hero-icon-small {
+.hero-icon-small-hsr {
   margin-bottom: 0 !important;
 }
 
-.hero-icon-seal {
+.hero-icon-seal-hsr {
   width: 40px !important;
   height: 40px !important;
-  border-radius: var(--radius-folio) !important;
+  border-radius: 10px !important;
 }
 
-.hero-icon-seal::before {
+.hero-icon-seal-hsr::before {
   display: none;
 }
 
-.hero-title-compact {
-  font-size: var(--text-2xl) !important;
+.hero-title-compact-hsr {
+  font-size: 1.375rem !important;
   margin: 0 !important;
   flex: 1;
   text-align: left;
 }
 
-.hero-cta-compact {
+.hero-cta-compact-hsr {
   flex-shrink: 0;
+  padding: 8px 18px;
+  font-size: 0.8125rem;
 }
 
-.rule-ornament-line {
-  display: none;
+.projects-grid-hsr {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.25rem;
 }
 
-.project-card {
+@media (min-width: 640px) {
+  .projects-grid-hsr {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .projects-grid-hsr {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.project-card-hsr {
   padding: 1.25rem;
   cursor: pointer;
-  border-color: var(--color-chop-border);
-  border-width: 1px;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.project-card:hover {
-  border-color: rgba(200, 66, 59, 0.6);
-  box-shadow: var(--shadow-chop-glow),
-              var(--shadow-elevated),
-              var(--shadow-inset),
-              inset 0 0 0 1px rgba(237, 228, 211, 0.03);
+.project-card-hsr:hover {
   transform: translateY(-3px);
+  border-color: rgba(212, 168, 67, 0.4);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 20px rgba(212, 168, 67, 0.2);
 }
 
-.project-icon {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: var(--radius-folio);
-  background: var(--gradient-chop-seal);
-  color: #fff;
+.project-card-header-hsr {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  margin-bottom: 1rem;
+  padding-right: 2rem;
+}
+
+.project-icon-hsr {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(212, 168, 67, 0.12), rgba(240, 208, 120, 0.06));
+  border: 1px solid rgba(212, 168, 67, 0.2);
+  color: #d4a843;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2),
-              inset 0 -1px 0 rgba(0,0,0,0.1);
+  flex-shrink: 0;
+  transition: all 0.3s;
 }
 
-.project-icon::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: calc(var(--radius-folio) + 2px);
-  border: 1px solid var(--color-chop-border);
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-editorial);
+.project-card-hsr:hover .project-icon-hsr {
+  border-color: rgba(212, 168, 67, 0.4);
+  box-shadow: 0 0 12px rgba(212, 168, 67, 0.2);
 }
 
-.project-card:hover .project-icon::after {
-  opacity: 1;
+.project-info-hsr {
+  min-width: 0;
+  flex: 1;
 }
 
-.project-name {
-  font-size: var(--text-lg);
+.project-name-hsr {
+  font-size: 1rem;
   font-weight: 600;
-  color: var(--color-parchment-bright);
+  color: #e8e6f0;
   margin: 0;
   line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.project-seed {
-  font-size: var(--text-xs);
-  color: var(--color-muted);
+.project-seed-hsr {
+  font-size: 0.75rem;
+  color: #6b6780;
   margin: 0.35rem 0 0;
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.project-meta {
+.project-badge-hsr {
+  margin-bottom: 0.875rem;
+}
+
+.project-meta-hsr {
   display: flex;
   align-items: center;
   gap: 1rem;
   padding-top: 0.875rem;
-  border-top: 1px solid var(--color-ink-edge);
+  border-top: 1px solid rgba(100, 95, 128, 0.15);
 }
 
-.meta-item {
+.meta-item-hsr {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: var(--text-xs);
-  color: var(--color-parchment-muted);
+  font-size: 0.75rem;
+  color: #6b6780;
   font-variant-numeric: tabular-nums;
 }
 
-.meta-icon {
+.meta-icon-hsr {
   opacity: 0.7;
 }
 
-.delete-btn {
+.delete-btn-hsr {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
@@ -486,62 +523,61 @@ function stageBadgeClass(stage: string): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 8px;
   background: transparent;
-  color: var(--color-muted);
+  color: #6b6780;
   border: none;
   cursor: pointer;
   opacity: 0;
   transform: scale(0.9);
-  transition: all var(--duration-fast) var(--ease-editorial);
+  transition: all 0.2s;
 }
 
-.delete-btn:hover {
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
+.delete-btn-hsr:hover {
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
   opacity: 1 !important;
   transform: scale(1);
 }
 
-.project-card:hover .delete-btn {
+.project-card-hsr:hover .delete-btn-hsr {
   opacity: 0.7;
   transform: scale(1);
 }
 
-.skeleton-card {
-  background: var(--color-ink-panel);
-  border: 1px solid var(--color-ink-edge);
-  border-radius: var(--radius-card);
+.skeleton-card-hsr {
+  background: rgba(20, 24, 50, 0.6);
+  border: 1px solid rgba(100, 95, 128, 0.1);
+  border-radius: 12px;
   padding: 1.25rem;
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow-card), var(--shadow-inset);
 }
 
-.skeleton-shimmer {
+.skeleton-shimmer-hsr {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(237, 228, 211, 0.06) 50%,
+    rgba(212, 168, 67, 0.04) 50%,
     transparent 100%
   );
   animation: skeletonShimmer 1.8s infinite;
 }
 
-.skeleton-icon {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: var(--radius-folio);
-  background: var(--color-ink-elevated);
+.skeleton-icon-hsr {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  background: rgba(30, 35, 70, 0.5);
   margin-bottom: 0.875rem;
 }
 
-.skeleton-line {
-  height: 0.75rem;
-  background: var(--color-ink-elevated);
-  border-radius: 2px;
+.skeleton-line-hsr {
+  height: 0.625rem;
+  background: rgba(30, 35, 70, 0.5);
+  border-radius: 4px;
   margin-bottom: 0.5rem;
 }
 
@@ -554,90 +590,80 @@ function stageBadgeClass(stage: string): string {
   }
 }
 
-.modal-header {
+.modal-content-hsr {
+  padding: 1.5rem;
+}
+
+.modal-header-hsr {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
-.modal-icon {
+.modal-icon-hsr {
   width: 2.5rem;
   height: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-folio);
-  background: var(--gradient-chop-seal);
-  color: #fff;
-  box-shadow: var(--shadow-chop-glow),
-              inset 0 1px 0 rgba(255,255,255,0.2);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(212, 168, 67, 0.15), rgba(240, 208, 120, 0.08));
+  border: 1px solid rgba(212, 168, 67, 0.25);
+  color: #d4a843;
 }
 
-.modal-title {
-  font-size: var(--text-xl);
+.modal-title-hsr {
+  font-size: 1.125rem;
   font-weight: 600;
-  color: var(--color-parchment-bright);
+  color: #e8e6f0;
   margin: 0;
 }
 
-.badge-globe {
-  background: rgba(74, 127, 181, 0.15);
-  color: #6a9fd4;
-  border: 1px solid rgba(74, 127, 181, 0.3);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+.modal-body-hsr {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-html[data-theme="paper"] .badge-globe {
-  background: rgba(52, 101, 154, 0.12);
-  color: #34659a;
-  border-color: rgba(52, 101, 154, 0.3);
+.field-group-hsr {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
 }
 
-html[data-theme="paper"] .hero-icon {
-  box-shadow: 0 0 20px rgba(168, 54, 47, 0.12),
-              var(--shadow-elevated-paper),
-              inset 0 1px 0 rgba(255,255,255,0.3),
-              inset 0 -1px 0 rgba(0,0,0,0.06);
+.field-label-hsr {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #a09cb8;
+  letter-spacing: 0.02em;
 }
 
-html[data-theme="paper"] .project-card:hover {
-  border-color: rgba(168, 54, 47, 0.5);
-  box-shadow: 0 0 16px rgba(168, 54, 47, 0.1),
-              var(--shadow-elevated),
-              var(--shadow-inset-paper);
+.modal-footer-hsr {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
 }
 
-html[data-theme="paper"] .skeleton-card {
-  background: var(--color-paper-cream);
-  border-color: var(--color-paper-edge-soft);
-  box-shadow: var(--shadow-card-paper), var(--shadow-inset-paper);
-}
-
-html[data-theme="paper"] .skeleton-icon,
-html[data-theme="paper"] .skeleton-line {
-  background: var(--color-paper-elevated);
-}
-
-html[data-theme="paper"] .skeleton-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.5) 50%,
-    transparent 100%
-  );
-}
-
-html[data-theme="paper"] .project-meta {
-  border-top-color: var(--color-paper-edge);
-}
-
-html[data-theme="paper"] .hero-compact {
-  border-bottom-color: var(--color-paper-edge);
+.error-banner-hsr {
+  padding: 0.75rem 1rem;
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 8px;
+  color: #f87171;
+  font-size: 0.8125rem;
+  margin-bottom: 1rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .skeleton-shimmer {
+  .skeleton-shimmer-hsr {
+    animation: none;
+  }
+  .hero-icon-hsr::before {
+    animation: none;
+  }
+  .hero-icon-hsr {
     animation: none;
   }
 }
